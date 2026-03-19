@@ -1,0 +1,70 @@
+---
+default_install_hook_types: [pre-commit, commit-msg]
+repos:
+  - repo: https://github.com/lyz-code/yamlfix
+    rev: 1.19.1
+    hooks:
+      - id: yamlfix
+        args: [-c, .yamlfix.toml]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=5120]
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: trailing-whitespace
+        exclude_types: [markdown]  # Avoid conflicts with markdown formatting
+      - id: check-xml
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+      - id: no-commit-to-branch
+      - id: mixed-line-ending
+      - id: end-of-file-fixer
+      - id: pretty-format-json
+        alias: pretty-format-openapi-json
+        args: [--autofix, --no-ensure-ascii, '--top-keys=openapi,info,servers,paths,components']
+        files: docs/openapi.json
+      - id: mixed-line-ending
+        alias: mixed-line-ending-openapi-json
+        args: [--fix=lf]
+        files: docs/openapi.json
+  - repo: local
+    hooks:
+      - id: sensitive-data-leak-urls
+        name: Sensitive data leak - URLs
+        entry: (?<!polarion-opensource@)(?<!www\.)sbb\.ch
+        language: pygrep
+        types: [text]
+      - id: sensitive-data-leak-ue-numbers
+        name: Sensitive data leak - UE numbers
+        entry: \b([uUeE]{1,2})\d{5,6}\b
+        language: pygrep
+        types: [text]
+      - id: sensitive-data-leak-dev-ticket-numbers
+        name: Sensitive data leak - DEV ticket numbers
+        entry: \bDEV-\d{1,6}\b
+        language: pygrep
+        types: [text]
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/grigoriev/pre-commit-check-git-user
+    rev: v0.9.3
+    hooks:
+      - id: check-git-config-user-email
+        args: [--templates, ^\S+\.\S+@sbb\.ch$]
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.13.9
+    hooks:
+      - id: commitizen
+  - repo: https://github.com/woodruffw/zizmor-pre-commit
+    rev: v1.23.1
+    hooks:
+      - id: zizmor
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.11
+    hooks:
+      - id: actionlint

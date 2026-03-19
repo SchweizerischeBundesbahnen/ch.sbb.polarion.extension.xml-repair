@@ -1,0 +1,15 @@
+---
+name: ActionLint
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ['**']
+  workflow_dispatch:
+permissions: {}
+jobs:
+  actionlint:
+    uses: SchweizerischeBundesbahnen/github-workflows-polarion/.github/workflows/reusable-actionlint.yml@main
+    permissions:
+      checks: write
+      contents: read

@@ -1,0 +1,11 @@
+---
+name: PR checks
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, unlocked]
+permissions: {}
+jobs:
+  check-conventional-commit:
+    uses: SchweizerischeBundesbahnen/github-workflows-polarion/.github/workflows/reusable-pr.yml@main
+    permissions:
+      contents: read

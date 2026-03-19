@@ -1,0 +1,15 @@
+---
+name: OpenAPI Validation
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions: {}
+jobs:
+  validate-openapi:
+    uses: SchweizerischeBundesbahnen/github-workflows-polarion/.github/workflows/reusable-openapi-validation.yml@main
+    permissions:
+      contents: read
+    with:
+      spec-path: docs/openapi.json
+      redocly-args: --extends=minimal
