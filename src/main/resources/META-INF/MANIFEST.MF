@@ -1,1 +1,1 @@
-Bundle-Name: Extension for Polarion ALM
+Bundle-Name: XML Repair extension for Polarion ALM
