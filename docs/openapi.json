@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "extension-name REST API",
+    "title": "XML Repair REST API",
     "version": "v1"
   },
   "paths": {
@@ -23,6 +23,410 @@
         "summary": "Returns basic context information of Polarion's extension",
         "tags": [
           "Extension Information"
+        ]
+      }
+    },
+    "/api/repair": {
+      "post": {
+        "operationId": "repair",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairParams"
+              }
+            }
+          },
+          "description": "Repair parameters",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Processing completed successfully"
+          }
+        },
+        "summary": "Repair XML issues in the specified entity"
+      }
+    },
+    "/api/repairers": {
+      "get": {
+        "operationId": "listRepairers",
+        "parameters": [
+          {
+            "description": "Entity type",
+            "in": "query",
+            "name": "entityType",
+            "required": true,
+            "schema": {
+              "enum": [
+                "COLLECTION",
+                "DOCUMENT",
+                "WORKITEM"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RepairerMeta"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of available repairers"
+          }
+        },
+        "summary": "Get list of available repairers for the specified entity type"
+      }
+    },
+    "/api/scan": {
+      "post": {
+        "operationId": "scan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanParams"
+              }
+            }
+          },
+          "description": "Scan parameters",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Scan completed successfully"
+          }
+        },
+        "summary": "Scan a list of entities for XML issues based on the provided parameters"
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "operationId": "readFeaturesList",
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "List of supported features"
+          }
+        },
+        "summary": "Returns the complete list of all supported features",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{feature}/default-content": {
+      "get": {
+        "operationId": "getDefaultValues",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsModel"
+                }
+              }
+            },
+            "description": "Default values"
+          }
+        },
+        "summary": "Returns default values of specified setting",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{feature}/names": {
+      "get": {
+        "operationId": "readSettingNames",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingName"
+                }
+              }
+            },
+            "description": "List of setting names"
+          }
+        },
+        "summary": "Returns names of specified setting in specified scope (global or certain project)",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{feature}/names/{name}": {
+      "delete": {
+        "operationId": "deleteSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Setting deleted successfully"
+          }
+        },
+        "summary": "Deletes specified setting by id and scope (global or certain project)",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "post": {
+        "operationId": "renameSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Setting name updated successfully"
+          }
+        },
+        "summary": "Updates name of specified named setting in specified scope (global or certain project)",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{feature}/names/{name}/content": {
+      "get": {
+        "operationId": "readSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsModel"
+                }
+              }
+            },
+            "description": "Setting content"
+          }
+        },
+        "summary": "Returns values (content) of specified setting by its id, scope (global or certain project) and revision",
+        "tags": [
+          "Settings"
+        ]
+      },
+      "put": {
+        "operationId": "saveSetting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Setting created/updated successfully"
+          }
+        },
+        "summary": "Creates or updates named setting in specified scope (global or certain project). Creation scenario will use default setting value if no body specified in the request.",
+        "tags": [
+          "Settings"
+        ]
+      }
+    },
+    "/api/settings/{feature}/names/{name}/revisions": {
+      "get": {
+        "operationId": "readRevisionsList",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "feature",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "schema": {
+              "default": "",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "default": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Revision"
+                }
+              }
+            },
+            "description": "List of revisions"
+          }
+        },
+        "summary": "Returns revisions history of specified setting with specified id and in specified scope (global or certain project)",
+        "tags": [
+          "Settings"
         ]
       }
     },
@@ -68,6 +472,251 @@
           "swaggerUiUrl": {
             "description": "Returns the Swagger UI URL for the REST API",
             "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RepairParams": {
+        "properties": {
+          "configs": {
+            "additionalProperties": {
+              "default": {},
+              "description": "User custom repair configurations",
+              "example": {
+                "ModuleContentLinksRepairer": {
+                  "convertToPlainText": true
+                }
+              },
+              "type": "object"
+            },
+            "default": {},
+            "description": "User custom repair configurations",
+            "example": {
+              "ModuleContentLinksRepairer": {
+                "convertToPlainText": true
+              }
+            },
+            "properties": {
+              "empty": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "issueMetaInfos": {
+            "description": "List of issues meta infos to fix",
+            "items": {
+              "description": "List of issues meta infos to fix",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issueMetaInfos"
+        ],
+        "type": "object"
+      },
+      "RepairerConfigMeta": {
+        "properties": {
+          "defaultValue": {
+            "type": "object"
+          },
+          "description": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "BOOLEAN"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "RepairerMeta": {
+        "properties": {
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/RepairerConfigMeta"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "Revision": {
+        "description": "Revision details",
+        "properties": {
+          "author": {
+            "description": "The author of the revision",
+            "type": "string"
+          },
+          "baseline": {
+            "description": "The baseline of the revision",
+            "type": "string"
+          },
+          "date": {
+            "description": "The date of the revision",
+            "type": "string"
+          },
+          "description": {
+            "description": "The description of the revision",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the revision",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ScanParams": {
+        "properties": {
+          "configs": {
+            "additionalProperties": {
+              "default": {},
+              "description": "User custom repair configurations",
+              "example": {
+                "ModuleContentLinksRepairer": {
+                  "convertToPlainText": true
+                }
+              },
+              "type": "object"
+            },
+            "default": {},
+            "description": "User custom repair configurations",
+            "example": {
+              "ModuleContentLinksRepairer": {
+                "convertToPlainText": true
+              }
+            },
+            "properties": {
+              "empty": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "entitySubtype": {
+            "description": "Entity subtype to scan, e.g. 'requirement' for work items or 'specification' for documents (if not provided, all subtypes will be scanned)",
+            "nullable": true,
+            "type": "string"
+          },
+          "entityType": {
+            "description": "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT and COLLECTION",
+            "enum": [
+              "COLLECTION",
+              "DOCUMENT",
+              "WORKITEM"
+            ],
+            "example": "WORKITEM",
+            "type": "string"
+          },
+          "hideValid": {
+            "default": false,
+            "description": "Hide entities without issues from the resulting list",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of entities to scan",
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "The unique identifier for the project",
+            "example": "elibrary",
+            "type": "string"
+          },
+          "repairers": {
+            "description": "List of repairers to use (if no data provided the default repairers will be applied)",
+            "items": {
+              "description": "List of repairers to use (if no data provided the default repairers will be applied)",
+              "nullable": true,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "sort": {
+            "default": "created",
+            "description": "Sorting criteria in the format 'created' or '~id'",
+            "nullable": true,
+            "type": "string"
+          },
+          "timeout": {
+            "default": 60000,
+            "description": "Operation timeout, milliseconds",
+            "format": "int64",
+            "type": "integer"
+          },
+          "userQuery": {
+            "description": "Additional query to select entities for scanning, e.g. 'id:TEST-12345'",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SettingName": {
+        "properties": {
+          "name": {
+            "description": "The name of the setting",
+            "type": "string"
+          },
+          "scope": {
+            "description": "The scope of the setting",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "SettingsModel": {
+        "description": "Settings model",
+        "properties": {
+          "bundleTimestamp": {
+            "description": "The bundle timestamp of the setting",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UserConfigs": {
+        "additionalProperties": {
+          "default": {},
+          "description": "User custom repair configurations",
+          "example": {
+            "ModuleContentLinksRepairer": {
+              "convertToPlainText": true
+            }
+          },
+          "type": "object"
+        },
+        "default": {},
+        "description": "User custom repair configurations",
+        "example": {
+          "ModuleContentLinksRepairer": {
+            "convertToPlainText": true
+          }
+        },
+        "properties": {
+          "empty": {
+            "type": "boolean"
           }
         },
         "type": "object"

@@ -59,6 +59,7 @@ The project follows a standard Maven directory structure:
 │   │       ├── META-INF/
 │   │       └── webapp/     # Web resources
 │   └── test/               # Test sources
+├── ui/                     # ReactJS frontend application (Vite + TypeScript)
 ├── docs/                   # Documentation
 ├── LICENSE                 # Apache License 2.0
 ├── NOTICE                  # Copyright attribution

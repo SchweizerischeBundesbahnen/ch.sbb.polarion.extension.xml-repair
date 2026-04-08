@@ -8,13 +8,13 @@
         <version>14.1.2</version>
     </parent>
 
-    <artifactId>ch.sbb.polarion.extension.extension-name</artifactId>
-    <version>0.0.0-SNAPSHOT</version>
+    <artifactId>ch.sbb.polarion.extension.xml-repair</artifactId>
+    <version>2.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>open-source-polarion-java-repo-template ... extension of Polarion ALM</name>
-    <description>This is a Polarion extension which provides ...</description>
-    <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.extension-name</url>
+    <name>Polarion ALM extension to validate and repair XML structure of Polarion Objects</name>
+    <description>This Polarion extension provides functionality to validate and repair XML structure of different Polarion objects</description>
+    <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair</url>
 
     <licenses>
         <license>
@@ -33,21 +33,32 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.extension-name.git</connection>
-        <developerConnection>scm:git:ssh://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.extension-name.git</developerConnection>
-        <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.extension-name/tree/main</url>
+        <connection>scm:git:git://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair.git</connection>
+        <developerConnection>scm:git:ssh://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair.git</developerConnection>
+        <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/tree/main</url>
     </scm>
 
     <issueManagement>
         <system>GitHub</system>
-        <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.extension-name/issues</url>
+        <url>https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues</url>
     </issueManagement>
 
     <properties>
-        <maven-jar-plugin.Extension-Context>extension-name</maven-jar-plugin.Extension-Context>
-        <maven-jar-plugin.Automatic-Module-Name>ch.sbb.polarion.extension.extension_name</maven-jar-plugin.Automatic-Module-Name>
+        <maven-jar-plugin.Extension-Context>xml-repair</maven-jar-plugin.Extension-Context>
+        <maven-jar-plugin.Automatic-Module-Name>ch.sbb.polarion.extension.xml_repair</maven-jar-plugin.Automatic-Module-Name>
+        <maven-jar-plugin.Discover-Base-Package>ch.sbb.polarion.extension.xml_repair</maven-jar-plugin.Discover-Base-Package>
+        <maven-jar-plugin.Configuration-Properties-Prefix>ch.sbb.polarion.extension.xml-repair.</maven-jar-plugin.Configuration-Properties-Prefix>
 
         <web.app.name>${maven-jar-plugin.Extension-Context}</web.app.name>
+
+        <wiremock.version>3.13.1</wiremock.version>
+        <slf4j-api.version>2.0.17</slf4j-api.version>
+
+        <node.version>v20.11.0</node.version>
+        <frontend-maven-plugin.version>2.0.0</frontend-maven-plugin.version>
+
+        <vite.sources.root>${project.basedir}/ui</vite.sources.root>
+        <vite.destination.root>${project.basedir}/src/main/resources/webapp/xml-repair-app</vite.destination.root>
     </properties>
 
     <dependencies>
@@ -56,6 +67,45 @@
             <artifactId>ch.sbb.polarion.extension.generic.app</artifactId>
             <version>${project.parent.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>ch.sbb.polarion.extensions</groupId>
+            <artifactId>ch.sbb.polarion.extension.generic.app</artifactId>
+            <version>${project.parent.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.polarion.usdp.persistence</groupId>
+            <artifactId>usdp-persistence</artifactId>
+            <version>${polarion.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>${slf4j-api.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>${slf4j-api.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.polarion.thirdparty</groupId>
+            <artifactId>net.htmlparser.jericho_3.1.0</artifactId>
+            <version>${polarion.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.polarion.thirdparty</groupId>
+            <artifactId>org.jsoup_1.15.2</artifactId>
+            <version>${polarion.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
@@ -63,11 +113,28 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
+                <configuration>
+                    <filesets>
+                        <fileset>
+                            <directory>${vite.destination.root}/app</directory>
+                            <followSymlinks>false</followSymlinks>
+                        </fileset>
+                    </filesets>
+                </configuration>
             </plugin>
 
             <plugin>
                 <groupId>ch.sbb.maven.plugins</groupId>
                 <artifactId>markdown2html-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>readme.md-to-about.html</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>convert</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>
@@ -107,13 +174,82 @@
                     <outputFormat>JSON</outputFormat>
                     <resourcePackages>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.info</package>
-<!--                        <package>ch.sbb.polarion.extension.generic.rest.controller.settings</package>-->
+                        <package>ch.sbb.polarion.extension.generic.rest.controller.settings</package>
                         <package>ch.sbb.polarion.extension.generic.rest.model</package>
-                        <package>ch.sbb.polarion.extension.extension_name.rest.controller</package>
-<!--                        <package>ch.sbb.polarion.extension.extension_name.rest.model</package>-->
+                        <package>ch.sbb.polarion.extension.xml_repair.rest.controller</package>
+                        <package>ch.sbb.polarion.extension.xml_repair.rest.model</package>
                     </resourcePackages>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>io.github.grigoriev</groupId>
+                <artifactId>pre-commit-run-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <version>${frontend-maven-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>install node and npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                    </execution>
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                    </execution>
+                    <execution>
+                        <id>npm build</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <arguments>run build</arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <nodeVersion>${node.version}</nodeVersion>
+                    <workingDirectory>ui</workingDirectory>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>copy-vite-build</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>copy-resources</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${vite.destination.root}</outputDirectory>
+                            <resources>
+                                <resource>
+                                    <directory>${vite.sources.root}/dist</directory>
+                                    <filtering>false</filtering>
+                                    <includes>
+                                        <include>**/*</include>
+                                    </includes>
+                                </resource>
+                            </resources>
+                            <overwrite>true</overwrite>
+                            <includeEmptyDirs>true</includeEmptyDirs>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
+
 </project>
