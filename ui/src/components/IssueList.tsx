@@ -28,7 +28,7 @@ export default function IssueList({ issues, selected, repairers, onToggle, disab
           </span>
           {issue.repairResult && !issue.repairResult.success && !(issue.repairResult.warnings?.length > 0) && (
             <ul className="issue-warnings">
-              <li>Repair failed. Please try one more time or contact to administrator</li>
+              <li>Repair failed. Please try one more time or contact the administrator</li>
             </ul>
           )}
           {(issue.repairResult?.warnings?.length ?? 0) > 0 && (

@@ -14,7 +14,7 @@ public final class UserConfigs extends HashMap<String, Object> {
 
     @SuppressWarnings("unchecked")
     public <T extends IRepairer> boolean getBoolean(Class<T> repairerClass, String paramId) {
-        return (boolean) Optional.ofNullable((Map<String, Object>) get(repairerClass.getSimpleName())).orElse(Map.of(paramId, false)).get(paramId);
+        return Boolean.TRUE.equals(Optional.ofNullable((Map<String, Object>) get(repairerClass.getSimpleName())).map(map -> map.get(paramId)).orElse(false));
     }
 
 }

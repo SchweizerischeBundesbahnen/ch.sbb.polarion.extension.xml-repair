@@ -28,15 +28,10 @@ export default function useRemote() {
       headers,
       body,
     }).catch(() => {
-      const errorHeaders = {
-        status: 503,
-        'Content-Type': 'application/json',
-      };
-      const errorResponse = new Response(
+      return new Response(
         JSON.stringify({ message: 'Network error occurred. Be sure Polarion is started and accessible.' }),
-        errorHeaders,
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
       );
-      return Promise.resolve(errorResponse);
     });
   }, []);
 

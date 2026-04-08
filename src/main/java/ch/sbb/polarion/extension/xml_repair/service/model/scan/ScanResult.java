@@ -15,6 +15,6 @@ public class ScanResult {
     private final List<ScanEntity> items = new ArrayList<>();
 
     @NotNull
-    private String report;
+    private String report = "";
 
 }
