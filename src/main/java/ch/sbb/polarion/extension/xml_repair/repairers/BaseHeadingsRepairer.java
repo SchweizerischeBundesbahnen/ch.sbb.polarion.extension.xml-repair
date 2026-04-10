@@ -56,7 +56,7 @@ public abstract class BaseHeadingsRepairer extends BaseRepairer {
     @VisibleForTesting
     void reorderHeadingToPosition(List<ModulePagePart> parts, int desiredPosition) {
         IntStream.range(0, parts.size())
-                .filter(i -> parts.get(i).isHeading())
+                .filter(i -> parts.get(i).isHeadingTitle())
                 .findFirst()
                 .ifPresent(i -> parts.add(desiredPosition, parts.remove(i)));
     }

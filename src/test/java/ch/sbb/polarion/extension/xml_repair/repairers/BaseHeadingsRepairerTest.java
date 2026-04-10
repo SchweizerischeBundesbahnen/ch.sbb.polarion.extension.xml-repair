@@ -340,6 +340,7 @@ class BaseHeadingsRepairerTest {
     private ModulePagePart mockPart(boolean isHeading, boolean isMacro, boolean isPageBreak, boolean isEmptyParagraph) {
         ModulePagePart part = mock(ModulePagePart.class);
         when(part.isHeading()).thenReturn(isHeading);
+        when(part.isHeadingTitle()).thenReturn(isHeading);
         if (isMacro) {
             when(part.getElementHtml()).thenReturn("<div class=\"polarion-dle-wiki-block\">macro</div>");
         } else if (isPageBreak) {
