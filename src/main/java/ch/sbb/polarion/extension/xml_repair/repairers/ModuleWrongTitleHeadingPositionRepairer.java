@@ -6,7 +6,6 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import com.polarion.alm.tracker.ModuleUtils;
 import com.polarion.alm.tracker.internal.ModulePagePart;
-import com.polarion.alm.tracker.internal.model.module.Module;
 import com.polarion.alm.tracker.model.IModule;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -14,7 +13,7 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ModuleWrongTitleHeadingPositionRepairer extends BaseRepairer {
+public class ModuleWrongTitleHeadingPositionRepairer extends BaseHeadingsRepairer {
 
     public static final String NAME = "Document content: Wrong title-heading position";
 
@@ -51,11 +50,6 @@ public class ModuleWrongTitleHeadingPositionRepairer extends BaseRepairer {
     }
 
     @VisibleForTesting
-    boolean hasTitleHeading(IModule module) {
-        return ((Module) module).getTitleHeading() != null;
-    }
-
-    @VisibleForTesting
     List<ModulePagePart> getContentParts(IModule module) {
         String content = module.getHomePageContent().convertToHTML().getContent();
         return ModuleUtils.getContentPartsNew(content, module.getProjectId());
@@ -66,7 +60,7 @@ public class ModuleWrongTitleHeadingPositionRepairer extends BaseRepairer {
         boolean macroFound = false;
         boolean pageBreakFound = false;
         for (ModulePagePart part : parts) {
-            if (part.isHeading()) {
+            if (part.isHeadingTitle()) {
                 return true;
             } else if (isPageBreak(part)) {
                 if (!pageBreakFound && macroFound) {

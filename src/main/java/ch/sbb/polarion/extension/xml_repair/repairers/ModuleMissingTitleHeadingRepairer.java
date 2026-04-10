@@ -4,15 +4,13 @@ import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
-import com.polarion.alm.tracker.internal.model.module.Module;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.List;
 
-public class ModuleMissingTitleHeadingRepairer extends BaseRepairer {
+public class ModuleMissingTitleHeadingRepairer extends BaseHeadingsRepairer {
 
     public static final String NAME = "Document content: Missing title-heading";
 
@@ -33,11 +31,6 @@ public class ModuleMissingTitleHeadingRepairer extends BaseRepairer {
         } else {
             return new RepairResult(context.issueMetaInfo(), false, "Issue was already fixed.");
         }
-    }
-
-    @VisibleForTesting
-    boolean hasTitleHeading(IModule module) {
-        return ((Module) module).getTitleHeading() != null;
     }
 
     public String getDisplayName() {
