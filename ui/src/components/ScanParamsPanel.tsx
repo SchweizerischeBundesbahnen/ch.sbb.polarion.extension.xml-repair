@@ -1,5 +1,7 @@
+import type { KeyboardEvent } from 'react';
 import type { EntityType, IconSelectOption } from '../types';
 import IconSelect from './IconSelect';
+import NumericInput from './NumericInput';
 
 const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   WORKITEM: 'e.g. id:PRJID-123',
@@ -45,9 +47,9 @@ export default function ScanParamsPanel({
   return (
     <div
       className="form-section"
-      onKeyDown={(e: React.KeyboardEvent) => {
+      onKeyDown={(e: KeyboardEvent) => {
         const target = e.target as HTMLInputElement;
-        if (e.key === 'Enter' && target.tagName === 'INPUT' && (target.type === 'text' || target.type === 'number')) {
+        if (e.key === 'Enter' && target.tagName === 'INPUT' && target.type === 'text') {
           onEnterKey();
         }
       }}
@@ -81,21 +83,11 @@ export default function ScanParamsPanel({
           </div>
           <div className="form-row">
             <label>Show Top Rows</label>
-            <input
-              type="number"
-              min="1"
-              value={limit}
-              onChange={(e) => onLimitChange(parseInt(e.target.value) || 100)}
-            />
+            <NumericInput value={limit} defaultValue={100} onChange={onLimitChange} />
           </div>
           <div className="form-row">
             <label>Scan time limit, seconds</label>
-            <input
-              type="number"
-              min="1"
-              value={timeout}
-              onChange={(e) => onTimeoutChange(parseInt(e.target.value) || 60)}
-            />
+            <NumericInput value={timeout} defaultValue={60} onChange={onTimeoutChange} />
           </div>
           <div className="form-row">
             <label>Show items with issues only</label>
