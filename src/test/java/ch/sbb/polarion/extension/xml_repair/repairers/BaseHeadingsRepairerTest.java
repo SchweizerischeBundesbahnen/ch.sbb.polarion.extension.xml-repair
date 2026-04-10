@@ -248,7 +248,7 @@ class BaseHeadingsRepairerTest {
         when(module.getProjectId()).thenReturn("proj");
 
         ModulePagePart part = mock(ModulePagePart.class);
-        when(part.isHeading()).thenReturn(true);
+        when(part.isHeadingTitle()).thenReturn(true);
         when(part.getElementHtml()).thenReturn("<h1>Title</h1>");
         doAnswer(inv -> {
             ((StringBuilder) inv.getArgument(0)).append("<h1>Title</h1>");
@@ -339,7 +339,7 @@ class BaseHeadingsRepairerTest {
 
     private ModulePagePart mockPart(boolean isHeading, boolean isMacro, boolean isPageBreak, boolean isEmptyParagraph) {
         ModulePagePart part = mock(ModulePagePart.class);
-        when(part.isHeading()).thenReturn(isHeading);
+        when(part.isHeadingTitle()).thenReturn(isHeading);
         when(part.isHeadingTitle()).thenReturn(isHeading);
         if (isMacro) {
             when(part.getElementHtml()).thenReturn("<div class=\"polarion-dle-wiki-block\">macro</div>");
