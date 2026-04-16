@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster, toast } from 'sonner';
+import BreadcrumbInjector from './components/BreadcrumbInjector';
 import RepairersPanel from './components/RepairersPanel';
 import ResultsTable from './components/ResultsTable';
 import ScanParamsPanel from './components/ScanParamsPanel';
@@ -572,6 +573,7 @@ export default function App() {
 
   return (
     <div className="xml-repair-app">
+      <BreadcrumbInjector />
       <Toaster position="top-center" duration={5000} />
       <div className="layout-columns">
         <div className="panel-left">
