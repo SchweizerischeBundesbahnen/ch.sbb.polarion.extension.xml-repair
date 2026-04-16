@@ -12,7 +12,7 @@ export default function NumericInput({ value, defaultValue, onChange }: NumericI
       value={value || ''}
       onChange={(e) => {
         const raw = e.target.value.replace(/\D/g, '');
-        onChange(raw === '' ? 0 : parseInt(raw));
+        onChange(raw === '' ? 0 : parseInt(raw, 10));
       }}
       onBlur={() => {
         if (value < 1) onChange(defaultValue);
