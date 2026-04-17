@@ -1,6 +1,23 @@
 # Changelog
 
-# Changelog before migration to conventional commits
+## 2.1.0 (2026-04-17)
+
+
+### Features
+
+* icon ([#14](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/14)) ([7e1b357](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/7e1b357f28fa1bcd396b643c71d4ca0edc0af418)), closes [#12](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/12)
+
+
+### Bug Fixes
+
+* cannot delete single decimal in numeric fields ([#9](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/9)) ([f11194f](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/f11194fb99e8d1664cf321ea91893f8bf3704c7a)), closes [#8](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/8)
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v14.1.2 ([817c940](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/817c94072b822405d76d23c988264ed6c6b3cb3a))
+* Missing Title Repairer gives false positive on a newly created d… ([#11](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/11)) ([103a3e4](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/103a3e4ca3bd1260638109e0989b4828b9b64226)), closes [#10](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/10)
+* wrong breadcrumbs ([#16](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/16)) ([a924549](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/a924549dc5e633dda46dfe04f78ce1f3b497b629)), closes [#15](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/15)
+
+## Changelog
+
+## Changelog before migration to conventional commits
 
 | Version | Changes                                                                                                                                                                                                                                                                                                                                                      |
 |---------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
