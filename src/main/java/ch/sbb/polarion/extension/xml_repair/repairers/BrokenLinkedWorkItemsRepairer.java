@@ -34,11 +34,11 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
         List<Issue> issues = new ArrayList<>();
         if (entity instanceof IWorkItem workItem) {
             workItem.getLinkedWorkItemsStructsDirect().forEach(link -> {
+                String projectId = StringUtils.getEmptyIfNull(link.getLinkedItem().getProjectId());
+                String workItemId = link.getLinkedItem().getId();
+                String revision = link.getRevision();
                 // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
-                if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(link.getLinkedItem().getProjectId(), link.getLinkedItem().getId(), link.getRevision())) {
-                    String workItemId = link.getLinkedItem().getId();
-                    String revision = StringUtils.getEmptyIfNull(link.getRevision());
-                    String projectId = StringUtils.getEmptyIfNull(link.getLinkedItem().getProjectId());
+                if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(projectId, workItemId, link.getRevision())) {
                     IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ID, workItemId).set(REVISION, revision);
                     String message;
                     if (link.getLinkRole() == null) {
