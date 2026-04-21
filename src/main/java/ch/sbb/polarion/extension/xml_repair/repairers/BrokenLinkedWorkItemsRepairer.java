@@ -38,7 +38,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(link.getLinkedItem().getProjectId(), link.getLinkedItem().getId(), link.getRevision())) {
                     String workItemId = link.getLinkedItem().getId();
                     String revision = StringUtils.getEmptyIfNull(link.getRevision());
-                    String projectId = link.getLinkedItem().getProjectId();
+                    String projectId = StringUtils.getEmptyIfNull(link.getLinkedItem().getProjectId());
                     IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ID, workItemId).set(REVISION, revision);
                     String message;
                     if (link.getLinkRole() == null) {
@@ -80,7 +80,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     }
 
     @VisibleForTesting
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "java:S3776"}) // Ignore cognitive complexity warning, refactoring would make the code less readable
     String repairLink(ILinkedWorkItemStruct link, IWorkItem workItem, RepairContext context) {
         boolean deleteUnresolvable = context.configs().getBoolean(getClass(), DELETE_UNRESOLVABLE);
         if (link.getLinkRole() == null) {
