@@ -38,8 +38,8 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 String workItemId = link.getLinkedItem().getId();
                 String revision = link.getRevision();
                 // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
-                if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(projectId, workItemId, link.getRevision())) {
-                    IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ID, workItemId).set(REVISION, revision);
+                if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(projectId, workItemId, revision)) {
+                    IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ID, workItemId).set(REVISION, StringUtils.getEmptyIfNull(revision));
                     String message;
                     if (link.getLinkRole() == null) {
                         metaInfo.set(LINK_ROLE, "");
