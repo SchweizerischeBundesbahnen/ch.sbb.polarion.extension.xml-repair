@@ -35,15 +35,21 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
         if (entity instanceof IWorkItem workItem) {
             workItem.getLinkedWorkItemsStructsDirect().forEach(link -> {
                 // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
-                if (link.getLinkedItem().isUnresolvable() || !context.polarionService().isWorkItemExists(link.getLinkedItem().getProjectId(), link.getLinkedItem().getId(), link.getRevision())) {
+                if (link.getLinkedItem().isUnresolvable() || link.getLinkRole() == null || !context.polarionService().isWorkItemExists(link.getLinkedItem().getProjectId(), link.getLinkedItem().getId(), link.getRevision())) {
                     String workItemId = link.getLinkedItem().getId();
                     String revision = StringUtils.getEmptyIfNull(link.getRevision());
-                    String projectId = StringUtils.getEmptyIfNull(link.getLinkedItem().getProjectId());
-                    String effectiveProjectId = StringUtils.isEmpty(projectId) ? entity.getProjectId() : projectId;
-                    String roleId = link.getLinkRole() == null ? "" : link.getLinkRole().getId();
-                    issues.add(new Issue(IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ROLE, roleId).set(LINK_ID, workItemId).set(REVISION, revision),
-                            this, String.format("Broken work item link found: linked work item '%s' in project '%s' does not exist.",
-                            workItemId + (StringUtils.isEmpty(revision) ? "" : (":" + revision)), effectiveProjectId)));
+                    String projectId = link.getLinkedItem().getProjectId();
+                    IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_PROJECT_ID, projectId).set(LINK_ID, workItemId).set(REVISION, revision);
+                    String message;
+                    if (link.getLinkRole() == null) {
+                        metaInfo.set(LINK_ROLE, "");
+                        message = "Broken work item link found: no link role specified for '%s/%s'".formatted(projectId, workItemId);
+                    } else {
+                        metaInfo.set(LINK_ROLE, link.getLinkRole().getId());
+                        message = String.format("Broken work item link found: linked work item '%s/%s' does not exist.",
+                                projectId, workItemId + (StringUtils.isEmpty(revision) ? "" : (":" + revision)));
+                    }
+                    issues.add(new Issue(metaInfo, this, message));
                 }
             });
         }
@@ -76,14 +82,19 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     @VisibleForTesting
     @SuppressWarnings("unchecked")
     String repairLink(ILinkedWorkItemStruct link, IWorkItem workItem, RepairContext context) {
+        boolean deleteUnresolvable = context.configs().getBoolean(getClass(), DELETE_UNRESOLVABLE);
+        if (link.getLinkRole() == null) {
+            return deleteUnresolvable ? null : "Link role is not specified for the link. Use 'Delete unresolvable links' feature to remove items like this.";
+        }
+
         String currentProjectId = workItem.getProjectId();
         String projectId = link.getLinkedItem().getProjectId();
         String workItemId = link.getLinkedItem().getId();
         String revision = link.getRevision();
         String warning = null;
 
-        // first, attempt to find work item in the current project
-        if (!StringUtils.isEmpty(projectId) && context.polarionService().isWorkItemExists(currentProjectId, workItemId, link.getRevision())) {
+        // attempt to find work item in the current project
+        if (!Objects.equals(projectId, currentProjectId) && context.polarionService().isWorkItemExists(currentProjectId, workItemId, link.getRevision())) {
             IWorkItem properItem = context.polarionService().getWorkItem(currentProjectId, workItemId, link.getRevision());
             workItem.addLinkedItem(properItem, link.getLinkRole(), link.getRevision(), false);
         } else if (!StringUtils.isEmpty(revision) && context.polarionService().isWorkItemExists(currentProjectId, workItemId, null)) {
@@ -102,9 +113,9 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 } else {
                     workItem.addLinkedItem(itemsFound.getFirst(), link.getLinkRole(), null, false);
                 }
-            } else if (!context.configs().getBoolean(getClass(), DELETE_UNRESOLVABLE)) {
+            } else if (!deleteUnresolvable) {
                 // do not remove unresolvable items until explicit user demand
-                warning = "Cannot find replacement for the current link. Use 'Delete unresolvable links' feature to remove links like this.";
+                warning = "Cannot find replacement for the current link. Use 'Delete unresolvable links' feature to remove items like this.";
             }
         }
         return warning;
