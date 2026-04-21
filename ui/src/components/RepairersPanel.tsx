@@ -51,7 +51,7 @@ export default function RepairersPanel({
               {isSelected && r.configs.length > 0 && (
                 <div className="repairer-settings">
                   {r.configs.map((c) => (
-                    <label key={c.key} className="repairer-setting">
+                    <label key={c.key} className="repairer-setting" title={c.hint}>
                       <input
                         type="checkbox"
                         checked={repairerConfigs[r.id]?.[c.key] ?? c.defaultValue}

@@ -1259,6 +1259,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         RepairerConfigMeta config = configs.getFirst();
         assertEquals(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, config.getKey());
         assertEquals("Remove invalid enumeration values", config.getDescription());
+        assertEquals("Clear/remove value if it is not defined in the specified enumeration", config.getHint());
         assertEquals(RepairerConfigType.BOOLEAN, config.getType());
         assertEquals(false, config.getDefaultValue());
     }

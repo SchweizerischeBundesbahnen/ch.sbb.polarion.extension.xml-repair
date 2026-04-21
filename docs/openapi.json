@@ -525,6 +525,9 @@
           "description": {
             "type": "string"
           },
+          "hint": {
+            "type": "string"
+          },
           "key": {
             "type": "string"
           },

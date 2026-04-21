@@ -218,7 +218,8 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     @Override
     public List<RepairerConfigMeta> getConfigs() {
         return List.of(
-                new RepairerConfigMeta(REMOVE_INVALID_ENUM_VALUES, "Remove invalid enumeration values", RepairerConfigType.BOOLEAN, false)
+                new RepairerConfigMeta(REMOVE_INVALID_ENUM_VALUES, "Remove invalid enumeration values",
+                        "Clear/remove value if it is not defined in the specified enumeration", RepairerConfigType.BOOLEAN, false)
         );
     }
 

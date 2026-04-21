@@ -90,6 +90,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsWrongTypeRepairer()
             ),
             EntityType.WORKITEM, List.of(
+                    new BrokenLinkedWorkItemsRepairer(),
                     new FieldsFormattingSymbolsRepairer(),
                     new FieldsInvalidEnumerationValueRepairer(),
                     new FieldsRichTextLinksRepairer(),

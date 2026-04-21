@@ -429,7 +429,7 @@ class XmlRepairPolarionServiceTest {
     void testGetRepairerMetas() {
         assertEquals(10, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
         assertEquals(10, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
-        assertEquals(4, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
+        assertEquals(5, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
     }
 
     @Test
@@ -459,7 +459,7 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(4, repairers.size());
+        assertEquals(5, repairers.size());
     }
 
     // ---- scanEntity validation tests ----
@@ -775,7 +775,7 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(10);
-            params.setTimeout(1L); // Very short timeout - will be exceeded
+            params.setTimeout(-1L); // Negative timeout - always exceeded
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject1, modelObject2))

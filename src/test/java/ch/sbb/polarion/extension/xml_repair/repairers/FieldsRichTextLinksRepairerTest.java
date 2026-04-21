@@ -179,6 +179,7 @@ class FieldsRichTextLinksRepairerTest {
         RepairerConfigMeta config = configs.get(0);
         assertEquals(BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT, config.getKey());
         assertEquals("Convert unresolvable links to plain text", config.getDescription());
+        assertEquals("Replace items which cannot be found by the specified ID in any available project with a plain text", config.getHint());
         assertEquals(RepairerConfigType.BOOLEAN, config.getType());
         assertEquals(false, config.getDefaultValue());
     }

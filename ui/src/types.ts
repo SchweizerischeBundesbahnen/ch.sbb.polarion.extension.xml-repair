@@ -68,6 +68,7 @@ export interface RepairIssueResult {
 export interface RepairerConfig {
   key: string;
   description: string;
+  hint: string;
   type: 'BOOLEAN';
   defaultValue: boolean;
 }

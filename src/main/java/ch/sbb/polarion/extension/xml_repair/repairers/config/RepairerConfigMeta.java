@@ -9,6 +9,7 @@ public class RepairerConfigMeta {
 
     private String key;
     private String description;
+    private String hint;
     private RepairerConfigType type;
     private Object defaultValue;
 
