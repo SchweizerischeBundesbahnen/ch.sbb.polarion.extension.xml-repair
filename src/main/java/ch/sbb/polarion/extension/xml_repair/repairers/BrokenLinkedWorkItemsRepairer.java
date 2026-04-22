@@ -15,6 +15,7 @@ import com.polarion.core.util.StringUtils;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
@@ -49,16 +50,19 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
                 if (link.getLinkedItem().isUnresolvable() || !context.polarionService().isWorkItemExists(projectId, workItemId, revision)) {
                     metaInfo.set(ISSUE_TYPE, IssueType.LINK_UNRESOLVABLE.name());
-                    message = String.format("Broken work item link found: linked work item '%s/%s' does not exist.",
+                    message = String.format("Linked work item '%s/%s' does not exist.",
                             projectId, workItemId + (StringUtils.isEmpty(revision) ? "" : (":" + revision)));
                 } else if (StringUtils.isEmpty(linkRoleId)) {
                     metaInfo.set(ISSUE_TYPE, IssueType.LINK_ROLE_MISSING.name());
-                    message = "Broken work item link found: no link role specified for '%s/%s'".formatted(projectId, workItemId);
+                    message = "No link role specified for '%s/%s'".formatted(projectId, workItemId);
                 } else {
                     ILinkRoleOpt roleOpt = getRoleOpt(workItem, linkRoleId, context);
                     if (roleOpt == null) {
                         metaInfo.set(ISSUE_TYPE, IssueType.UNKNOWN_LINK_ROLE_ID.name());
-                        message = "Broken work item link found: unknown '%s' role specified for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
+                        message = "Unknown '%s' role specified for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
+                    } else if (link.getLinkedItem().getType() != null && typesPairViolatesLinkRules(workItem.getType().getId(), link.getLinkedItem().getType().getId(), roleOpt.getRules())) {
+                        metaInfo.set(ISSUE_TYPE, IssueType.LINK_ROLE_RULE_VIOLATED.name());
+                        message = "Link role '%s' rule violated for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
                     }
                 }
                 if (message != null) {
@@ -96,7 +100,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     @SuppressWarnings({"unchecked", "java:S3776"}) // Ignore cognitive complexity warning, refactoring would make the code less readable
     String repairLink(ILinkedWorkItemStruct link, IWorkItem workItem, RepairContext context) {
         boolean deleteUnresolvable = context.configs().getBoolean(getClass(), DELETE_UNRESOLVABLE);
-        if (List.of(IssueType.LINK_ROLE_MISSING, IssueType.UNKNOWN_LINK_ROLE_ID).contains(IssueType.valueOf((String) context.issueMetaInfo().get(ISSUE_TYPE)))) {
+        if (List.of(IssueType.LINK_ROLE_MISSING, IssueType.UNKNOWN_LINK_ROLE_ID, IssueType.LINK_ROLE_RULE_VIOLATED).contains(IssueType.valueOf((String) context.issueMetaInfo().get(ISSUE_TYPE)))) {
             return deleteUnresolvable ? null : "Cannot repair automatically. Either fix manually or use 'Delete unresolvable links' feature to remove items like this.";
         }
 
@@ -152,16 +156,24 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
     private enum IssueType {
         LINK_ROLE_MISSING,
+        LINK_ROLE_RULE_VIOLATED,
         UNKNOWN_LINK_ROLE_ID,
         LINK_UNRESOLVABLE
     }
 
     @VisibleForTesting
-    ILinkRoleOpt getRoleOpt(IWorkItem workItem, String linkRoleId, ScanContext context) {
+    ILinkRoleOpt getRoleOpt(@NotNull IWorkItem workItem, @NotNull String linkRoleId, @NotNull ScanContext context) {
         IEnumeration<ILinkRoleOpt> roleEnum = context.getAndCache(CACHE_LINK_ROLES_KEY_TEMPLATE.formatted(workItem.getProjectId()), () ->
                 context.polarionService().getTrackerProject(workItem.getProjectId()).getWorkItemLinkRoleEnum());
         List<ILinkRoleOpt> availableOptions = roleEnum.getAvailableOptions(Objects.requireNonNull(workItem.getType()).getId());
         return availableOptions.stream().filter(o -> Objects.equals(o.getId(), linkRoleId)).findFirst().orElse(null);
+    }
+
+    @VisibleForTesting
+    boolean typesPairViolatesLinkRules(@NotNull String srcTypeId, @NotNull String targetTypeId, @Nullable List<ILinkRoleOpt.IRule> rules) {
+        return rules != null && rules.stream().noneMatch(rule ->
+                Objects.equals(srcTypeId, targetTypeId) && rule.getFromTypes().contains(srcTypeId) && rule.isSameType() ||
+                        rule.getFromTypes().contains(srcTypeId) && rule.getToTypes().contains(targetTypeId));
     }
 
 }
