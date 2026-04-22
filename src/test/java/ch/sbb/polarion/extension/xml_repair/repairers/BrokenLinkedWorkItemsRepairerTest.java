@@ -17,8 +17,11 @@ import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransact
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
+import com.polarion.alm.tracker.model.ITrackerProject;
+import com.polarion.alm.tracker.model.ITypeOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
+import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -89,6 +92,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(new ArrayList<>());
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
@@ -101,9 +105,10 @@ class BrokenLinkedWorkItemsRepairerTest {
 
     @Test
     void testScanValidLinkNoIssue() {
-        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+        BrokenLinkedWorkItemsRepairer repairer = spy(new BrokenLinkedWorkItemsRepairer());
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
         ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "relates", false);
@@ -111,6 +116,7 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(true);
+        doReturn(mock(ILinkRoleOpt.class)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -123,6 +129,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
         ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "relates", true);
@@ -136,7 +143,8 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertEquals(1, issues.size());
         assertEquals("Broken work item link found: linked work item 'elibrary/EL-100' does not exist.",
                 issues.getFirst().getDescription());
-        // isWorkItemExists should not be called due to short-circuit OR
+        assertEquals("LINK_UNRESOLVABLE", issues.getFirst().getRawMetaInfo().get("issueType"));
+        // isWorkItemExists must not be called — short-circuit on isUnresolvable()
         verify(polarionService, never()).isWorkItemExists(anyString(), anyString(), any());
     }
 
@@ -145,13 +153,15 @@ class BrokenLinkedWorkItemsRepairerTest {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
-        // linked item itself is valid, but role is null => still flagged
         ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, null, false);
         when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(new ArrayList<>(List.of(link)));
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        // Item must be resolvable so the null-role branch is reached, not LINK_UNRESOLVABLE
+        when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(true);
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -159,8 +169,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertEquals(1, issues.size());
         assertEquals("Broken work item link found: no link role specified for 'elibrary/EL-100'",
                 issues.getFirst().getDescription());
-        // existence check must be short-circuited for null role
-        verify(polarionService, never()).isWorkItemExists(anyString(), anyString(), any());
+        assertEquals("LINK_ROLE_MISSING", issues.getFirst().getRawMetaInfo().get("issueType"));
     }
 
     @Test
@@ -168,6 +177,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
         ILinkedWorkItemStruct link = mockLink("drivepilot", "EL-100", "42", "relates", false);
@@ -182,13 +192,39 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertEquals(1, issues.size());
         assertEquals("Broken work item link found: linked work item 'drivepilot/EL-100:42' does not exist.",
                 issues.getFirst().getDescription());
+        assertEquals("LINK_UNRESOLVABLE", issues.getFirst().getRawMetaInfo().get("issueType"));
+    }
+
+    @Test
+    void testScanUnknownLinkRoleCreatesIssue() {
+        BrokenLinkedWorkItemsRepairer repairer = spy(new BrokenLinkedWorkItemsRepairer());
+
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getId()).thenReturn("WI-1");
+        ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "unknown-role", false);
+        when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(new ArrayList<>(List.of(link)));
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(true);
+        doReturn(null).when(repairer).getRoleOpt(any(IWorkItem.class), eq("unknown-role"), any(ScanContext.class));
+        ScanContext context = createScanContext(polarionService);
+
+        List<Issue> issues = repairer.scan(entity, context);
+
+        assertEquals(1, issues.size());
+        assertTrue(issues.getFirst().getDescription().contains("unknown-role"));
+        assertTrue(issues.getFirst().getDescription().contains("elibrary/EL-100"));
+        assertEquals("UNKNOWN_LINK_ROLE_ID", issues.getFirst().getRawMetaInfo().get("issueType"));
     }
 
     @Test
     void testScanMixedValidAndInvalidLinks() {
-        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+        BrokenLinkedWorkItemsRepairer repairer = spy(new BrokenLinkedWorkItemsRepairer());
 
         IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
         ILinkedWorkItemStruct validLink = mockLink("elibrary", "EL-1", null, "relates", false);
@@ -198,12 +234,46 @@ class BrokenLinkedWorkItemsRepairerTest {
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
         when(polarionService.isWorkItemExists("drivepilot", "EL-2", null)).thenReturn(false);
+        doReturn(mock(ILinkRoleOpt.class)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
 
         assertEquals(1, issues.size());
         assertTrue(issues.getFirst().getDescription().contains("EL-2"));
+    }
+
+    @Test
+    void testScanSkipsUnresolvableEntity() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.isUnresolvable()).thenReturn(true);
+        when(entity.getType()).thenReturn(mock(ITypeOpt.class));
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        ScanContext context = createScanContext(polarionService);
+
+        List<Issue> issues = repairer.scan(entity, context);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getLinkedWorkItemsStructsDirect();
+    }
+
+    @Test
+    void testScanSkipsEntityWithNullType() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getType()).thenReturn(null);
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        ScanContext context = createScanContext(polarionService);
+
+        List<Issue> issues = repairer.scan(entity, context);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getLinkedWorkItemsStructsDirect();
     }
 
     // --- repair() tests ---
@@ -248,6 +318,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -280,6 +351,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -319,6 +391,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -330,7 +403,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertTrue(warning.contains("EL-100"));
         assertTrue(warning.contains("projA"));
         assertTrue(warning.contains("projB"));
-        // link should remain - repair was not successful
+        // link should remain — repair was not successful
         assertTrue(links.contains(link));
     }
 
@@ -355,7 +428,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        // Branch 1 and 2 must fail so we reach the global search
+        // branches 1 and 2 must fail so we reach the global search
         when(polarionService.isWorkItemExists("elibrary", "EL-100", "42")).thenReturn(false);
         when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(false);
         // revision matches in the other project
@@ -366,6 +439,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -383,8 +457,8 @@ class BrokenLinkedWorkItemsRepairerTest {
         IWorkItem entity = mock(IWorkItem.class, RETURNS_DEEP_STUBS);
         when(entity.getProjectId()).thenReturn("elibrary");
 
-        // revision is empty, so branch 2 short-circuits, and the "reuse revision" check in
-        // the global-search branch also short-circuits -> falls back to null revision
+        // empty revision → branch 2 short-circuits, and the "reuse revision" check in
+        // the global-search branch also short-circuits → falls back to null revision
         ILinkedWorkItemStruct link = mockLink("", "EL-100", "", "relates", false);
         Collection<ILinkedWorkItemStruct> links = new ArrayList<>(List.of(link));
         when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(links);
@@ -403,6 +477,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -435,6 +510,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -472,6 +548,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("relates");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, configs);
@@ -486,7 +563,7 @@ class BrokenLinkedWorkItemsRepairerTest {
     }
 
     @Test
-    void testRepairLinkWithNullRoleWarnsWhenDeleteUnresolvableFalse() {
+    void testRepairLinkRoleMissingWarnsWhenDeleteUnresolvableFalse() {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
@@ -502,6 +579,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_ROLE_MISSING");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
@@ -509,14 +587,14 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         assertFalse(result.isSuccess());
         assertEquals(1, result.getWarnings().size());
-        assertTrue(result.getWarnings().iterator().next().contains("Link role is not specified"));
+        assertTrue(result.getWarnings().iterator().next().contains("Cannot repair automatically"));
         // link must NOT be removed, no re-link attempted
         assertTrue(links.contains(link));
         verify(entity, never()).addLinkedItem(any(), any(), any(), anyBoolean());
     }
 
     @Test
-    void testRepairLinkWithNullRoleRemovesLinkWhenDeleteUnresolvableTrue() {
+    void testRepairLinkRoleMissingRemovesLinkWhenDeleteUnresolvableTrue() {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         IWorkItem entity = mock(IWorkItem.class);
@@ -535,6 +613,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(metaInfo.getString("linkRole")).thenReturn("");
         when(metaInfo.getString("revision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("LINK_ROLE_MISSING");
         when(metaInfo.serialize()).thenReturn("serialized");
 
         RepairContext context = new RepairContext(metaInfo, polarionService, configs);
@@ -544,6 +623,146 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertTrue(result.getWarnings().isEmpty());
         assertFalse(links.contains(link));
         verify(entity, never()).addLinkedItem(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void testRepairUnknownLinkRoleWarnsWhenDeleteUnresolvableFalse() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "bad-role", false);
+        Collection<ILinkedWorkItemStruct> links = new ArrayList<>(List.of(link));
+        when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(links);
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
+        when(metaInfo.getString("linkRole")).thenReturn("bad-role");
+        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("UNKNOWN_LINK_ROLE_ID");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairResult result = repairer.repair(entity, context);
+
+        assertFalse(result.isSuccess());
+        assertEquals(1, result.getWarnings().size());
+        assertTrue(result.getWarnings().iterator().next().contains("Cannot repair automatically"));
+        assertTrue(links.contains(link));
+        verify(entity, never()).addLinkedItem(any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void testRepairUnknownLinkRoleRemovesLinkWhenDeleteUnresolvableTrue() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "bad-role", false);
+        Collection<ILinkedWorkItemStruct> links = new ArrayList<>(List.of(link));
+        when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(links);
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("BrokenLinkedWorkItemsRepairer", Map.of("deleteUnresolvable", true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
+        when(metaInfo.getString("linkRole")).thenReturn("bad-role");
+        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.get("issueType")).thenReturn("UNKNOWN_LINK_ROLE_ID");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        RepairContext context = new RepairContext(metaInfo, polarionService, configs);
+        RepairResult result = repairer.repair(entity, context);
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        assertFalse(links.contains(link));
+        verify(entity, never()).addLinkedItem(any(), any(), any(), anyBoolean());
+    }
+
+    // --- getRoleOpt() tests ---
+
+    @Test
+    void testGetRoleOptReturnsMatchingRole() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        IWorkItem workItem = mock(IWorkItem.class);
+        when(workItem.getProjectId()).thenReturn("elibrary");
+        ITypeOpt typeOpt = mock(ITypeOpt.class);
+        when(typeOpt.getId()).thenReturn("task");
+        when(workItem.getType()).thenReturn(typeOpt);
+
+        ITrackerProject trackerProject = mock(ITrackerProject.class);
+        when(polarionService.getTrackerProject("elibrary")).thenReturn(trackerProject);
+        IEnumeration<ILinkRoleOpt> roleEnum = mock(IEnumeration.class);
+        when(trackerProject.getWorkItemLinkRoleEnum()).thenReturn(roleEnum);
+        ILinkRoleOpt roleOpt = mock(ILinkRoleOpt.class);
+        when(roleOpt.getId()).thenReturn("relates");
+        when(roleEnum.getAvailableOptions("task")).thenReturn(List.of(roleOpt));
+
+        ScanContext context = createScanContext(polarionService);
+
+        ILinkRoleOpt result = repairer.getRoleOpt(workItem, "relates", context);
+
+        assertSame(roleOpt, result);
+    }
+
+    @Test
+    void testGetRoleOptReturnsNullWhenNoMatch() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        IWorkItem workItem = mock(IWorkItem.class);
+        when(workItem.getProjectId()).thenReturn("elibrary");
+        ITypeOpt typeOpt = mock(ITypeOpt.class);
+        when(typeOpt.getId()).thenReturn("task");
+        when(workItem.getType()).thenReturn(typeOpt);
+
+        ITrackerProject trackerProject = mock(ITrackerProject.class);
+        when(polarionService.getTrackerProject("elibrary")).thenReturn(trackerProject);
+        IEnumeration<ILinkRoleOpt> roleEnum = mock(IEnumeration.class);
+        when(trackerProject.getWorkItemLinkRoleEnum()).thenReturn(roleEnum);
+        when(roleEnum.getAvailableOptions("task")).thenReturn(List.of());
+
+        ScanContext context = createScanContext(polarionService);
+
+        ILinkRoleOpt result = repairer.getRoleOpt(workItem, "unknown-role", context);
+
+        assertNull(result);
+    }
+
+    @Test
+    void testGetRoleOptCachesEnumPerProject() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        IWorkItem workItem = mock(IWorkItem.class);
+        when(workItem.getProjectId()).thenReturn("elibrary");
+        ITypeOpt typeOpt = mock(ITypeOpt.class);
+        when(typeOpt.getId()).thenReturn("task");
+        when(workItem.getType()).thenReturn(typeOpt);
+
+        ITrackerProject trackerProject = mock(ITrackerProject.class);
+        when(polarionService.getTrackerProject("elibrary")).thenReturn(trackerProject);
+        IEnumeration<ILinkRoleOpt> roleEnum = mock(IEnumeration.class);
+        when(trackerProject.getWorkItemLinkRoleEnum()).thenReturn(roleEnum);
+        when(roleEnum.getAvailableOptions("task")).thenReturn(List.of());
+
+        ScanContext context = createScanContext(polarionService);
+
+        repairer.getRoleOpt(workItem, "relates", context);
+        repairer.getRoleOpt(workItem, "relates", context);
+
+        // enum fetched only once — ScanContext caches by project key
+        verify(trackerProject, times(1)).getWorkItemLinkRoleEnum();
     }
 
     // --- Metadata tests ---
@@ -570,8 +789,8 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertEquals(1, configs.size());
         RepairerConfigMeta config = configs.getFirst();
         assertEquals("deleteUnresolvable", config.getKey());
-        assertEquals("Delete unresolvable links", config.getDescription());
-        assertEquals("Delete items which cannot be found by the specified ID in any available project", config.getHint());
+        assertEquals("Delete broken items", config.getDescription());
+        assertEquals("Delete items with a wrong link role or unresolvable link (linked item cannot be found by the specified data in any available project)", config.getHint());
         assertEquals(RepairerConfigType.BOOLEAN, config.getType());
         assertEquals(false, config.getDefaultValue());
     }

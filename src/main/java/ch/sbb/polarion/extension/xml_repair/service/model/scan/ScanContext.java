@@ -8,10 +8,12 @@ import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.time.StopWatch;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ScanContext {
@@ -27,6 +29,8 @@ public final class ScanContext {
     private final StopWatch stopWatch = StopWatch.createStarted();
     private final AtomicBoolean timeoutReached = new AtomicBoolean(false);
     private long timeout = 0;
+
+    private final HashMap<String, Object> cache = new  HashMap<>();
 
     public ScanContext(@NotNull XmlRepairPolarionService polarionService, @NotNull List<String> repairers, @NotNull UserConfigs configs, @NotNull Report report) {
         this.polarionService = polarionService;
@@ -87,6 +91,15 @@ public final class ScanContext {
         } else {
             return false;
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    @SneakyThrows
+    public <T> T getAndCache(String key, Callable<T> getValueCallable) {
+        if (!cache.containsKey(key)) {
+            cache.put(key, getValueCallable.call());
+        }
+        return (T) cache.get(key);
     }
 
 }

@@ -22,6 +22,7 @@ import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExte
 
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -181,6 +182,50 @@ class ScanContextTest {
         List<IModule> result = context.collectionDocuments(collection);
 
         assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void testGetAndCacheReturnsValue() throws Exception {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
+
+        String result = context.getAndCache("key", () -> "value");
+
+        assertEquals("value", result);
+    }
+
+    @Test
+    void testGetAndCacheCallsCallableOnlyOnce() throws Exception {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        context.getAndCache("key", () -> { callCount.incrementAndGet(); return "value"; });
+        context.getAndCache("key", () -> { callCount.incrementAndGet(); return "value"; });
+
+        assertEquals(1, callCount.get());
+    }
+
+    @Test
+    void testGetAndCacheCachesNullValue() throws Exception {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
+        AtomicInteger callCount = new AtomicInteger(0);
+
+        Object first = context.getAndCache("key", () -> { callCount.incrementAndGet(); return null; });
+        Object second = context.getAndCache("key", () -> { callCount.incrementAndGet(); return null; });
+
+        assertNull(first);
+        assertNull(second);
+        assertEquals(1, callCount.get());
+    }
+
+    @Test
+    void testGetAndCacheIsolatesKeys() throws Exception {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
+
+        String a = context.getAndCache("keyA", () -> "alpha");
+        String b = context.getAndCache("keyB", () -> "beta");
+
+        assertEquals("alpha", a);
+        assertEquals("beta", b);
     }
 
     @Test
