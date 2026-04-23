@@ -142,7 +142,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         List<Issue> issues = repairer.scan(entity, context);
 
         assertEquals(1, issues.size());
-        assertEquals("Linked work item 'elibrary/EL-100' does not exist.",
+        assertEquals("Linked work item 'elibrary/EL-100' does not exist",
                 issues.getFirst().getDescription());
         assertEquals("LINK_UNRESOLVABLE", issues.getFirst().getRawMetaInfo().get("issueType"));
         // isWorkItemExists must not be called — short-circuit on isUnresolvable()
@@ -191,7 +191,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         List<Issue> issues = repairer.scan(entity, context);
 
         assertEquals(1, issues.size());
-        assertEquals("Linked work item 'drivepilot/EL-100:42' does not exist.",
+        assertEquals("Linked work item 'drivepilot/EL-100:42' does not exist",
                 issues.getFirst().getDescription());
         assertEquals("LINK_UNRESOLVABLE", issues.getFirst().getRawMetaInfo().get("issueType"));
     }

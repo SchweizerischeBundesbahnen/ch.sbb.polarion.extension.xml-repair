@@ -50,7 +50,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
                 if (link.getLinkedItem().isUnresolvable() || !context.polarionService().isWorkItemExists(projectId, workItemId, revision)) {
                     metaInfo.set(ISSUE_TYPE, IssueType.LINK_UNRESOLVABLE.name());
-                    message = String.format("Linked work item '%s/%s' does not exist.",
+                    message = String.format("Linked work item '%s/%s' does not exist",
                             projectId, workItemId + (StringUtils.isEmpty(revision) ? "" : (":" + revision)));
                 } else if (StringUtils.isEmpty(linkRoleId)) {
                     metaInfo.set(ISSUE_TYPE, IssueType.LINK_ROLE_MISSING.name());
