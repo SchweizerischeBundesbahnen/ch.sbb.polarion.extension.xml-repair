@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.1.0...v2.2.0) (2026-04-23)
+
+
+### Features
+
+* broken linked worked items repairer ([#18](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/18)) ([7906061](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/790606179c8a53578ccfd25647848fe2d2c8a3d8)), closes [#13](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/13)
+
 ## 2.1.0 (2026-04-17)
 
 
