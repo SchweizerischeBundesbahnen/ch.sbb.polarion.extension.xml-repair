@@ -34,13 +34,11 @@ public final class IssueMetaInfo implements Serializable {
     }
 
     public static IssueMetaInfo create(IUniqueObject uniqueObject) {
-        if (uniqueObject instanceof IModule module) {
-            return create(module);
-        } else if (uniqueObject instanceof IWorkItem workItem) {
-            return create(workItem);
-        } else {
-            throw new IllegalArgumentException(String.format("Unrecognized object type: %s", uniqueObject.getClass().getName()));
-        }
+        return switch (uniqueObject) {
+            case IModule module -> create(module);
+            case IWorkItem workItem -> create(workItem);
+            default -> throw new IllegalArgumentException(String.format("Unrecognized object type: %s", uniqueObject.getClass().getName()));
+        };
     }
 
     public static IssueMetaInfo create(IModule module) {

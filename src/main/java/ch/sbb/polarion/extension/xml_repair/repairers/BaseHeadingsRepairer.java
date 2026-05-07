@@ -12,7 +12,6 @@ import java.util.stream.IntStream;
 
 public abstract class BaseHeadingsRepairer extends BaseRepairer {
 
-    @VisibleForTesting
     boolean hasTitleHeading(IModule module) {
         String html = Optional.ofNullable(module.getHomePageContent()).orElse(Text.html("")).convertToHTML().getContent();
         return ModuleUtils.getContentPartsNew(html, module.getProjectId()).stream().anyMatch(ModulePagePart::isHeadingTitle);
