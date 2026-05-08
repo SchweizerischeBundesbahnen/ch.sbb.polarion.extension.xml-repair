@@ -17,9 +17,9 @@ import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.logging.Logger;
 import com.polarion.platform.core.PlatformContext;
 import com.polarion.platform.persistence.IEnumOption;
+import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.spi.CustomTypedList;
-import com.polarion.platform.persistence.spi.EnumOption;
 import com.polarion.platform.persistence.spi.PObject;
 import com.polarion.platform.persistence.spi.ValueHelper;
 import com.polarion.subterra.base.data.model.internal.EnumType;
@@ -88,7 +88,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         if (value instanceof IEnumOption option && !(option instanceof IPriorityOpt) && isInvalidEnumOption(option, meta)) {
             Issue issue = createIssue(entity, meta, "Invalid enumeration id '%s' for the field '%s'".formatted(option.getId(), meta.getLabel()));
             if (repairResult != null && issue.getDescription().equals(repairResult.getRawIssueMetaInfo().getString(ISSUE_DESCRIPTION))) {
-                Object similarValue = findSimilarOption(option, meta);
+                IEnumOption similarValue = findSimilarOption(entity, option, meta);
                 if (similarValue != null) {
                     entity.setValue(meta.getId(), similarValue);
                     repairResult.setSuccess(true);
@@ -122,21 +122,19 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
             String invalidIds = invalidOptions.stream().map(IEnumOption::getId).collect(Collectors.joining("', '", "'", "'"));
             Issue issue = createIssue(entity, meta, "Invalid enumeration id(s) %s for the field '%s'.".formatted(invalidIds, meta.getLabel()));
             if (repairResult != null && issue.getDescription().equals(repairResult.getRawIssueMetaInfo().getString(ISSUE_DESCRIPTION))) {
-                List<Object> similarOptions = invalidOptions.stream().map(o -> findSimilarOption(o, meta)).filter(Objects::nonNull).toList();
+                List<IEnumOption> similarOptions = invalidOptions.stream().map(o -> findSimilarOption(entity, o, meta)).filter(Objects::nonNull).toList();
                 // Fix automatically only when similar item found for every invalid.
                 // Otherwise, we can end up in a situation that only some of the invalid values are repaired, and the rest are still invalid,
                 // so user will need to run repair multiple times and it can be confusing. So even if one of N items may be fixed
                 // by deletion we require REMOVE_INVALID_ENUM_VALUES option is turned on.
-                if (similarOptions.size() == invalidOptions.size()) {
-                    list.removeAll(invalidOptions);
-                    list.addAll(similarOptions);
-                    entity.setValue(meta.getId(), list);
-                    repairResult.setSuccess(true);
-                } else if (!configs.getBoolean(getClass(), REMOVE_INVALID_ENUM_VALUES)) {
-                    warnRepairTurnedOff(repairResult, invalidOptions.size() > 1);
-                } else if (meta.isRequired() && invalidOptions.size() == list.size() && similarOptions.isEmpty()) {
+                if (meta.isRequired() && invalidOptions.size() == list.size() && similarOptions.isEmpty()) {
                     repairResult.getWarnings().add("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
+                } else if (!configs.getBoolean(getClass(), REMOVE_INVALID_ENUM_VALUES) && similarOptions.size() != invalidOptions.size()) {
+                    warnRepairTurnedOff(repairResult, invalidOptions.size() > 1);
                 } else {
+                    // We fix either case when we found all similar items or when REMOVE_INVALID_ENUM_VALUES option is turned on.
+                    // We want to prevent situation that only some of the invalid values are repaired, and the rest are still invalid,
+                    // so user will need to run repair multiple times which is confusing.
                     list.removeAll(invalidOptions);
                     list.addAll(similarOptions);
                     entity.setValue(meta.getId(), list);
@@ -216,20 +214,24 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
     }
 
-    private Object findSimilarOption(IEnumOption option, FieldMetadata meta) {
+    private IEnumOption findSimilarOption(IWorkflowObject entity, IEnumOption option, FieldMetadata meta) {
         // attempt 1: find option with exact name
-        Option byName = meta.getOptions().stream().filter(o -> Objects.equals(o.getName(), option.getId())).findFirst().orElse(null);
-        if (byName != null) {
-            return new EnumOption(option.getEnumId(), byName.getKey());
+        Option match = meta.getOptions().stream().filter(o -> Objects.equals(o.getName(), option.getId())).findFirst()
+                // attempt 2: by id case-insensitive
+                .or(() -> meta.getOptions().stream().filter(o -> Strings.CI.equals(o.getKey(), option.getId())).findFirst())
+                // attempt 3: by name case-insensitive
+                .or(() -> meta.getOptions().stream().filter(o -> Strings.CI.equals(o.getName(), option.getId())).findFirst())
+                .orElse(null);
+        if (match == null) {
+            return null;
         }
-        // attempt 2: by id case-insensitive
-        Option byIdCaseInsensitive = meta.getOptions().stream().filter(o -> Strings.CI.equals(o.getKey(), option.getId())).findFirst().orElse(null);
-        if (byIdCaseInsensitive != null) {
-            return new EnumOption(option.getEnumId(), byIdCaseInsensitive.getKey());
-        }
-        // attempt 3: by name case-insensitive
-        Option byNameCaseInsensitive = meta.getOptions().stream().filter(o -> Strings.CI.equals(o.getName(), option.getId())).findFirst().orElse(null);
-        return byNameCaseInsensitive != null ? new EnumOption(option.getEnumId(), byNameCaseInsensitive.getKey()) : null;
+        // Use the IEnumeration registered for this enum id so the returned option is the proper
+        // concrete type (e.g. IStatusOpt for status, ITypeOpt for type). Polarion casts on read,
+        // so a plain EnumOption would fail with ClassCastException for fields backed by typed
+        // IEnumOption subtypes. Resolve via enum id (not field key) so custom fields work too.
+        IEnumeration<?> enumeration = entity.getDataSvc().getEnumerationForEnumId(
+                new EnumType(option.getEnumId()), entity.getContextId());
+        return enumeration.wrapOption(match.getKey());
     }
 
     private void clearFieldValue(IWorkflowObject entity, FieldMetadata meta, RepairResult repairResult) {

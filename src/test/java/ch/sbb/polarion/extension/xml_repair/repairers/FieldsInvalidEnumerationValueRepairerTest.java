@@ -28,7 +28,6 @@ import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.spi.CustomTypedList;
-import com.polarion.platform.persistence.spi.EnumOption;
 import com.polarion.platform.persistence.spi.PObject;
 import com.polarion.platform.persistence.spi.ValueHelper;
 import com.polarion.subterra.base.data.identification.IContextId;
@@ -1209,6 +1208,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1222,10 +1222,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         assertTrue(result.isSuccess());
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
         verify(entity).setValue(eq("status"), captor.capture());
-        assertInstanceOf(EnumOption.class, captor.getValue());
-        EnumOption replacement = (EnumOption) captor.getValue();
-        assertEquals("open", replacement.getId());
-        assertEquals("generic-enum", replacement.getEnumId());
+        assertSame(expectedReplacement, captor.getValue());
         assertTrue(result.getWarnings().isEmpty());
     }
 
@@ -1239,6 +1236,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1251,7 +1249,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         assertTrue(result.isSuccess());
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
         verify(entity).setValue(eq("status"), captor.capture());
-        assertEquals("open", ((EnumOption) captor.getValue()).getId());
+        assertSame(expectedReplacement, captor.getValue());
     }
 
     @Test
@@ -1264,6 +1262,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "st1");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1276,7 +1275,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         assertTrue(result.isSuccess());
         ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
         verify(entity).setValue(eq("status"), captor.capture());
-        assertEquals("st1", ((EnumOption) captor.getValue()).getId());
+        assertSame(expectedReplacement, captor.getValue());
     }
 
     @Test
@@ -1289,6 +1288,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1299,7 +1299,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         RepairResult result = repairer.repair(entity, repairContext);
 
         assertTrue(result.isSuccess());
-        verify(entity).setValue(eq("status"), any(EnumOption.class));
+        verify(entity).setValue("status", expectedReplacement);
         assertTrue(result.getWarnings().isEmpty());
     }
 
@@ -1323,6 +1323,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("categories")).thenReturn(list);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
 
         // config OFF: when similar found for every invalid, repair still proceeds
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
@@ -1339,9 +1340,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         verify(list).addAll((java.util.Collection<?>) addCaptor.capture());
         java.util.Collection<?> added = (java.util.Collection<?>) addCaptor.getValue();
         assertEquals(1, added.size());
-        EnumOption replacement = (EnumOption) added.iterator().next();
-        assertEquals("open", replacement.getId());
-        assertEquals("generic-enum", replacement.getEnumId());
+        assertSame(expectedReplacement, added.iterator().next());
         verify(entity).setValue("categories", list);
         assertTrue(result.getWarnings().isEmpty());
     }
@@ -1541,6 +1540,16 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(option.getId()).thenReturn(id);
         when(option.getEnumId()).thenReturn("generic-enum");
         return option;
+    }
+
+    // Stubs the IEnumeration#wrapOption(key) chain so findSimilarOption returns a known mock.
+    // Resolution is by enum id (not field key) so this works for custom fields too.
+    private IEnumOption stubWrapOption(IWorkflowObject onEntity, String enumId, String key) {
+        IEnumOption wrapped = mock(IEnumOption.class);
+        when(onEntity.getDataSvc()
+                .getEnumerationForEnumId(new EnumType(enumId), contextId)
+                .wrapOption(key)).thenReturn(wrapped);
+        return wrapped;
     }
 
     private FieldMetadata buildEnumField(String id, String label, boolean required, boolean useRealEnumType, Set<Option> options) {
