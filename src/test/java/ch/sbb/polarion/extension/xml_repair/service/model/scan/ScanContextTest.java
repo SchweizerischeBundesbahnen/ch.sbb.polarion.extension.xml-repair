@@ -185,7 +185,7 @@ class ScanContextTest {
     }
 
     @Test
-    void testGetAndCacheReturnsValue() throws Exception {
+    void testGetAndCacheReturnsValue() {
         ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
 
         String result = context.getAndCache("key", () -> "value");
@@ -194,7 +194,7 @@ class ScanContextTest {
     }
 
     @Test
-    void testGetAndCacheCallsCallableOnlyOnce() throws Exception {
+    void testGetAndCacheCallsCallableOnlyOnce() {
         ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
         AtomicInteger callCount = new AtomicInteger(0);
 
@@ -205,7 +205,7 @@ class ScanContextTest {
     }
 
     @Test
-    void testGetAndCacheCachesNullValue() throws Exception {
+    void testGetAndCacheCachesNullValue() {
         ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
         AtomicInteger callCount = new AtomicInteger(0);
 
@@ -218,7 +218,7 @@ class ScanContextTest {
     }
 
     @Test
-    void testGetAndCacheIsolatesKeys() throws Exception {
+    void testGetAndCacheIsolatesKeys() {
         ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
 
         String a = context.getAndCache("keyA", () -> "alpha");
@@ -234,9 +234,7 @@ class ScanContextTest {
         ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
 
         Set<String> warnings = context.globalWarnings();
-        warnings.add("warning1");
-        warnings.add("warning2");
-        warnings.add("warning1"); // duplicate
+        warnings.addAll(List.of("warning1", "warning2", "warning1"));
 
         assertEquals(2, warnings.size());
         // LinkedHashSet preserves insertion order

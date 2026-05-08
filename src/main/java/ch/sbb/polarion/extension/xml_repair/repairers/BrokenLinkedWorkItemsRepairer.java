@@ -35,6 +35,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     private static final String CACHE_LINK_ROLES_KEY_TEMPLATE = "BROKEN_LWI_PROJECT_%s_LINK_ROLES";
 
     @Override
+    @SuppressWarnings("java:S3776") // Ignore cognitive complexity warning, refactoring would make the code less readable
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
         List<Issue> issues = new ArrayList<>();
         if (entity instanceof IWorkItem workItem && !entity.isUnresolvable() && entity.getType() != null) {
@@ -47,7 +48,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_ROLE, linkRoleId).set(LINK_PROJECT_ID, projectId)
                         .set(LINK_ID, workItemId).set(REVISION, StringUtils.getEmptyIfNull(revision));
 
-                // just calling isUnresolvable() isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
+                // Just calling isUnresolvable isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
                 if (link.getLinkedItem().isUnresolvable() || !context.polarionService().isWorkItemExists(projectId, workItemId, revision)) {
                     metaInfo.set(ISSUE_TYPE, IssueType.LINK_UNRESOLVABLE.name());
                     message = String.format("Linked work item '%s/%s' does not exist",
