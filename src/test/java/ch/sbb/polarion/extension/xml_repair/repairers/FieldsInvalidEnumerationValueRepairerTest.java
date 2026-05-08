@@ -56,7 +56,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith({MockitoExtension.class, PlatformContextMockExtension.class})
 @MockitoSettings(strictness = Strictness.LENIENT)
-@SuppressWarnings({"unchecked", "unused"})
+@SuppressWarnings({"unchecked", "unused", "java:S125"}) // suppress false-positive commented-out lines of code
 class FieldsInvalidEnumerationValueRepairerTest {
 
     @CustomExtensionMock
@@ -1208,7 +1208,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1236,7 +1236,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1262,7 +1262,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "st1");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "st1");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1288,7 +1288,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1323,7 +1323,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("categories")).thenReturn(list);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "open");
 
         // config OFF: when similar found for every invalid, repair still proceeds
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
@@ -1482,7 +1482,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         setupRepairFields(meta);
         when(entity.getValue("categories")).thenReturn(list);
-        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+        IEnumOption expectedReplacement = stubWrapOption(entity, "open");
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1586,10 +1586,11 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
     // Stubs the IEnumeration#wrapOption(key) chain so findSimilarOption returns a known mock.
     // Resolution is by enum id (not field key) so this works for custom fields too.
-    private IEnumOption stubWrapOption(IWorkflowObject onEntity, String enumId, String key) {
+    // Enum id matches mockEnumOption()'s "generic-enum".
+    private IEnumOption stubWrapOption(IWorkflowObject onEntity, String key) {
         IEnumOption wrapped = mock(IEnumOption.class);
         when(onEntity.getDataSvc()
-                .getEnumerationForEnumId(new EnumType(enumId), contextId)
+                .getEnumerationForEnumId(new EnumType("generic-enum"), contextId)
                 .wrapOption(key)).thenReturn(wrapped);
         return wrapped;
     }
