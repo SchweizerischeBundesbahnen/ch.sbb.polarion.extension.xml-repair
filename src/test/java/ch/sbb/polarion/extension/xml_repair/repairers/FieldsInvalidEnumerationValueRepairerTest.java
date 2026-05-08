@@ -1461,6 +1461,48 @@ class FieldsInvalidEnumerationValueRepairerTest {
         verify(entity, never()).setValue(any(), any());
     }
 
+    @Test
+    void testRepairListRequiredAllInvalidWithSimilarsFixesAll() {
+        // covers: required && size match && similarOptions NOT empty => fix proceeds (else branch).
+        // Complements testRepairListRequiredAllInvalidNoSimilarsCannotRemove for full condition
+        // coverage of the `meta.isRequired() && sizes==list.size() && similarOptions.isEmpty()` guard.
+        IEnumOption invalid = mockEnumOption("Open"); // matches valid name "Open"
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenReturn(Stream.of(invalid));
+        when(list.size()).thenReturn(1);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        FieldMetadata meta = buildListField("categories", "Categories", true, listType,
+                Set.of(new Option("open", "Open")));
+
+        setupRepairFields(meta);
+        when(entity.getValue("categories")).thenReturn(list);
+        IEnumOption expectedReplacement = stubWrapOption(entity, "generic-enum", "open");
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("categories");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'Open' for the field 'Categories'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+
+        RepairResult result = repairer.repair(entity, repairContext);
+
+        assertTrue(result.isSuccess());
+        verify(list).removeAll(List.of(invalid));
+        ArgumentCaptor<Object> addCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(list).addAll((java.util.Collection<?>) addCaptor.capture());
+        java.util.Collection<?> added = (java.util.Collection<?>) addCaptor.getValue();
+        assertEquals(1, added.size());
+        assertSame(expectedReplacement, added.iterator().next());
+        verify(entity).setValue("categories", list);
+        assertTrue(result.getWarnings().isEmpty());
+    }
+
     // --- handleUnresolvableObjectException with multiple bad items + config off ---
 
     @Test
