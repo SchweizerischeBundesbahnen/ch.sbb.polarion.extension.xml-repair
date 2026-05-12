@@ -24,7 +24,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/BaselineInfo"
+                  "items": {
+                    "$ref": "#/components/schemas/BaselineInfo"
+                  },
+                  "type": "array"
                 }
               }
             },
@@ -101,7 +104,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RepairerMeta"
+                  "items": {
+                    "$ref": "#/components/schemas/RepairerMeta"
+                  },
+                  "type": "array"
                 }
               }
             },

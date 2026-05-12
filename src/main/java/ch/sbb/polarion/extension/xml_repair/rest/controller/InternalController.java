@@ -12,6 +12,7 @@ import com.polarion.core.util.StringUtils;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
@@ -43,7 +44,7 @@ public class InternalController {
             responses = {
                     @ApiResponse(responseCode = "200",
                             description = "Successfully retrieved the list of available repairers",
-                            content = @Content(schema = @Schema(implementation = RepairerMeta.class))
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = RepairerMeta.class)))
                     )
             })
     public Response listRepairers(@Parameter(description = "Entity type", required = true) @QueryParam("entityType") EntityType entityType) {
@@ -57,7 +58,7 @@ public class InternalController {
             responses = {
                     @ApiResponse(responseCode = "200",
                             description = "Successfully retrieved the list of baselines",
-                            content = @Content(schema = @Schema(implementation = BaselineInfo.class))
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = BaselineInfo.class)))
                     )
             })
     public Response listBaselines(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {

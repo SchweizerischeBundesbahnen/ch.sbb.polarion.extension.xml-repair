@@ -12,7 +12,6 @@ import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.subterra.base.data.identification.IContextId;
 import com.polarion.subterra.base.data.model.IType;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.Arrays;
 import java.util.List;
@@ -88,7 +87,6 @@ public abstract class BaseRepairer implements IRepairer {
         return module.getContainedWorkItems().stream().filter(w -> !w.isUnresolvable() && w.getType() != null && !w.getType().getId().equals(TYPE_HEADING));
     }
 
-    @VisibleForTesting
     Set<FieldMetadata> getAllFieldsUsingCache(@NotNull IContext context, @NotNull String proto, @NotNull IContextId contextId, @NotNull String typeId, boolean compareTypeClass, @NotNull IType... fieldTypes) {
         String key = CACHE_ALL_FIELDS_KEY_TEMPLATE.formatted(proto, contextId, typeId, compareTypeClass, Arrays.toString(fieldTypes));
         return context.getAndCache(key, () -> context.polarionService().getAllFields(proto, contextId, typeId, compareTypeClass, fieldTypes));

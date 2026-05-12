@@ -8,6 +8,9 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Comparator;
+import java.util.Objects;
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -39,6 +42,12 @@ public class BaselineInfo implements Comparable<BaselineInfo> {
             logger.warn("Unexpected revision found: " + that.revision);
         }
 
-        return Long.compare(thatRevision, thisRevision); // Reverse sorting is used to show most last revision as first
+        // Reverse sorting is used to show most last revision as first.
+        // Tie-break on name to keep compareTo consistent with the @Data-generated equals.
+        int byRevision = Long.compare(thatRevision, thisRevision);
+        if (byRevision != 0) {
+            return byRevision;
+        }
+        return Objects.compare(this.name, that.name, Comparator.nullsLast(Comparator.naturalOrder()));
     }
 }

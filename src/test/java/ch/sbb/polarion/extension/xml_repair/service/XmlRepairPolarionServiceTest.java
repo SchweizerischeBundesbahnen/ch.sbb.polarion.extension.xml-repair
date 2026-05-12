@@ -37,6 +37,7 @@ import com.polarion.alm.shared.api.model.document.DocumentSelector;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
+import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITrackerProject;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -44,7 +45,9 @@ import com.polarion.alm.tracker.model.ITypeOpt;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
+import com.polarion.alm.tracker.model.ipi.IInternalBaselinesManager;
 import com.polarion.platform.IPlatformService;
+import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
@@ -59,6 +62,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.*;
+import java.util.stream.Stream;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.mockFields;
 import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NOT_AUTHORIZED_BY_ADMIN;
@@ -876,6 +880,37 @@ class XmlRepairPolarionServiceTest {
             assertThrows(IllegalStateException.class, () ->
                     polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null, null));
         }
+    }
+
+    // ---- getBaselines tests ----
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGetBaselinesReturnsListSortedByRevisionDescending() {
+        ITrackerProject trackerProject = mock(ITrackerProject.class);
+        when(trackerService.getTrackerProject("proj")).thenReturn(trackerProject);
+
+        IInternalBaselinesManager baselinesManager = mock(IInternalBaselinesManager.class);
+        when(trackerProject.getBaselinesManager()).thenReturn(baselinesManager);
+
+        IBaseline older = mock(IBaseline.class);
+        when(older.getBaseRevision()).thenReturn("100");
+        when(older.getName()).thenReturn("Older");
+        IBaseline newer = mock(IBaseline.class);
+        when(newer.getBaseRevision()).thenReturn("200");
+        when(newer.getName()).thenReturn("Newer");
+
+        IPObjectList<IBaseline> baselineList = mock(IPObjectList.class);
+        when(baselineList.stream()).thenReturn(Stream.of(older, newer));
+        when(baselinesManager.getBaselines()).thenReturn(baselineList);
+
+        List<BaselineInfo> result = polarionService.getBaselines("proj");
+
+        assertEquals(2, result.size());
+        assertEquals("200", result.get(0).getRevision());
+        assertEquals("Newer", result.get(0).getName());
+        assertEquals("100", result.get(1).getRevision());
+        assertEquals("Older", result.get(1).getName());
     }
 
     // ---- Helper methods ----

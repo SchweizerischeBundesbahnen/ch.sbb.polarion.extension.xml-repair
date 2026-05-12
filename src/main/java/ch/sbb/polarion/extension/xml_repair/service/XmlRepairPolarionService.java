@@ -301,7 +301,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 .map(r -> new RepairerMeta(r.getClass().getSimpleName(), r.getDisplayName(), r.getDescription(), r.getConfigs())).toList();
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked", "java:S1452"}) // Wildcard comes from Polarion API return type
+    @SuppressWarnings({"rawtypes", "unchecked", "java:S1452", "java:S107"}) // Wildcard comes from Polarion API return type, 8 params is a lot but all of them are required
     public List<? extends ModelObject> queryEntities(@NotNull String projectId, @NotNull PrototypeEnum entityPrototype,
                                                      @Nullable String subtype, @Nullable String customQuery,
                                                      @Nullable String revision, @Nullable String sort,

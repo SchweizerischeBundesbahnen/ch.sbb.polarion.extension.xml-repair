@@ -59,11 +59,33 @@ class BaselineInfoTest {
     }
 
     @Test
-    void testCompareToEqualRevisionsReturnsZero() {
+    void testCompareToEqualRevisionsBreaksTieByName() {
         BaselineInfo a = new BaselineInfo("100", "a");
         BaselineInfo b = new BaselineInfo("100", "b");
 
+        assertTrue(a.compareTo(b) < 0);
+        assertTrue(b.compareTo(a) > 0);
+    }
+
+    @Test
+    void testCompareToEqualRevisionAndNameReturnsZero() {
+        BaselineInfo a = new BaselineInfo("100", "same");
+        BaselineInfo b = new BaselineInfo("100", "same");
+
         assertEquals(0, a.compareTo(b));
+    }
+
+    @Test
+    void testCompareToConsistentWithEquals() {
+        BaselineInfo a = new BaselineInfo("100", "rel");
+        BaselineInfo equalToA = new BaselineInfo("100", "rel");
+        BaselineInfo sameRevisionDifferentName = new BaselineInfo("100", "other");
+
+        // compareTo == 0 iff equals
+        assertEquals(0, a.compareTo(equalToA));
+        assertEquals(a, equalToA);
+        assertNotEquals(0, a.compareTo(sameRevisionDifferentName));
+        assertNotEquals(a, sameRevisionDifferentName);
     }
 
     @Test
@@ -76,11 +98,23 @@ class BaselineInfoTest {
     }
 
     @Test
-    void testCompareToBothNonNumericReturnsZero() {
+    void testCompareToBothNonNumericFallsBackToName() {
         BaselineInfo a = new BaselineInfo("abc", "a");
         BaselineInfo b = new BaselineInfo("xyz", "b");
 
-        assertEquals(0, a.compareTo(b));
+        // Both revisions parse to 0, so order is decided by name (ascending)
+        assertTrue(a.compareTo(b) < 0);
+        assertTrue(b.compareTo(a) > 0);
+    }
+
+    @Test
+    void testCompareToNullNameSortsAfterNonNull() {
+        BaselineInfo named = new BaselineInfo("100", "named");
+        BaselineInfo unnamed = new BaselineInfo("100", null);
+
+        assertTrue(named.compareTo(unnamed) < 0);
+        assertTrue(unnamed.compareTo(named) > 0);
+        assertEquals(0, unnamed.compareTo(new BaselineInfo("100", null)));
     }
 
     @Test
