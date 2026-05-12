@@ -17,6 +17,7 @@ export interface ScanEntity {
   projectId: string;
   space: string | null;
   entityId: string;
+  revision: string | null;
   issues: Issue[];
   fields: Record<string, Record<string, string>>;
   subitems: ScanEntity[];
@@ -37,12 +38,19 @@ export interface ScanParams {
   entityType: EntityType;
   entitySubtype: string | null;
   userQuery: string | null;
+  revision: string | null;
   sort: string | null;
   limit: number;
   timeout: number;
   repairers: string[];
   hideValid: boolean;
   configs: Record<string, Record<string, boolean>>;
+}
+
+// Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo
+export interface BaselineInfo {
+  revision: string;
+  name: string;
 }
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams
@@ -86,6 +94,7 @@ export interface IconSelectOption {
   id: string;
   name: string;
   iconURL?: string;
+  iconBg?: string;
   indent?: boolean;
 }
 

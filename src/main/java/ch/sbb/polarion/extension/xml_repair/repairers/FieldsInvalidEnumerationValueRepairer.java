@@ -48,7 +48,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         List<Issue> issues = new ArrayList<>();
         String proto = entity.getPrototype().getName();
 
-        for (FieldMetadata meta : context.polarionService().getAllFields(proto, entity.getContextId(),
+        for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), true,
                 FieldType.LIST.getType(), FieldType.ENUM.getType())) {
             scanOrRepair(entity, meta, context.configs(), issues, null);

@@ -1,18 +1,13 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
 import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
-import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
-import ch.sbb.polarion.extension.xml_repair.util.Report;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.module.Module;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITypeOpt;
@@ -23,7 +18,6 @@ import com.polarion.subterra.base.data.model.IStructType;
 import ch.sbb.polarion.extension.xml_repair.util.LayoutUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -31,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -110,7 +105,7 @@ class ModuleWrongLayoutAssignmentsRepairerTest {
             IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
             when(metaInfo.serialize()).thenReturn("serialized");
             when(metaInfo.get("issueDescription")).thenReturn("Work item 'EL-1' has wrong layout assigned in the module structure (expected 'task' but found 'issue').");
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
             RepairResult result = repairer.repair(entity, repairContext);
             assertTrue(result.isSuccess());
@@ -181,7 +176,7 @@ class ModuleWrongLayoutAssignmentsRepairerTest {
             when(metaInfo.serialize()).thenReturn("serialized");
             when(metaInfo.get("issueDescription")).thenReturn("No layout declared for work item 'EL-4' with type 'issue'");
             lenient().when(metaInfo.getString("issueDescription")).thenReturn("No layout declared for work item 'EL-4' with type 'issue'");
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
             RepairResult result = repairer.repair(entity, repairContext);
             assertTrue(result.isSuccess());
@@ -221,7 +216,7 @@ class ModuleWrongLayoutAssignmentsRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.get("issueDescription")).thenReturn("No layout declared for work item 'EL-4' with type 'unknownType'");
         lenient().when(metaInfo.getString("issueDescription")).thenReturn("No layout declared for work item 'EL-4' with type 'unknownType'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
         assertFalse(result.isSuccess());
@@ -299,15 +294,6 @@ class ModuleWrongLayoutAssignmentsRepairerTest {
         List<Issue> issues = repairer.scan(entity, createScanContext(polarionService));
         assertTrue(issues.isEmpty());
         verify(entity, never()).getStructureNodeOfWI(nullTypeItem);
-    }
-
-    private ScanContext createScanContext(XmlRepairPolarionService polarionService) {
-        lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-        }
     }
 
     private IWorkItem mockWorkItem(String id, String typeId) {

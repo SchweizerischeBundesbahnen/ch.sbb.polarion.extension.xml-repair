@@ -1,11 +1,14 @@
 package ch.sbb.polarion.extension.xml_repair.rest.controller;
 
+import ch.sbb.polarion.extension.generic.service.PolarionBaselineExecutor;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
-import ch.sbb.polarion.extension.xml_repair.service.model.*;
+import ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo;
+import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import com.polarion.alm.shared.api.transaction.TransactionalExecutor;
+import com.polarion.core.util.StringUtils;
 import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -16,7 +19,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import javax.inject.Singleton;
-import javax.ws.rs.*;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.Path;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
@@ -40,6 +48,21 @@ public class InternalController {
             })
     public Response listRepairers(@Parameter(description = "Entity type", required = true) @QueryParam("entityType") EntityType entityType) {
         return Response.ok().entity(polarionService.getRepairerMetas(entityType)).build();
+    }
+
+    @GET
+    @Path("/baselines")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of baselines for the specified project",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Successfully retrieved the list of baselines",
+                            content = @Content(schema = @Schema(implementation = BaselineInfo.class))
+                    )
+            })
+    public Response listBaselines(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
+        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
+                transaction -> polarionService.getBaselines(projectId))).build();
     }
 
     @POST
@@ -81,7 +104,8 @@ public class InternalController {
             })
     public Response scan(ScanParams scanParams) {
         return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
-                transaction -> polarionService.scan(scanParams))).build();
+                transaction -> PolarionBaselineExecutor.executeInBaseline(
+                        StringUtils.getNullIfEmpty(scanParams.getRevision()), transaction, () -> polarionService.scan(scanParams)))).build();
     }
 
 }

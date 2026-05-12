@@ -5,6 +5,35 @@
     "version": "v1"
   },
   "paths": {
+    "/api/baselines": {
+      "get": {
+        "operationId": "listBaselines",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BaselineInfo"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of baselines"
+          }
+        },
+        "summary": "Get list of baselines for the specified project"
+      }
+    },
     "/api/context": {
       "get": {
         "operationId": "getContext",
@@ -454,6 +483,20 @@
   },
   "components": {
     "schemas": {
+      "BaselineInfo": {
+        "description": "Baseline information",
+        "properties": {
+          "name": {
+            "description": "The baseline name",
+            "type": "string"
+          },
+          "revision": {
+            "description": "The SVN revision",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "Context": {
         "description": "Represents the context for building URLs related to Polarion services",
         "properties": {
@@ -655,6 +698,12 @@
             },
             "nullable": true,
             "type": "array"
+          },
+          "revision": {
+            "description": "SVN revision to scan against. If null, scans current HEAD; otherwise the entire query runs as of that revision.",
+            "example": "12345",
+            "nullable": true,
+            "type": "string"
           },
           "sort": {
             "default": "created",

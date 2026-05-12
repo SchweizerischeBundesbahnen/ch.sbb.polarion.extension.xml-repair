@@ -2,7 +2,8 @@ package ch.sbb.polarion.extension.xml_repair.repairers;
 
 import ch.sbb.polarion.extension.generic.fields.FieldType;
 import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
-import ch.sbb.polarion.extension.xml_repair.service.model.*;
+import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
+import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
@@ -26,7 +27,7 @@ public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
         List<Issue> issues = new ArrayList<>();
         String proto = entity.getPrototype().getName();
 
-        for (FieldMetadata meta : context.polarionService().getAllFields(proto, entity.getContextId(),
+        for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), false, FieldType.STRING.getType())) {
             Object value = entity.getValue(meta.getId());
             if (value instanceof String stringValue && FORMATTING_SYMBOLS_PATTERN.matcher(stringValue).find()) {

@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Toaster, toast } from 'sonner';
 import BreadcrumbInjector from './components/BreadcrumbInjector';
+import type { NumericInputHint } from './components/NumericInput';
 import RepairersPanel from './components/RepairersPanel';
 import ResultsTable from './components/ResultsTable';
 import ScanParamsPanel from './components/ScanParamsPanel';
 import useRemote from './services/useRemote';
 import type {
+  BaselineInfo,
   EntitySubtype,
   EntityType,
   IconSelectOption,
@@ -54,6 +56,12 @@ export default function App() {
   });
   const [projectId] = useState(() => String(new URLSearchParams(window.location.search).get('projectId') || ''));
   const [userQuery, setUserQuery] = useState(() => String(getCookie('userQuery') || ''));
+  const [revision, setRevision] = useState<number>(() => {
+    const saved = parseInt(getCookie('revision') || '', 10);
+    return saved > 0 ? saved : 0;
+  });
+  const [baselines, setBaselines] = useState<BaselineInfo[]>([]);
+  const [baselinesLoading, setBaselinesLoading] = useState(false);
   const [sort, setSort] = useState(() => String(getCookie('sort') || '~updated'));
   const [limit, setLimit] = useState(() => {
     const saved = parseInt(getCookie('limit') || '');
@@ -102,6 +110,9 @@ export default function App() {
   useEffect(() => {
     setCookie('userQuery', userQuery);
   }, [userQuery]);
+  useEffect(() => {
+    setCookie('revision', revision ? String(revision) : '');
+  }, [revision]);
   useEffect(() => {
     setCookie('sort', sort);
   }, [sort]);
@@ -225,6 +236,31 @@ export default function App() {
   }, [allSubtypes, entityType, entitySubtype]);
 
   useEffect(() => {
+    if (!projectId) {
+      setBaselines([]);
+      return;
+    }
+    const loadBaselines = async () => {
+      setBaselinesLoading(true);
+      try {
+        const response = await sendRequest({
+          method: 'GET',
+          url: `/baselines?projectId=${encodeURIComponent(projectId)}`,
+        });
+        if (response.ok) {
+          const data: BaselineInfo[] = await response.json();
+          setBaselines(data);
+        } else {
+          toast.error('Failed to load baselines');
+        }
+      } finally {
+        setBaselinesLoading(false);
+      }
+    };
+    void loadBaselines();
+  }, [projectId, sendRequest]);
+
+  useEffect(() => {
     setResult(null);
     setError(null);
   }, [selectedRepairers]);
@@ -242,6 +278,14 @@ export default function App() {
   }, [allSubtypes]);
 
   const entityValue = entitySubtype ? `${entityType}::${entitySubtype}` : entityType;
+
+  const revisionHints = useMemo<NumericInputHint[]>(
+    () =>
+      baselines
+        .map((b) => ({ value: Number(b.revision), label: b.name || '' }))
+        .filter((h) => Number.isFinite(h.value) && h.value > 0),
+    [baselines],
+  );
 
   const handleEntityChange = (val: string) => {
     const parts = val.split('::');
@@ -301,11 +345,11 @@ export default function App() {
       if (hasSubitems(item)) {
         const parentKey = itemKey(item);
         for (const sub of item.subitems) {
-          if (sub.issues.length > 0 && !sub.repaired) {
+          if (sub.issues.length > 0 && !sub.repaired && !sub.revision) {
             keys.push({ key: subitemKey(parentKey, sub), count: sub.issues.length });
           }
         }
-      } else if (item.issues.length > 0 && !item.repaired) {
+      } else if (item.issues.length > 0 && !item.repaired && !item.revision) {
         keys.push({ key: itemKey(item), count: item.issues.length });
       }
     }
@@ -335,7 +379,7 @@ export default function App() {
 
   const toggleCollectionSelection = (item: ScanEntity) => {
     const parentKey = itemKey(item);
-    const subs = item.subitems.filter((sub) => sub.issues.length > 0 && !sub.repaired);
+    const subs = item.subitems.filter((sub) => sub.issues.length > 0 && !sub.repaired && !sub.revision);
     const allSubsSelected =
       subs.length > 0 &&
       subs.every((sub) => {
@@ -407,6 +451,7 @@ export default function App() {
       entityType,
       entitySubtype: entitySubtype || null,
       userQuery: userQuery || null,
+      revision: entityType === 'COLLECTION' || !revision ? null : String(revision),
       sort: sort || null,
       limit,
       repairers: selectedRepairers,
@@ -584,6 +629,10 @@ export default function App() {
             onEntityChange={handleEntityChange}
             userQuery={userQuery}
             onUserQueryChange={setUserQuery}
+            revision={revision}
+            onRevisionChange={setRevision}
+            revisionHints={revisionHints}
+            revisionLoading={baselinesLoading}
             sort={sort}
             onSortChange={setSort}
             limit={limit}

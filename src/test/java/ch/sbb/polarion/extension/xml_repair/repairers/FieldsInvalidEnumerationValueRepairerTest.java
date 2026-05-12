@@ -7,20 +7,16 @@ import ch.sbb.polarion.extension.generic.test_extensions.CustomExtensionMock;
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
 import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
-import ch.sbb.polarion.extension.xml_repair.util.Report;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import com.polarion.alm.projects.IProjectService;
 import com.polarion.alm.projects.model.IUser;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IPriorityOpt;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -39,7 +35,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -51,6 +46,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -275,7 +271,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -301,7 +297,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -411,7 +407,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("assignee");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'disabled_user' for the field 'Assignee'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -498,7 +494,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -536,7 +532,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -573,7 +569,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -755,7 +751,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badValue] for the field 'Status'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -785,7 +781,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badValue] for the field 'Status'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -833,7 +829,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
             when(metaInfo.serialize()).thenReturn("serialized");
             when(metaInfo.getString("fieldId")).thenReturn("categories");
             when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badItem] for the field 'Categories'.");
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
             RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -878,7 +874,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
             when(metaInfo.serialize()).thenReturn("serialized");
             when(metaInfo.getString("fieldId")).thenReturn("categories");
             when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badItem1, badItem2] for the field 'Categories'.");
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
             RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -943,7 +939,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("tags");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [singleBadValue] for the field 'Tags'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -974,7 +970,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("tags");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [singleBadValue] for the field 'Tags'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -1017,7 +1013,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
             when(metaInfo.serialize()).thenReturn("serialized");
             when(metaInfo.getString("fieldId")).thenReturn("categories");
             when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badItem] for the field 'Categories'.");
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
             RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -1045,7 +1041,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1078,7 +1074,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1107,7 +1103,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badValue] for the field 'Status'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -1127,7 +1123,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("nonExistentField");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         assertThrows(IllegalArgumentException.class, () -> repairer.repair(entity, repairContext));
     }
@@ -1215,7 +1211,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'");
         // config is OFF, but we still expect a fix because similar option is found
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1242,7 +1238,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1268,7 +1264,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1294,7 +1290,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1330,7 +1326,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'Open' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1374,7 +1370,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'Open', 'garbage' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1411,7 +1407,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted', 'obsolete' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1450,7 +1446,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'garbage' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs);
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1488,7 +1484,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'Open' for the field 'Categories'.");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
@@ -1538,7 +1534,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
             when(metaInfo.getString("fieldId")).thenReturn("categories");
             when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [bad1, bad2] for the field 'Categories'.");
             // config OFF -> warning with multipleEntries=true
-            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
             RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
 
@@ -1567,15 +1563,6 @@ class FieldsInvalidEnumerationValueRepairerTest {
     }
 
     // --- Helper methods ---
-
-    private ScanContext createScanContext(XmlRepairPolarionService service) {
-        lenient().when(service.getTrackerService()).thenReturn(mock(ITrackerService.class));
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(service, List.of(), new UserConfigs(), new Report());
-        }
-    }
 
     private IEnumOption mockEnumOption(String id) {
         IEnumOption option = mock(IEnumOption.class);

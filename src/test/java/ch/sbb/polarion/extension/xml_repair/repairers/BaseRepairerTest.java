@@ -1,25 +1,20 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.projects.model.IUniqueObject;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.subterra.base.location.ILocation;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -28,6 +23,7 @@ import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExte
 
 import java.util.List;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -106,17 +102,6 @@ class BaseRepairerTest {
         }
     }
 
-    private ScanContext createScanContext(XmlRepairPolarionService polarionService, List<String> repairers, UserConfigs configs, Report report) {
-        ITrackerService trackerService = mock(ITrackerService.class);
-        lenient().when(polarionService.getTrackerService()).thenReturn(trackerService);
-        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class);
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
-            return new ScanContext(polarionService, repairers, configs, report);
-        }
-    }
-
     // ---- Scan routing tests ----
 
     @Test
@@ -134,76 +119,17 @@ class BaseRepairerTest {
     }
 
     @Test
-    void testScanModuleWithoutRevisionNoWarning() {
+    void testScanModuleDelegates() {
         Issue issue = createDummyIssue();
         ScanRoutingRepairer repairer = new ScanRoutingRepairer(List.of(issue));
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
 
         List<Issue> result = repairer.scan((IUniqueObject) module, context);
 
         assertEquals(1, result.size());
-        assertTrue(result.getFirst().getWarnings().isEmpty());
-    }
-
-    @Test
-    void testScanModuleWithRevisionAddsWarningToIssues() {
-        Issue issue = createDummyIssue();
-        ScanRoutingRepairer repairer = new ScanRoutingRepairer(List.of(issue));
-
-        IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn("42");
-        when(module.getModuleName()).thenReturn("TestDoc");
-        ILocation location = mock(ILocation.class);
-        when(module.getModuleLocation()).thenReturn(location);
-        when(location.removeRevision()).thenReturn(location);
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getModuleName()).thenReturn("TestDoc");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(module.getProject(), location)).thenReturn(headModule);
-        Report report = new Report();
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), report);
-
-        List<Issue> result = repairer.scan((IUniqueObject) module, context);
-
-        assertEquals(1, result.size());
-        assertFalse(result.getFirst().getWarnings().isEmpty());
-        assertTrue(result.getFirst().getWarnings().getFirst().contains("HEAD revision was loaded"));
-        assertTrue(result.getFirst().getWarnings().getFirst().contains("rev.42"));
-        assertTrue(report.toString().contains("HEAD revision was loaded"));
-    }
-
-    @Test
-    void testScanModuleWithRevisionUnresolvableReturnsEmpty() {
-        ScanRoutingRepairer repairer = new ScanRoutingRepairer(List.of());
-
-        IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn("42");
-        when(module.getModuleName()).thenReturn("DeletedDoc");
-        ILocation location = mock(ILocation.class);
-        when(module.getModuleLocation()).thenReturn(location);
-        when(location.removeRevision()).thenReturn(location);
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(true);
-        when(headModule.getModuleName()).thenReturn("DeletedDoc");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(module.getProject(), location)).thenReturn(headModule);
-        Report report = new Report();
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), report);
-
-        List<Issue> result = repairer.scan((IUniqueObject) module, context);
-
-        assertTrue(result.isEmpty());
-        assertTrue(report.toString().contains("unresolvable"));
-        assertFalse(context.globalWarnings().isEmpty());
     }
 
     @Test
@@ -227,7 +153,7 @@ class BaseRepairerTest {
 
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) entity, context);
 
@@ -244,7 +170,7 @@ class BaseRepairerTest {
 
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) entity, context);
 
@@ -262,7 +188,7 @@ class BaseRepairerTest {
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
         when(module.getRevision()).thenReturn(null);
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) module, context);
 
@@ -290,7 +216,7 @@ class BaseRepairerTest {
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
 
@@ -319,7 +245,7 @@ class BaseRepairerTest {
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
 
@@ -349,7 +275,7 @@ class BaseRepairerTest {
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
 
@@ -365,7 +291,7 @@ class BaseRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         assertThrows(IllegalArgumentException.class, () -> repairer.repair((IUniqueObject) entity, context));
     }

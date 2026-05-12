@@ -6,10 +6,19 @@ interface IssueListProps {
   repairers: Repairer[];
   onToggle: (index: number) => void;
   disabled: boolean;
+  disabledTitle?: string;
   className?: string;
 }
 
-export default function IssueList({ issues, selected, repairers, onToggle, disabled, className }: IssueListProps) {
+export default function IssueList({
+  issues,
+  selected,
+  repairers,
+  onToggle,
+  disabled,
+  disabledTitle,
+  className,
+}: IssueListProps) {
   return (
     <ul className={`issue-list${className ? ` ${className}` : ''}`}>
       {issues.map((issue, i) => (
@@ -20,7 +29,13 @@ export default function IssueList({ issues, selected, repairers, onToggle, disab
           {issue.repairResult?.success ? (
             <span className="issue-status-icon success">&#10003;</span>
           ) : (
-            <input type="checkbox" checked={selected.has(i)} onChange={() => onToggle(i)} disabled={disabled} />
+            <input
+              type="checkbox"
+              checked={selected.has(i)}
+              onChange={() => onToggle(i)}
+              disabled={disabled}
+              title={disabled ? disabledTitle : undefined}
+            />
           )}
           <span>
             <strong>{repairers.find((r) => r.id === issue.repairer)?.name || issue.repairer}</strong>:{' '}

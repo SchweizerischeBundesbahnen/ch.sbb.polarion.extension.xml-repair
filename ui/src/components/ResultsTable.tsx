@@ -14,6 +14,8 @@ const subitemKey = (parentKey: string, sub: ScanEntity): string =>
 const totalIssuesForItem = (item: ScanEntity): number =>
   hasSubitems(item) ? item.subitems.reduce((sum, sub) => sum + sub.issues.length, 0) : item.issues.length;
 
+const REVISIONED_TOOLTIP = 'Items at a specific revision cannot be repaired';
+
 interface ResultsTableProps {
   result: ScanResult;
   repairers: Repairer[];
@@ -131,8 +133,10 @@ export default function ResultsTable({
 
               let allSelected;
               let someSelected = false;
+              let selectableInCollection = false;
               if (isCollection) {
-                const subs = item.subitems.filter((sub) => sub.issues.length > 0 && !sub.repaired);
+                const subs = item.subitems.filter((sub) => sub.issues.length > 0 && !sub.repaired && !sub.revision);
+                selectableInCollection = subs.length > 0;
                 const allSubsSelected =
                   subs.length > 0 &&
                   subs.every((sub) => {
@@ -149,6 +153,9 @@ export default function ResultsTable({
                 allSelected = hasIssues && selected.size === item.issues.length;
                 someSelected = selected.size > 0 && !allSelected;
               }
+              const itemRevisioned = !isCollection && !!item.revision;
+              const checkboxDisabled =
+                batchRepairing || !hasIssues || itemRevisioned || (isCollection && !selectableInCollection);
 
               return (
                 <React.Fragment key={entityKey}>
@@ -166,7 +173,8 @@ export default function ResultsTable({
                               ? onToggleCollectionSelection(item)
                               : onToggleEntitySelection(entityKey, item.issues.length)
                           }
-                          disabled={batchRepairing || !hasIssues}
+                          disabled={checkboxDisabled}
+                          title={itemRevisioned ? REVISIONED_TOOLTIP : undefined}
                         />
                       )}
                       {item.repaired && <span className="fixed-badge">&#10003;</span>}
@@ -212,7 +220,8 @@ export default function ResultsTable({
                           selected={selectedIssues.get(entityKey) || new Set()}
                           repairers={repairers}
                           onToggle={(i) => onToggleIssueSelection(entityKey, i)}
-                          disabled={batchRepairing}
+                          disabled={batchRepairing || itemRevisioned}
+                          disabledTitle={itemRevisioned ? REVISIONED_TOOLTIP : undefined}
                         />
                       </td>
                     </tr>
@@ -243,7 +252,8 @@ export default function ResultsTable({
                                   }}
                                   checked={subAllSelected}
                                   onChange={() => onToggleEntitySelection(subKey, sub.issues.length)}
-                                  disabled={batchRepairing || !subHasIssues}
+                                  disabled={batchRepairing || !subHasIssues || !!sub.revision}
+                                  title={sub.revision ? REVISIONED_TOOLTIP : undefined}
                                 />
                               )}
                               {sub.repaired && <span className="fixed-badge">&#10003;</span>}
@@ -288,7 +298,8 @@ export default function ResultsTable({
                                   selected={subSelected}
                                   repairers={repairers}
                                   onToggle={(i) => onToggleIssueSelection(subKey, i)}
-                                  disabled={batchRepairing}
+                                  disabled={batchRepairing || !!sub.revision}
+                                  disabledTitle={sub.revision ? REVISIONED_TOOLTIP : undefined}
                                   className="subitem-issue-list"
                                 />
                               </td>
