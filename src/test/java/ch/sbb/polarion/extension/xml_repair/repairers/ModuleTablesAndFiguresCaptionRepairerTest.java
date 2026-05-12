@@ -558,54 +558,23 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
     }
 
     @Test
-    void testRepairViaPublicInterface_WithRevision_Resolvable() {
+    void testRepairViaPublicInterface_WithRevision_FailsFastWithoutSaving() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
         IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
         when(revisionModule.getRevision()).thenReturn("456");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getModuleName()).thenReturn("TestModule");
-        when(headModule.getHomePageContent().getContent()).thenReturn(
-                "\nTable 1<span data-sequence=\"Table 2\" class=\"polarion-rte-caption\">"
-        );
-        when(headModule.getHomePageContent().isPlain()).thenReturn(false);
+        when(revisionModule.getModuleName()).thenReturn("TestModule");
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
-        metaInfo.set("isWorkItem", false);
-
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(any(), any())).thenReturn(headModule);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
-
-        RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
-
-        assertTrue(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("HEAD revision")));
-        verify(headModule).save();
-    }
-
-    @Test
-    void testRepairViaPublicInterface_WithRevision_Unresolvable() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("789");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(true);
-        when(headModule.getModuleName()).thenReturn("DeletedModule");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(any(), any())).thenReturn(headModule);
-        IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("unresolvable")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("TestModule") && w.contains("rev.456")));
+        verify(revisionModule, never()).save();
+        verifyNoInteractions(polarionService);
     }
 
     // === streamModuleWorkItems filtering ===

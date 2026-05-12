@@ -11,7 +11,6 @@ import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkflowObject;
-import com.polarion.subterra.base.location.ILocation;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -197,91 +196,28 @@ class BaseRepairerTest {
     }
 
     @Test
-    void testRepairModuleWithRevisionSavesHeadModule() {
+    void testRepairModuleWithRevisionFailsFastWithoutInvokingNestedRepairOrSave() {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
-        RepairResult successResult = new RepairResult(metaInfo, true);
-        RepairRoutingRepairer repairer = new RepairRoutingRepairer(successResult);
+        // Nested repair returns success so we can prove it was NOT invoked
+        RepairResult nestedResult = new RepairResult(metaInfo, true);
+        RepairRoutingRepairer repairer = spy(new RepairRoutingRepairer(nestedResult));
 
-        IModule originalModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(originalModule.getRevision()).thenReturn("42");
-        when(originalModule.getModuleName()).thenReturn("TestDoc");
-        ILocation location = mock(ILocation.class);
-        when(originalModule.getModuleLocation()).thenReturn(location);
-        when(location.removeRevision()).thenReturn(location);
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getModuleName()).thenReturn("TestDoc");
+        IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
+        when(module.getRevision()).thenReturn("42");
+        when(module.getModuleName()).thenReturn("TestDoc");
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
-        RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
-
-        assertTrue(result.isSuccess());
-        verify(headModule).save();
-        verify(originalModule, never()).save();
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("HEAD revision was loaded")));
-    }
-
-    @Test
-    void testRepairModuleWithRevisionUnresolvable() {
-        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
-        when(metaInfo.serialize()).thenReturn("serialized");
-        RepairResult successResult = new RepairResult(metaInfo, true);
-        RepairRoutingRepairer repairer = new RepairRoutingRepairer(successResult);
-
-        IModule originalModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(originalModule.getRevision()).thenReturn("42");
-        ILocation location = mock(ILocation.class);
-        when(originalModule.getModuleLocation()).thenReturn(location);
-        when(location.removeRevision()).thenReturn(location);
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(true);
-        when(headModule.getModuleName()).thenReturn("DeletedDoc");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
-
-        RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
+        RepairResult result = repairer.repair((IUniqueObject) module, context);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("unresolvable")));
-        verify(originalModule, never()).save();
-        verify(headModule, never()).save();
-    }
-
-    @Test
-    void testRepairModuleWithRevisionAddsWarningToResult() {
-        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
-        when(metaInfo.serialize()).thenReturn("serialized");
-        RepairResult failResult = new RepairResult(metaInfo, false);
-        RepairRoutingRepairer repairer = new RepairRoutingRepairer(failResult);
-
-        IModule originalModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(originalModule.getRevision()).thenReturn("99");
-        when(originalModule.getModuleName()).thenReturn("SomeDoc");
-        ILocation location = mock(ILocation.class);
-        when(originalModule.getModuleLocation()).thenReturn(location);
-        when(location.removeRevision()).thenReturn(location);
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getModuleName()).thenReturn("SomeDoc");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(originalModule.getProject(), location)).thenReturn(headModule);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
-
-        RepairResult result = repairer.repair((IUniqueObject) originalModule, context);
-
-        assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("rev.99")));
-        verify(originalModule, never()).save();
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("TestDoc") && w.contains("rev.42")));
+        verify(module, never()).save();
+        verify(repairer, never()).repair(any(IModule.class), any(RepairContext.class));
+        verify(repairer, never()).repair(any(IWorkflowObject.class), any(RepairContext.class));
+        verifyNoInteractions(polarionService);
     }
 
     @Test

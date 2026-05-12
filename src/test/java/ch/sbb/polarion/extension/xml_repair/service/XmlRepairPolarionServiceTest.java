@@ -31,10 +31,13 @@ import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
 import com.polarion.alm.shared.api.model.ModelObject;
+import com.polarion.alm.shared.api.model.ModelObjectsSearch;
 import com.polarion.alm.shared.api.model.PrototypeEnum;
 import com.polarion.alm.shared.api.model.document.Document;
 import com.polarion.alm.shared.api.model.document.DocumentSelector;
+import com.polarion.alm.shared.api.impl.ScopeFactoryImpl;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
+import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
 import com.polarion.alm.tracker.model.IBaseline;
@@ -879,6 +882,66 @@ class XmlRepairPolarionServiceTest {
 
             assertThrows(IllegalStateException.class, () ->
                     polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null, null));
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testQueryEntitiesAppliesBaselineRevision() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.baseline(any())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            List<? extends ModelObject> result = polarionService.queryEntities(
+                    "proj", PrototypeEnum.WorkItem, "requirement", "id:PRJ-1", "rev-42", "~updated", 5, 50);
+
+            assertTrue(result.isEmpty());
+            verify(search).baseline("rev-42");
+            verify(search).sort("~updated");
+            verify(search).limit(50);
+            verify(search).offset(5);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testQueryEntitiesDefaultsAndNullRevisionPassedThrough() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.baseline(any())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null, null);
+
+            verify(search).baseline(null);
+            verify(search).sort("created");
+            verify(search).limit(100);
+            verify(search).offset(0);
         }
     }
 

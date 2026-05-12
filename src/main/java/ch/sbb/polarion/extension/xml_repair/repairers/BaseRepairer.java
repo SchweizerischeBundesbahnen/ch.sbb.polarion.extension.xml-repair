@@ -28,28 +28,18 @@ public abstract class BaseRepairer implements IRepairer {
     @Override
     public RepairResult repair(IUniqueObject entity, RepairContext context) {
         RepairResult repairResult;
-        IUniqueObject entityToSave = entity;
         if (entity instanceof IModule module) {
             String revision = module.getRevision();
-            String headRevisionTakenWarning = null;
             if (revision != null) {
-                module = context.polarionService().getModule(module.getProject(), module.getModuleLocation().removeRevision());
-                if (module.isUnresolvable()) {
-                    return new RepairResult(context.issueMetaInfo(), false, "'%s' is unresolvable in HEAD, possibly because it was deleted.".formatted(module.getModuleName()));
-                } else {
-                    headRevisionTakenWarning = "'%s' HEAD revision was loaded instead of rev.%s".formatted(module.getModuleName(), revision);
-                }
-                entityToSave = module;
-            }
-            repairResult = repair(module, context);
-            if (headRevisionTakenWarning != null) {
-                repairResult.getWarnings().add(headRevisionTakenWarning);
+                return new RepairResult(context.issueMetaInfo(), false, "Cannot fix '%s' rev.%s - HEAD revision entity may be repaired only".formatted(module.getModuleName(), revision));
+            } else {
+                repairResult = repair(module, context);
             }
         } else {
             repairResult = repair((IWorkflowObject) entity, context);
         }
         if (repairResult.isSuccess()) {
-            entityToSave.save();
+            entity.save();
         }
         return repairResult;
     }

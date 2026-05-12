@@ -253,6 +253,8 @@ export default function App() {
         } else {
           toast.error('Failed to load baselines');
         }
+      } catch {
+        toast.error('Failed to load baselines');
       } finally {
         setBaselinesLoading(false);
       }

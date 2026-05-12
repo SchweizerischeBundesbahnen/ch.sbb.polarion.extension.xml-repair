@@ -1,22 +1,29 @@
 package ch.sbb.polarion.extension.xml_repair.util;
 
-import lombok.SneakyThrows;
+import lombok.Lombok;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class Cache {
 
-    private final Map<String, Object> store = new HashMap<>();
+    // ConcurrentHashMap disallows null values, so use a sentinel to still cache nulls returned by suppliers.
+    private static final Object NULL_SENTINEL = new Object();
+
+    private final Map<String, Object> store = new ConcurrentHashMap<>();
 
     @SuppressWarnings("unchecked")
-    @SneakyThrows
     public <T> T getOrCompute(@NotNull String key, @NotNull Callable<T> supplier) {
-        if (!store.containsKey(key)) {
-            store.put(key, supplier.call());
-        }
-        return (T) store.get(key);
+        Object value = store.computeIfAbsent(key, k -> {
+            try {
+                T computed = supplier.call();
+                return computed == null ? NULL_SENTINEL : computed;
+            } catch (Exception e) {
+                throw Lombok.sneakyThrow(e);
+            }
+        });
+        return value == NULL_SENTINEL ? null : (T) value;
     }
 }
