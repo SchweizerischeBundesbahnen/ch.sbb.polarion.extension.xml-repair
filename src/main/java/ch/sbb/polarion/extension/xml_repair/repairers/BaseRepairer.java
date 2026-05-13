@@ -67,7 +67,6 @@ public abstract class BaseRepairer implements IRepairer {
         return scan((IWorkflowObject) entity, context);
     }
 
-    @SuppressWarnings("unused")
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
         throw new IllegalArgumentException("Repairer '%s' does not support entity of type '%s'".formatted(
                 getClass().getSimpleName(), entity.getClass().getSimpleName()));
