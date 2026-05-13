@@ -494,6 +494,7 @@
         "properties": {
           "name": {
             "description": "The baseline name",
+            "nullable": true,
             "type": "string"
           },
           "revision": {
@@ -501,6 +502,9 @@
             "type": "string"
           }
         },
+        "required": [
+          "revision"
+        ],
         "type": "object"
       },
       "Context": {

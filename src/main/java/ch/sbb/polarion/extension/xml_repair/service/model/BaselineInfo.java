@@ -9,7 +9,7 @@ import java.util.Comparator;
 import java.util.Objects;
 
 @Schema(description = "Baseline information")
-public record BaselineInfo(@Schema(description = "The SVN revision") @NotNull String revision, @Schema(description = "The baseline name") @Nullable String name) implements Comparable<BaselineInfo> {
+public record BaselineInfo(@Schema(description = "The SVN revision", requiredMode = Schema.RequiredMode.REQUIRED) @NotNull String revision, @Schema(description = "The baseline name", nullable = true) @Nullable String name) implements Comparable<BaselineInfo> {
 
     private static final Logger logger = Logger.getLogger(BaselineInfo.class);
 

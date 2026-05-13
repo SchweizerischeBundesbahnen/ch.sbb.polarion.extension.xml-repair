@@ -50,7 +50,7 @@ export interface ScanParams {
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo
 export interface BaselineInfo {
   revision: string;
-  name: string;
+  name: string | null;
 }
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams
