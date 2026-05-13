@@ -13,21 +13,34 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CacheTest {
 
     @Test
-    void testGetOrComputeRethrowsCheckedExceptionFromSupplier() {
+    void testGetOrComputeWrapsCheckedExceptionFromSupplier() {
         Cache cache = new Cache();
         IOException boom = new IOException("boom");
 
-        IOException thrown = assertThrows(IOException.class, () -> cache.getOrCompute("key", () -> {
+        RuntimeException thrown = assertThrows(RuntimeException.class, () -> cache.getOrCompute("key", () -> {
             throw boom;
         }));
 
-        assertEquals(boom, thrown);
+        assertSame(boom, thrown.getCause());
+    }
+
+    @Test
+    void testGetOrComputeRethrowsRuntimeExceptionFromSupplier() {
+        Cache cache = new Cache();
+        IllegalStateException boom = new IllegalStateException("boom");
+
+        IllegalStateException thrown = assertThrows(IllegalStateException.class, () -> cache.getOrCompute("key", () -> {
+            throw boom;
+        }));
+
+        assertSame(boom, thrown);
     }
 
     @Test

@@ -20,16 +20,9 @@ public final class Cache {
                 T computed = supplier.call();
                 return computed == null ? NULL_SENTINEL : computed;
             } catch (Exception e) {
-                throw sneakyThrow(e);
+                throw e instanceof RuntimeException re ? re : new RuntimeException(e);
             }
         });
         return value == NULL_SENTINEL ? null : (T) value;
-    }
-
-    // Rethrows a checked exception as if it were unchecked, preserving the original type.
-    // Uses generic erasure so the compiler does not require the caller to declare it.
-    @SuppressWarnings("unchecked")
-    private static <T extends Throwable> RuntimeException sneakyThrow(@NotNull Throwable t) throws T {
-        throw (T) t;
     }
 }
