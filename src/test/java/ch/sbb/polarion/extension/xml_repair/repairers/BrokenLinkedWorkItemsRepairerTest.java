@@ -271,6 +271,32 @@ class BrokenLinkedWorkItemsRepairerTest {
     }
 
     @Test
+    void testRepairFilterRejectsLinksWithMismatchingFields() {
+        BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
+
+        IWorkItem entity = mock(IWorkItem.class);
+        // Four links: each mismatches on a different field; metaInfo matches none of them.
+        ILinkedWorkItemStruct mismatchProject = mockLink("other-project", "EL-100", "42", "relates", false);
+        ILinkedWorkItemStruct mismatchRole = mockLink("drivepilot", "EL-100", "42", "other-role", false);
+        ILinkedWorkItemStruct mismatchRevision = mockLink("drivepilot", "EL-100", "99", "relates", false);
+        ILinkedWorkItemStruct mismatchId = mockLink("drivepilot", "OTHER-1", "42", "relates", false);
+        when(entity.getLinkedWorkItemsStructsDirect())
+                .thenReturn(new ArrayList<>(List.of(mismatchProject, mismatchRole, mismatchRevision, mismatchId)));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("linkProjectId")).thenReturn("drivepilot");
+        when(metaInfo.getString("linkRole")).thenReturn("relates");
+        when(metaInfo.getString("linkRevision")).thenReturn("42");
+        when(metaInfo.getString("linkId")).thenReturn("EL-100");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
+
+        assertThrows(IllegalStateException.class, () -> repairer.repair(entity, context));
+    }
+
+    @Test
     void testRepairFindsItemInCurrentProjectWithRevision() {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
