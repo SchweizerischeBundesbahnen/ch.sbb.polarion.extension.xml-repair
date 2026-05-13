@@ -260,7 +260,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("drivepilot");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.serialize()).thenReturn("serialized");
 
@@ -288,7 +288,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("drivepilot");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("42");
+        when(metaInfo.getString("linkRevision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -321,7 +321,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("drivepilot");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("42");
+        when(metaInfo.getString("linkRevision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -361,7 +361,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -409,7 +409,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("42");
+        when(metaInfo.getString("linkRevision")).thenReturn("42");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -447,7 +447,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -480,7 +480,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -518,7 +518,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_UNRESOLVABLE");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -558,7 +558,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
         when(metaInfo.getString("linkRole")).thenReturn(metaLinkRole);
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn(issueType);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -592,7 +592,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
         when(metaInfo.getString("linkRole")).thenReturn("");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_ROLE_MISSING");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -624,7 +624,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
         when(metaInfo.getString("linkRole")).thenReturn("bad-role");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("UNKNOWN_LINK_ROLE_ID");
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -941,7 +941,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.getString("linkProjectId")).thenReturn("elibrary");
         when(metaInfo.getString("linkRole")).thenReturn("relates");
-        when(metaInfo.getString("revision")).thenReturn("");
+        when(metaInfo.getString("linkRevision")).thenReturn("");
         when(metaInfo.getString("linkId")).thenReturn("EL-100");
         when(metaInfo.get("issueType")).thenReturn("LINK_ROLE_RULE_VIOLATED");
         when(metaInfo.serialize()).thenReturn("serialized");

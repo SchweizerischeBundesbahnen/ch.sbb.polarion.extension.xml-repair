@@ -17,6 +17,7 @@ public final class IssueMetaInfo implements Serializable {
     public static final String MODULE_PATH = "modulePath";
     public static final String ID = "id";
     public static final String REPAIRER = "repairer";
+    public static final String REVISION = "revision";
 
     @Serial
     private static final long serialVersionUID = 1L;
@@ -30,6 +31,7 @@ public final class IssueMetaInfo implements Serializable {
         IssueMetaInfo metaInfo = new IssueMetaInfo();
         metaInfo.data.put(PROJECT_ID, workItem.getProjectId());
         metaInfo.data.put(ID, workItem.getId());
+        metaInfo.data.put(REVISION, workItem.getRevision());
         return metaInfo;
     }
 
@@ -45,6 +47,7 @@ public final class IssueMetaInfo implements Serializable {
         IssueMetaInfo metaInfo = new IssueMetaInfo();
         metaInfo.data.put(PROJECT_ID, module.getProjectId());
         metaInfo.data.put(MODULE_PATH, module.getRelativePath());
+        metaInfo.data.put(REVISION, module.getRevision());
         return metaInfo;
     }
 

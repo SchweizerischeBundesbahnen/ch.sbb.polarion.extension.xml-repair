@@ -24,6 +24,19 @@ class IssueMetaInfoTest {
         assertEquals("elibrary", metaInfo.getString(IssueMetaInfo.PROJECT_ID));
         assertEquals("EL-123", metaInfo.getString(IssueMetaInfo.ID));
         assertNull(metaInfo.getString(IssueMetaInfo.MODULE_PATH));
+        assertNull(metaInfo.getString(IssueMetaInfo.REVISION));
+    }
+
+    @Test
+    void testCreateFromWorkItemCapturesRevision() {
+        IWorkItem workItem = mock(IWorkItem.class);
+        when(workItem.getProjectId()).thenReturn("elibrary");
+        when(workItem.getId()).thenReturn("EL-123");
+        when(workItem.getRevision()).thenReturn("42");
+
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(workItem);
+
+        assertEquals("42", metaInfo.getString(IssueMetaInfo.REVISION));
     }
 
     @Test
@@ -37,6 +50,19 @@ class IssueMetaInfoTest {
         assertEquals("elibrary", metaInfo.getString(IssueMetaInfo.PROJECT_ID));
         assertEquals("Specification/MyDoc", metaInfo.getString(IssueMetaInfo.MODULE_PATH));
         assertNull(metaInfo.getString(IssueMetaInfo.ID));
+        assertNull(metaInfo.getString(IssueMetaInfo.REVISION));
+    }
+
+    @Test
+    void testCreateFromModuleCapturesRevision() {
+        IModule module = mock(IModule.class);
+        when(module.getProjectId()).thenReturn("elibrary");
+        when(module.getRelativePath()).thenReturn("Specification/MyDoc");
+        when(module.getRevision()).thenReturn("100");
+
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(module);
+
+        assertEquals("100", metaInfo.getString(IssueMetaInfo.REVISION));
     }
 
     @Test

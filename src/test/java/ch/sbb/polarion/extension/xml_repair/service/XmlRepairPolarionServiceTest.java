@@ -217,6 +217,50 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testRepairParamsFailsFastForWorkItemWithRevision() {
+        IWorkItem wi = mock(IWorkItem.class);
+        when(wi.getProjectId()).thenReturn("proj");
+        when(wi.getId()).thenReturn("WI-1");
+        when(wi.getRevision()).thenReturn("42");
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(wi);
+
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(metaInfo.serialize()));
+
+        List<RepairResult> results = polarionService.repair(params);
+
+        assertEquals(1, results.size());
+        assertFalse(results.getFirst().isSuccess());
+        assertTrue(results.getFirst().getWarnings().stream()
+                .anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
+        verify(polarionService, never()).getWorkItem(anyString(), anyString(), any());
+        verify(polarionService, never()).getModule(any(), any());
+        verify(polarionService, never()).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
+    }
+
+    @Test
+    void testRepairParamsFailsFastForModuleWithRevision() {
+        IModule mod = mock(IModule.class);
+        when(mod.getProjectId()).thenReturn("proj");
+        when(mod.getRelativePath()).thenReturn("Spec/MyDoc");
+        when(mod.getRevision()).thenReturn("100");
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(mod);
+
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(metaInfo.serialize()));
+
+        List<RepairResult> results = polarionService.repair(params);
+
+        assertEquals(1, results.size());
+        assertFalse(results.getFirst().isSuccess());
+        assertTrue(results.getFirst().getWarnings().stream()
+                .anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
+        verify(polarionService, never()).getProject(anyString());
+        verify(polarionService, never()).getModule(any(), any());
+        verify(polarionService, never()).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
+    }
+
+    @Test
     void testRepairParamsForwardsConfigs() {
         IWorkItem wi = mock(IWorkItem.class);
         when(wi.getProjectId()).thenReturn("proj");

@@ -512,14 +512,13 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         assertTrue(issues.isEmpty());
     }
 
-    // === BaseRepairer.repair(IUniqueObject, RepairContext) — revision handling ===
+    // === BaseRepairer.repair(IUniqueObject, RepairContext) — dispatch ===
 
     @Test
-    void testRepairViaPublicInterface_NullRevision_Success() {
+    void testRepairViaPublicInterface_Success() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         when(module.getHomePageContent().getContent()).thenReturn(
                 "\nTable 1<span data-sequence=\"Table 2\" class=\"polarion-rte-caption\">"
         );
@@ -538,11 +537,10 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
     }
 
     @Test
-    void testRepairViaPublicInterface_NullRevision_NoChange() {
+    void testRepairViaPublicInterface_NoChange() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         when(module.getHomePageContent().getContent()).thenReturn("no captions");
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
@@ -555,25 +553,6 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         assertFalse(result.isSuccess());
         verify(module, never()).save();
-    }
-
-    @Test
-    void testRepairViaPublicInterface_WithRevision_FailsFastWithoutSaving() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("456");
-
-        IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
-
-        RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
-
-        assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
-        verify(revisionModule, never()).save();
-        verifyNoInteractions(polarionService);
     }
 
     // === streamModuleWorkItems filtering ===

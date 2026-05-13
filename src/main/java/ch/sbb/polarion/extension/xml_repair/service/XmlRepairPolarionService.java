@@ -122,12 +122,18 @@ public class XmlRepairPolarionService extends PolarionService {
         for (String issueMetaInfo : params.getIssueMetaInfos()) {
             IssueMetaInfo metaInfo = IssueMetaInfo.fromString(issueMetaInfo);
             try {
-                String projectId = metaInfo.getString(IssueMetaInfo.PROJECT_ID);
-                String modulePath = metaInfo.getString(IssueMetaInfo.MODULE_PATH);
-                String id = metaInfo.getString(IssueMetaInfo.ID);
-                IUniqueObject entity = modulePath != null ?
-                        getModule(getProject(projectId), Location.getLocation(modulePath)) : getWorkItem(projectId, id, null);
-                results.add(repairEntity(entity, new RepairContext(metaInfo, this, params.getConfigs(), cache)));
+                RepairResult result;
+                if (metaInfo.getString(IssueMetaInfo.REVISION) != null) {
+                    result = new RepairResult(metaInfo, false, "Cannot repair items from a baseline/revision; switch to HEAD to repair.");
+                } else {
+                    String projectId = metaInfo.getString(IssueMetaInfo.PROJECT_ID);
+                    String modulePath = metaInfo.getString(IssueMetaInfo.MODULE_PATH);
+                    String id = metaInfo.getString(IssueMetaInfo.ID);
+                    IUniqueObject entity = modulePath != null ?
+                            getModule(getProject(projectId), Location.getLocation(modulePath)) : getWorkItem(projectId, id, null);
+                    result = repairEntity(entity, new RepairContext(metaInfo, this, params.getConfigs(), cache));
+                }
+                results.add(result);
             } catch (Exception e) {
                 logger.error("Error during item repair: %s".formatted(e.getMessage()), e);
                 results.add(new RepairResult(metaInfo, false, "Error during item repair: %s".formatted(e.getMessage())));

@@ -27,17 +27,7 @@ public abstract class BaseRepairer implements IRepairer {
 
     @Override
     public RepairResult repair(IUniqueObject entity, RepairContext context) {
-        RepairResult repairResult;
-        if (entity instanceof IModule module) {
-            String revision = module.getRevision();
-            if (revision != null) {
-                return new RepairResult(context.issueMetaInfo(), false, "Cannot repair items from a baseline/revision; switch to HEAD to repair.");
-            } else {
-                repairResult = repair(module, context);
-            }
-        } else {
-            repairResult = repair((IWorkflowObject) entity, context);
-        }
+        RepairResult repairResult = entity instanceof IModule module ? repair(module, context) : repair((IWorkflowObject) entity, context);
         if (repairResult.isSuccess()) {
             entity.save();
         }

@@ -178,14 +178,13 @@ class BaseRepairerTest {
     }
 
     @Test
-    void testRepairModuleWithoutRevisionSavesOnSuccess() {
+    void testRepairModuleDelegatesAndSavesOnSuccess() {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         RepairResult successResult = new RepairResult(metaInfo, true);
         RepairRoutingRepairer repairer = new RepairRoutingRepairer(successResult);
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
@@ -196,27 +195,20 @@ class BaseRepairerTest {
     }
 
     @Test
-    void testRepairModuleWithRevisionFailsFastWithoutInvokingNestedRepairOrSave() {
+    void testRepairModuleNoSaveOnFailure() {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
-        // Nested repair returns success so we can prove it was NOT invoked
-        RepairResult nestedResult = new RepairResult(metaInfo, true);
-        RepairRoutingRepairer repairer = spy(new RepairRoutingRepairer(nestedResult));
+        RepairResult failResult = new RepairResult(metaInfo, false);
+        RepairRoutingRepairer repairer = new RepairRoutingRepairer(failResult);
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn("42");
-
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) module, context);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
         verify(module, never()).save();
-        verify(repairer, never()).repair(any(IModule.class), any(RepairContext.class));
-        verify(repairer, never()).repair(any(IWorkflowObject.class), any(RepairContext.class));
-        verifyNoInteractions(polarionService);
     }
 
     @Test

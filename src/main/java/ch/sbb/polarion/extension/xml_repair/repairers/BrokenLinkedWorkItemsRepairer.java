@@ -29,7 +29,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     private static final String LINK_PROJECT_ID = "linkProjectId";
     private static final String LINK_ROLE = "linkRole";
     private static final String LINK_ID = "linkId";
-    private static final String REVISION = "revision";
+    private static final String LINK_REVISION = "linkRevision";
     private static final String ISSUE_TYPE = "issueType";
     private static final String DELETE_UNRESOLVABLE = "deleteUnresolvable";
     private static final String CACHE_LINK_ROLES_KEY_TEMPLATE = "BROKEN_LWI_PROJECT_%s_LINK_ROLES";
@@ -46,7 +46,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                 String revision = link.getRevision();
                 String message = null;
                 IssueMetaInfo metaInfo = IssueMetaInfo.create(entity).set(LINK_ROLE, linkRoleId).set(LINK_PROJECT_ID, projectId)
-                        .set(LINK_ID, workItemId).set(REVISION, StringUtils.getEmptyIfNull(revision));
+                        .set(LINK_ID, workItemId).set(LINK_REVISION, StringUtils.getEmptyIfNull(revision));
 
                 // Just calling isUnresolvable isn't enough, in case if (bad) revision provided polarion will implicitly take the HEAD revision
                 if (link.getLinkedItem().isUnresolvable() || !context.polarionService().isWorkItemExists(projectId, workItemId, revision)) {
@@ -82,7 +82,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
         Collection<ILinkedWorkItemStruct> links = workItem.getLinkedWorkItemsStructsDirect();
         ILinkedWorkItemStruct linkToRepair = links.stream().filter(link -> Objects.equals(context.issueMetaInfo().getString(LINK_PROJECT_ID), StringUtils.getEmptyIfNull(link.getLinkedItem().getProjectId()))
                         && Objects.equals(context.issueMetaInfo().getString(LINK_ROLE), link.getLinkRole() == null ? "" : link.getLinkRole().getId())
-                        && Objects.equals(context.issueMetaInfo().getString(REVISION), StringUtils.getEmptyIfNull(link.getRevision()))
+                        && Objects.equals(context.issueMetaInfo().getString(LINK_REVISION), StringUtils.getEmptyIfNull(link.getRevision()))
                         && Objects.equals(context.issueMetaInfo().getString(LINK_ID), link.getLinkedItem().getId())).findFirst()
                 .orElseThrow(() -> new IllegalStateException("Issue not found, possibly it was already repaired or the content was changed since the scan."));
 
