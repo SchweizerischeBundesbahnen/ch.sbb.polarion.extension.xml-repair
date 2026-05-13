@@ -360,10 +360,7 @@ public class XmlRepairPolarionService extends PolarionService {
         IInternalBaselinesManager baselinesManager = (IInternalBaselinesManager) getTrackerService().getTrackerProject(projectId).getBaselinesManager();
         IPObjectList<IBaseline> projectBaselines = baselinesManager.getBaselines();
         return projectBaselines.stream()
-                .map(b -> BaselineInfo.builder()
-                        .revision(b.getBaseRevision())
-                        .name(b.getName())
-                        .build())
+                .map(b -> new BaselineInfo(b.getBaseRevision(), b.getName()))
                 .sorted().toList();
     }
 

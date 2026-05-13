@@ -2,52 +2,37 @@ package ch.sbb.polarion.extension.xml_repair.service.model;
 
 import com.polarion.core.util.logging.Logger;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.Objects;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
 @Schema(description = "Baseline information")
-public class BaselineInfo implements Comparable<BaselineInfo> {
+public record BaselineInfo(@Schema(description = "The SVN revision") @NotNull String revision, @Schema(description = "The baseline name") @Nullable String name) implements Comparable<BaselineInfo> {
 
     private static final Logger logger = Logger.getLogger(BaselineInfo.class);
 
-    @Schema(description = "The SVN revision")
-    private String revision;
-
-    @Schema(description = "The baseline name")
-    private String name;
+    public BaselineInfo {
+        Objects.requireNonNull(revision, "revision must not be null");
+    }
 
     public int compareTo(@NotNull BaselineInfo that) {
-        long thisRevision = 0L;
-        long thatRevision = 0L;
-
-        try {
-            thisRevision = Long.parseLong(this.revision);
-        } catch (NumberFormatException e) {
-            logger.warn("Unexpected revision found: " + this.revision);
-        }
-
-        try {
-            thatRevision = Long.parseLong(that.revision);
-        } catch (NumberFormatException e) {
-            logger.warn("Unexpected revision found: " + that.revision);
-        }
-
-        // Reverse sorting is used to show most last revision as first.
-        // Tie-break on name to keep compareTo consistent with the @Data-generated equals.
-        int byRevision = Long.compare(thatRevision, thisRevision);
+        // Reverse sorting is used to show the most recent revision first.
+        // Tie-break on name keeps compareTo consistent with the record-generated equals.
+        int byRevision = Long.compare(parseRevision(that.revision), parseRevision(this.revision));
         if (byRevision != 0) {
             return byRevision;
         }
         return Objects.compare(this.name, that.name, Comparator.nullsLast(Comparator.naturalOrder()));
+    }
+
+    private static long parseRevision(@NotNull String revision) {
+        try {
+            return Long.parseLong(revision);
+        } catch (NumberFormatException e) {
+            logger.warn("Unexpected revision found: " + revision);
+            return 0L;
+        }
     }
 }

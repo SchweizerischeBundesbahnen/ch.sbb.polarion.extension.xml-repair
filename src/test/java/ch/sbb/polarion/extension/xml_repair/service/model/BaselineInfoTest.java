@@ -7,35 +7,17 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BaselineInfoTest {
 
     @Test
-    void testNoArgsConstructorAndSetters() {
-        BaselineInfo info = new BaselineInfo();
-        info.setRevision("42");
-        info.setName("first release");
-
-        assertEquals("42", info.getRevision());
-        assertEquals("first release", info.getName());
-    }
-
-    @Test
     void testAllArgsConstructor() {
         BaselineInfo info = new BaselineInfo("42", "first release");
 
-        assertEquals("42", info.getRevision());
-        assertEquals("first release", info.getName());
-    }
-
-    @Test
-    void testBuilder() {
-        BaselineInfo info = BaselineInfo.builder().revision("100").name("v1.0").build();
-
-        assertEquals("100", info.getRevision());
-        assertEquals("v1.0", info.getName());
+        assertEquals("42", info.revision());
+        assertEquals("first release", info.name());
     }
 
     @Test
@@ -118,12 +100,9 @@ class BaselineInfoTest {
     }
 
     @Test
-    void testCompareToTreatsNullRevisionAsZero() {
-        BaselineInfo withNull = new BaselineInfo(null, "n");
-        BaselineInfo withRevision = new BaselineInfo("100", "v");
-
-        assertTrue(withRevision.compareTo(withNull) < 0);
-        assertTrue(withNull.compareTo(withRevision) > 0);
+    @SuppressWarnings("DataFlowIssue") // intentionally passing null to verify the @NotNull contract is enforced at runtime
+    void testNullRevisionThrows() {
+        assertThrows(NullPointerException.class, () -> new BaselineInfo(null, "n"));
     }
 
     @Test
@@ -136,16 +115,8 @@ class BaselineInfoTest {
 
         baselines.sort(BaselineInfo::compareTo);
 
-        assertEquals("300", baselines.get(0).getRevision());
-        assertEquals("200", baselines.get(1).getRevision());
-        assertEquals("100", baselines.get(2).getRevision());
-    }
-
-    @Test
-    void testDefaultsAreNull() {
-        BaselineInfo info = new BaselineInfo();
-
-        assertNull(info.getRevision());
-        assertNull(info.getName());
+        assertEquals("300", baselines.get(0).revision());
+        assertEquals("200", baselines.get(1).revision());
+        assertEquals("100", baselines.get(2).revision());
     }
 }

@@ -1,6 +1,5 @@
 package ch.sbb.polarion.extension.xml_repair.util;
 
-import lombok.Lombok;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -21,9 +20,16 @@ public final class Cache {
                 T computed = supplier.call();
                 return computed == null ? NULL_SENTINEL : computed;
             } catch (Exception e) {
-                throw Lombok.sneakyThrow(e);
+                throw sneakyThrow(e);
             }
         });
         return value == NULL_SENTINEL ? null : (T) value;
+    }
+
+    // Rethrows a checked exception as if it were unchecked, preserving the original type.
+    // Uses generic erasure so the compiler does not require the caller to declare it.
+    @SuppressWarnings("unchecked")
+    private static <T extends Throwable> RuntimeException sneakyThrow(@NotNull Throwable t) throws T {
+        throw (T) t;
     }
 }

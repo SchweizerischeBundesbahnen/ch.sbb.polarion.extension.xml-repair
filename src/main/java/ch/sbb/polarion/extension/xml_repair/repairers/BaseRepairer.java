@@ -31,7 +31,7 @@ public abstract class BaseRepairer implements IRepairer {
         if (entity instanceof IModule module) {
             String revision = module.getRevision();
             if (revision != null) {
-                return new RepairResult(context.issueMetaInfo(), false, "Cannot fix '%s' rev.%s - HEAD revision entity may be repaired only".formatted(module.getModuleName(), revision));
+                return new RepairResult(context.issueMetaInfo(), false, "Cannot repair items from a baseline/revision; switch to HEAD to repair.");
             } else {
                 repairResult = repair(module, context);
             }

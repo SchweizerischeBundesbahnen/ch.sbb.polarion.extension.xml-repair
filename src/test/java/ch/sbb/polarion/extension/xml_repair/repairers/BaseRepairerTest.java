@@ -205,7 +205,6 @@ class BaseRepairerTest {
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
         when(module.getRevision()).thenReturn("42");
-        when(module.getModuleName()).thenReturn("TestDoc");
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
@@ -213,7 +212,7 @@ class BaseRepairerTest {
         RepairResult result = repairer.repair((IUniqueObject) module, context);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("TestDoc") && w.contains("rev.42")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
         verify(module, never()).save();
         verify(repairer, never()).repair(any(IModule.class), any(RepairContext.class));
         verify(repairer, never()).repair(any(IWorkflowObject.class), any(RepairContext.class));

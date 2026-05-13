@@ -886,7 +886,7 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     void testQueryEntitiesAppliesBaselineRevision() {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
@@ -917,7 +917,7 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("rawtypes")
     void testQueryEntitiesDefaultsAndNullRevisionPassedThrough() {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
@@ -970,10 +970,10 @@ class XmlRepairPolarionServiceTest {
         List<BaselineInfo> result = polarionService.getBaselines("proj");
 
         assertEquals(2, result.size());
-        assertEquals("200", result.get(0).getRevision());
-        assertEquals("Newer", result.get(0).getName());
-        assertEquals("100", result.get(1).getRevision());
-        assertEquals("Older", result.get(1).getName());
+        assertEquals("200", result.get(0).revision());
+        assertEquals("Newer", result.get(0).name());
+        assertEquals("100", result.get(1).revision());
+        assertEquals("Older", result.get(1).name());
     }
 
     // ---- Helper methods ----

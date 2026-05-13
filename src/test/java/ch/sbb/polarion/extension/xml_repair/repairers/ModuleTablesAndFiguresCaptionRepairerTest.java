@@ -563,7 +563,6 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
         when(revisionModule.getRevision()).thenReturn("456");
-        when(revisionModule.getModuleName()).thenReturn("TestModule");
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
@@ -572,7 +571,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("TestModule") && w.contains("rev.456")));
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
         verify(revisionModule, never()).save();
         verifyNoInteractions(polarionService);
     }

@@ -127,6 +127,9 @@ export default function NumericInput({
                 e.stopPropagation();
                 if (filter) setFilter('');
                 else close();
+              } else if (e.key === 'Enter') {
+                // Prevent the parent panel's Enter handler from starting a scan while filtering.
+                e.stopPropagation();
               }
             }}
             placeholder="Filter..."

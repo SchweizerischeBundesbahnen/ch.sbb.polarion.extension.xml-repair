@@ -80,6 +80,9 @@ export default function IconSelect({
               if (e.key === 'Escape') {
                 e.stopPropagation();
                 setFilter('');
+              } else if (e.key === 'Enter') {
+                // Prevent the parent panel's Enter handler from starting a scan while filtering.
+                e.stopPropagation();
               }
             }}
             placeholder="Filter..."
