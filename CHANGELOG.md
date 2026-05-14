@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.3.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.2.0...v2.3.0) (2026-05-14)
+
+
+### Features
+
+* ability to run a scan using a specific revision/baseline ([#32](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/32)) ([7ad4c11](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/7ad4c11faad27707a8c3aa015645c971760091b2)), closes [#24](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/24)
+* repair enumeration values using names ([#27](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/27)) ([47e023b](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/47e023b82fc57adcfdb9b26ea3b273a940c5b1b2)), closes [#21](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/21)
+
+
+### Bug Fixes
+
+* NPE during 'Broken Work Item Links' scan ([#34](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/34)) ([1d49ac0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/1d49ac0dbb1b8689165485b101ccb1e651bce9ee)), closes [#33](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/33)
+
 ## [2.2.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.1.0...v2.2.0) (2026-04-23)
 
 
