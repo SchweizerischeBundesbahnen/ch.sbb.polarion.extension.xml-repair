@@ -1,7 +1,6 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
 import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
@@ -9,13 +8,11 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
-import ch.sbb.polarion.extension.xml_repair.util.Report;
+import ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import com.polarion.alm.projects.model.IUniqueObject;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
 import com.polarion.alm.tracker.IModuleManager;
 import com.polarion.alm.tracker.IModulePageLayouter;
-import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITypeOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -24,8 +21,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 
 import java.util.List;
 import java.util.Set;
@@ -265,7 +260,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -286,7 +281,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -305,7 +300,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -335,7 +330,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", true);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -366,7 +361,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", true);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -394,7 +389,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", true);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         repairer.repair(module, repairContext);
 
@@ -413,7 +408,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         repairer.repair(module, repairContext);
 
@@ -503,13 +498,12 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         assertTrue(fixed.contains("data-sequence=\"Figure B\""));
     }
 
-    // === BaseRepairer.scan(IUniqueObject, ScanContext) — revision handling ===
+    // === BaseRepairer.scan(IUniqueObject, ScanContext) ===
 
     @Test
-    void testScanViaPublicInterface_NullRevision() {
+    void testScanViaPublicInterface() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         when(module.getProjectId()).thenReturn("elibrary");
         when(module.getHomePageContent().getContent()).thenReturn("plain text");
         when(module.getContainedWorkItems()).thenReturn(List.of());
@@ -518,57 +512,13 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         assertTrue(issues.isEmpty());
     }
 
-    @Test
-    void testScanViaPublicInterface_WithRevision_Resolvable() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("123");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getProjectId()).thenReturn("elibrary");
-        when(headModule.getModuleName()).thenReturn("TestModule");
-        when(headModule.getHomePageContent().getContent()).thenReturn(
-                "\nTable 1<span data-sequence=\"Table 2\" class=\"polarion-rte-caption\">"
-        );
-        when(headModule.getContainedWorkItems()).thenReturn(List.of());
-
-        ScanContext context = createScanContext();
-        when(context.polarionService().getModule(any(), any())).thenReturn(headModule);
-
-        List<Issue> issues = repairer.scan((IUniqueObject) revisionModule, context);
-        assertEquals(1, issues.size());
-        assertFalse(issues.getFirst().getWarnings().isEmpty());
-        assertTrue(issues.getFirst().getWarnings().stream().anyMatch(w -> w.contains("HEAD revision")));
-    }
+    // === BaseRepairer.repair(IUniqueObject, RepairContext) — dispatch ===
 
     @Test
-    void testScanViaPublicInterface_WithRevision_Unresolvable() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("123");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(true);
-        when(headModule.getModuleName()).thenReturn("TestModule");
-
-        ScanContext context = createScanContext();
-        when(context.polarionService().getModule(any(), any())).thenReturn(headModule);
-
-        List<Issue> issues = repairer.scan((IUniqueObject) revisionModule, context);
-        assertTrue(issues.isEmpty());
-    }
-
-    // === BaseRepairer.repair(IUniqueObject, RepairContext) — revision handling ===
-
-    @Test
-    void testRepairViaPublicInterface_NullRevision_Success() {
+    void testRepairViaPublicInterface_Success() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         when(module.getHomePageContent().getContent()).thenReturn(
                 "\nTable 1<span data-sequence=\"Table 2\" class=\"polarion-rte-caption\">"
         );
@@ -578,7 +528,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) module, repairContext);
 
@@ -587,74 +537,22 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
     }
 
     @Test
-    void testRepairViaPublicInterface_NullRevision_NoChange() {
+    void testRepairViaPublicInterface_NoChange() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(module.getRevision()).thenReturn(null);
         when(module.getHomePageContent().getContent()).thenReturn("no captions");
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", false);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair((IUniqueObject) module, repairContext);
 
         assertFalse(result.isSuccess());
         verify(module, never()).save();
-    }
-
-    @Test
-    void testRepairViaPublicInterface_WithRevision_Resolvable() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("456");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(false);
-        when(headModule.getModuleName()).thenReturn("TestModule");
-        when(headModule.getHomePageContent().getContent()).thenReturn(
-                "\nTable 1<span data-sequence=\"Table 2\" class=\"polarion-rte-caption\">"
-        );
-        when(headModule.getHomePageContent().isPlain()).thenReturn(false);
-
-        IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
-        metaInfo.set("isWorkItem", false);
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(any(), any())).thenReturn(headModule);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
-
-        RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
-
-        assertTrue(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("HEAD revision")));
-        verify(headModule).save();
-    }
-
-    @Test
-    void testRepairViaPublicInterface_WithRevision_Unresolvable() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        IModule revisionModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(revisionModule.getRevision()).thenReturn("789");
-
-        IModule headModule = mock(IModule.class, RETURNS_DEEP_STUBS);
-        when(headModule.isUnresolvable()).thenReturn(true);
-        when(headModule.getModuleName()).thenReturn("DeletedModule");
-
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.getModule(any(), any())).thenReturn(headModule);
-        IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
-
-        RepairResult result = repairer.repair((IUniqueObject) revisionModule, repairContext);
-
-        assertFalse(result.isSuccess());
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("unresolvable")));
     }
 
     // === streamModuleWorkItems filtering ===
@@ -794,7 +692,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", true);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -863,7 +761,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
 
         IssueMetaInfo metaInfo = createRealMetaInfo("Table 1", "Table 2");
         metaInfo.set("isWorkItem", true);
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
@@ -943,13 +841,7 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
     }
 
     private ScanContext createScanContext() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-        }
+        return RepairerTestFixtures.createScanContext(mock(XmlRepairPolarionService.class));
     }
 
     private IWorkItem mockWorkItem() {

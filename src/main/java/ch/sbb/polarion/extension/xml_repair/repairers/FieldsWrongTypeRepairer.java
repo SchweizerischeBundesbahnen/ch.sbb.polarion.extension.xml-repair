@@ -25,7 +25,7 @@ public class FieldsWrongTypeRepairer extends BaseRepairer {
         List<Issue> issues = new ArrayList<>();
         String proto = entity.getPrototype().getName();
 
-        for (FieldMetadata meta : context.polarionService().getAllFields(proto, entity.getContextId(),
+        for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), false, FieldType.STRING.getType())) {
             Object value = entity.getValue(meta.getId());
             if (value != null && !(value instanceof String)) {
@@ -41,7 +41,7 @@ public class FieldsWrongTypeRepairer extends BaseRepairer {
         RepairResult result = new RepairResult(context.issueMetaInfo(), false);
 
         String fieldId = context.issueMetaInfo().getString(FIELD_ID);
-        FieldMetadata meta = context.polarionService().getAllFields(entity.getPrototype().getName(), entity.getContextId(),
+        FieldMetadata meta = getAllFieldsUsingCache(context, entity.getPrototype().getName(), entity.getContextId(),
                         Objects.requireNonNull(entity.getType()).getId(), false,
                         FieldType.STRING.getType()).stream()
                 .filter(m -> Objects.equals(m.getId(), fieldId))

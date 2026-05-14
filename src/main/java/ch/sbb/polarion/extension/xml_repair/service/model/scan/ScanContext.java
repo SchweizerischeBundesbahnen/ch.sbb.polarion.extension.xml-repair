@@ -3,24 +3,25 @@ package ch.sbb.polarion.extension.xml_repair.service.model.scan;
 import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
+import ch.sbb.polarion.extension.xml_repair.service.model.IContext;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
-import lombok.SneakyThrows;
 import org.apache.commons.lang3.time.StopWatch;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class ScanContext {
+public final class ScanContext implements IContext {
     private final @NotNull XmlRepairPolarionService polarionService;
     private final @NotNull List<String> repairers;
     private final @NotNull UserConfigs configs;
     private final @NotNull Report report;
+    private final @NotNull Cache cache;
     private final Set<String> globalWarnings = new LinkedHashSet<>();
     private List<IModule> collectionDocuments;
     private final EntityRenderer entityRenderer;
@@ -30,18 +31,21 @@ public final class ScanContext {
     private final AtomicBoolean timeoutReached = new AtomicBoolean(false);
     private long timeout = 0;
 
-    private final HashMap<String, Object> cache = new  HashMap<>();
-
-    public ScanContext(@NotNull XmlRepairPolarionService polarionService, @NotNull List<String> repairers, @NotNull UserConfigs configs, @NotNull Report report) {
+    public ScanContext(@NotNull XmlRepairPolarionService polarionService, @NotNull List<String> repairers, @NotNull UserConfigs configs, @NotNull Report report, @NotNull Cache cache) {
         this.polarionService = polarionService;
         this.repairers = repairers;
         this.configs = configs;
         this.report = report;
+        this.cache = cache;
         this.entityRenderer = new EntityRenderer(Objects.requireNonNull(TransactionalExecutorImpl.currentTransaction()), polarionService().getTrackerService());
     }
 
     public @NotNull XmlRepairPolarionService polarionService() {
         return polarionService;
+    }
+
+    public @NotNull Cache cache() {
+        return cache;
     }
 
     public @NotNull List<String> repairers() {
@@ -91,15 +95,6 @@ public final class ScanContext {
         } else {
             return false;
         }
-    }
-
-    @SuppressWarnings("unchecked")
-    @SneakyThrows
-    public <T> T getAndCache(String key, Callable<T> getValueCallable) {
-        if (!cache.containsKey(key)) {
-            cache.put(key, getValueCallable.call());
-        }
-        return (T) cache.get(key);
     }
 
 }

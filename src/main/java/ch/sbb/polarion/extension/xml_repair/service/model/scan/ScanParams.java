@@ -29,6 +29,9 @@ public class ScanParams {
     @Schema(description = "Additional query to select entities for scanning, e.g. 'id:TEST-12345'", nullable = true)
     private String userQuery;
 
+    @Schema(description = "SVN revision to scan against. If null, scans current HEAD; otherwise the entire query runs as of that revision.", example = "12345", nullable = true)
+    private String revision;
+
     @Schema(description = "Sorting criteria in the format 'created' or '~id'", nullable = true, defaultValue = "created")
     private String sort;
 

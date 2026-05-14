@@ -1,19 +1,13 @@
 package ch.sbb.polarion.extension.xml_repair.service.model.scan;
 
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -24,24 +18,13 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith({MockitoExtension.class, PlatformContextMockExtension.class})
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ScanContextTest {
-
-    private ScanContext createScanContext(XmlRepairPolarionService polarionService, List<String> repairers, UserConfigs configs, Report report) {
-        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class);
-        ITrackerService trackerService = mock(ITrackerService.class);
-        when(polarionService.getTrackerService()).thenReturn(trackerService);
-
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
-            return new ScanContext(polarionService, repairers, configs, report);
-        }
-    }
 
     @Test
     void testAccessors() {

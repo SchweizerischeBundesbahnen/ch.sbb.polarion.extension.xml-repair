@@ -26,7 +26,7 @@ public class FieldsRichTextLinksRepairer extends BaseLinksRepairer {
         List<Issue> issues = new ArrayList<>();
         String proto = entity.getPrototype().getName();
 
-        for (FieldMetadata meta : context.polarionService().getAllFields(proto, entity.getContextId(),
+        for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), false, FieldType.TEXT.getType(), FieldType.RICH.getType())) {
             if (proto.equals(IModule.PROTO) && meta.getId().equals(IModule.KEY_HOMEPAGECONTENT)) {
                 // homePageContent is handled in ModuleContentLinksRepairer

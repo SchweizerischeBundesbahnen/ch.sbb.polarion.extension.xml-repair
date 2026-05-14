@@ -20,6 +20,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanResult;
 import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationSettings;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.projects.IProjectService;
 import com.polarion.alm.projects.model.IUniqueObject;
@@ -34,13 +35,16 @@ import com.polarion.alm.shared.api.utils.collections.IterableWithSize;
 import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
+import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
+import com.polarion.alm.tracker.model.ipi.IInternalBaselinesManager;
 import com.polarion.core.util.StringUtils;
 import com.polarion.core.util.logging.Logger;
 import com.polarion.platform.IPlatformService;
+import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
@@ -114,15 +118,22 @@ public class XmlRepairPolarionService extends PolarionService {
 
     public List<RepairResult> repair(@NotNull RepairParams params) {
         List<RepairResult> results = new ArrayList<>();
+        Cache cache = new Cache();
         for (String issueMetaInfo : params.getIssueMetaInfos()) {
             IssueMetaInfo metaInfo = IssueMetaInfo.fromString(issueMetaInfo);
             try {
-                String projectId = metaInfo.getString(IssueMetaInfo.PROJECT_ID);
-                String modulePath = metaInfo.getString(IssueMetaInfo.MODULE_PATH);
-                String id = metaInfo.getString(IssueMetaInfo.ID);
-                IUniqueObject entity = modulePath != null ?
-                        getModule(getProject(projectId), Location.getLocation(modulePath)) : getWorkItem(projectId, id, null);
-                results.add(repairEntity(entity, new RepairContext(metaInfo, this, params.getConfigs())));
+                RepairResult result;
+                if (metaInfo.getString(IssueMetaInfo.REVISION) != null) {
+                    result = new RepairResult(metaInfo, false, "Cannot repair items from a baseline/revision; switch to HEAD to repair.");
+                } else {
+                    String projectId = metaInfo.getString(IssueMetaInfo.PROJECT_ID);
+                    String modulePath = metaInfo.getString(IssueMetaInfo.MODULE_PATH);
+                    String id = metaInfo.getString(IssueMetaInfo.ID);
+                    IUniqueObject entity = modulePath != null ?
+                            getModule(getProject(projectId), Location.getLocation(modulePath)) : getWorkItem(projectId, id, null);
+                    result = repairEntity(entity, new RepairContext(metaInfo, this, params.getConfigs(), cache));
+                }
+                results.add(result);
             } catch (Exception e) {
                 logger.error("Error during item repair: %s".formatted(e.getMessage()), e);
                 results.add(new RepairResult(metaInfo, false, "Error during item repair: %s".formatted(e.getMessage())));
@@ -149,6 +160,7 @@ public class XmlRepairPolarionService extends PolarionService {
     public ScanResult scan(@NotNull ScanParams params) {
         StopWatch stopWatch = StopWatch.createStarted();
         Report report = new Report();
+        Cache cache =  new Cache();
         ScanResult result = new ScanResult();
 
         boolean skipScanTimeLimitReached = false;
@@ -159,7 +171,7 @@ public class XmlRepairPolarionService extends PolarionService {
         do {
             report.info("Query started (offset=%d)...".formatted(queryOffset));
             List<? extends ModelObject> entities = queryEntities(params.getProjectId(), params.getEntityType().proto(), params.getEntitySubtype(),
-                    params.getUserQuery(), params.getSort(), queryOffset, batchSize);
+                    params.getUserQuery(), params.getRevision(), params.getSort(), queryOffset, batchSize);
             report.info("Query finished. %d items retrieved.".formatted(entities.size()));
 
             if (entities.isEmpty()) {
@@ -175,7 +187,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 if (!skipScanTimeLimitReached) {
                     try {
                         long remainingTimeout = Math.max(params.getTimeout() - stopWatch.getTime(), 1); // prevent putting 0 - this will mean no timeout
-                        ScanContext context = new ScanContext(this, params.getRepairers(), params.getConfigs(), report);
+                        ScanContext context = new ScanContext(this, params.getRepairers(), params.getConfigs(), report, cache);
                         scanEntity(scanEntity, context.timeout(remainingTimeout));
                         scanEntity.getFields().putAll(context.entityRenderer().renderEntity(object));
                         processedItemsCount++;
@@ -242,7 +254,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 if (element.getObjectWithRevision() instanceof IModule module) {
                     @SuppressWarnings("java:S1905") // Cast to ReadOnlyTransaction is required to access .documents()
                     Document document = Objects.requireNonNull((ReadOnlyTransaction) TransactionalExecutorImpl.currentTransaction())
-                            .documents().getBy().projectSpaceAndName(module.getProjectId(), module.getModuleFolder(), module.getModuleName());
+                            .documents().getBy().revision(module.getRevision()).projectSpaceAndName(module.getProjectId(), module.getModuleFolder(), module.getModuleName());
 
                     ScanEntity docScanEntity = ScanEntity.from(module);
                     entity.getSubitems().add(docScanEntity);
@@ -295,10 +307,11 @@ public class XmlRepairPolarionService extends PolarionService {
                 .map(r -> new RepairerMeta(r.getClass().getSimpleName(), r.getDisplayName(), r.getDescription(), r.getConfigs())).toList();
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked", "java:S1452"}) // Wildcard comes from Polarion API return type
+    @SuppressWarnings({"rawtypes", "unchecked", "java:S1452", "java:S107"}) // Wildcard comes from Polarion API return type, 8 params is a lot but all of them are required
     public List<? extends ModelObject> queryEntities(@NotNull String projectId, @NotNull PrototypeEnum entityPrototype,
                                                      @Nullable String subtype, @Nullable String customQuery,
-                                                     @Nullable String sort, @Nullable Integer offset, @Nullable Integer limit) {
+                                                     @Nullable String revision, @Nullable String sort,
+                                                     @Nullable Integer offset, @Nullable Integer limit) {
         ReadOnlyTransaction transaction = TransactionalExecutorImpl.currentTransaction();
         if (transaction == null) {
             throw new IllegalStateException("This method must be called within a transaction");
@@ -316,6 +329,7 @@ public class XmlRepairPolarionService extends PolarionService {
 
         IterableWithSize<? extends ModelObject> results = search
                 .query(scopedQuery)
+                .baseline(revision)
                 .sort(StringUtils.isEmpty(sort) ? "created" : sort)
                 .limit(limit == null ? DEFAULT_LIMIT : limit)
                 .offset(offset == null ? 0 : offset);
@@ -346,6 +360,14 @@ public class XmlRepairPolarionService extends PolarionService {
                     return fieldTypes.length == 0 || Stream.of(fieldTypes).anyMatch(typePredicate);
                 })
                 .collect(Collectors.toSet());
+    }
+
+    public List<BaselineInfo> getBaselines(String projectId) {
+        IInternalBaselinesManager baselinesManager = (IInternalBaselinesManager) getTrackerService().getTrackerProject(projectId).getBaselinesManager();
+        IPObjectList<IBaseline> projectBaselines = baselinesManager.getBaselines();
+        return projectBaselines.stream()
+                .map(b -> new BaselineInfo(b.getBaseRevision(), b.getName()))
+                .sorted().toList();
     }
 
 }

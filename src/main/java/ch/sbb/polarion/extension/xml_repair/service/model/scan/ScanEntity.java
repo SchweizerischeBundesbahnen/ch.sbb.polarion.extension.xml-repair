@@ -30,6 +30,9 @@ public final class ScanEntity {
     @Schema(description = "The unique identifier of the entity", example = "elibrary")
     private final @NotNull String entityId;
 
+    @Schema(description = "Revision of the entity", example = "42")
+    private final @Nullable String revision;
+
     @Schema(description = "List of issues found in the entity")
     private final @NotNull List<Issue> issues = new LinkedList<>();
 
@@ -43,17 +46,18 @@ public final class ScanEntity {
     private final Set<String> warnings = new LinkedHashSet<>();
 
 
-    private ScanEntity(@NotNull IUniqueObject entity, @NotNull EntityType entityType, @NotNull String projectId, @Nullable String space, @NotNull String entityId) {
+    private ScanEntity(@NotNull IUniqueObject entity, @NotNull EntityType entityType, @NotNull String projectId, @Nullable String space, @NotNull String entityId, @Nullable String revision) {
         this.entity = entity;
         this.entityType = entityType;
         this.projectId = projectId;
         this.space = space;
         this.entityId = entityId;
+        this.revision = revision;
     }
 
     public static ScanEntity from(@NotNull IUniqueObject entity) {
         return new ScanEntity(entity, EntityType.fromPrototype(entity.getPrototype()), entity.getProjectId(),
-                entity instanceof IModule module ? module.getModuleFolder() : null, entity.getId());
+                entity instanceof IModule module ? module.getModuleFolder() : null, entity.getId(), entity.getRevision());
     }
 
 }

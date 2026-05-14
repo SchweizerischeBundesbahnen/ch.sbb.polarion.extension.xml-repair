@@ -24,16 +24,23 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanResult;
 import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationSettings;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.projects.IProjectService;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
 import com.polarion.alm.shared.api.model.ModelObject;
+import com.polarion.alm.shared.api.model.ModelObjectsSearch;
 import com.polarion.alm.shared.api.model.PrototypeEnum;
+import com.polarion.alm.shared.api.model.document.Document;
+import com.polarion.alm.shared.api.model.document.DocumentSelector;
+import com.polarion.alm.shared.api.impl.ScopeFactoryImpl;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
+import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
+import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITrackerProject;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -41,7 +48,9 @@ import com.polarion.alm.tracker.model.ITypeOpt;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
+import com.polarion.alm.tracker.model.ipi.IInternalBaselinesManager;
 import com.polarion.platform.IPlatformService;
+import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
@@ -56,9 +65,9 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.mockFields;
 import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NOT_AUTHORIZED_BY_ADMIN;
 import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NO_PERMISSIONS;
 import static org.junit.jupiter.api.Assertions.*;
@@ -208,6 +217,50 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testRepairParamsFailsFastForWorkItemWithRevision() {
+        IWorkItem wi = mock(IWorkItem.class);
+        when(wi.getProjectId()).thenReturn("proj");
+        when(wi.getId()).thenReturn("WI-1");
+        when(wi.getRevision()).thenReturn("42");
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(wi);
+
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(metaInfo.serialize()));
+
+        List<RepairResult> results = polarionService.repair(params);
+
+        assertEquals(1, results.size());
+        assertFalse(results.getFirst().isSuccess());
+        assertTrue(results.getFirst().getWarnings().stream()
+                .anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
+        verify(polarionService, never()).getWorkItem(anyString(), anyString(), any());
+        verify(polarionService, never()).getModule(any(), any());
+        verify(polarionService, never()).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
+    }
+
+    @Test
+    void testRepairParamsFailsFastForModuleWithRevision() {
+        IModule mod = mock(IModule.class);
+        when(mod.getProjectId()).thenReturn("proj");
+        when(mod.getRelativePath()).thenReturn("Spec/MyDoc");
+        when(mod.getRevision()).thenReturn("100");
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(mod);
+
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(metaInfo.serialize()));
+
+        List<RepairResult> results = polarionService.repair(params);
+
+        assertEquals(1, results.size());
+        assertFalse(results.getFirst().isSuccess());
+        assertTrue(results.getFirst().getWarnings().stream()
+                .anyMatch(w -> w.contains("baseline/revision") && w.contains("switch to HEAD")));
+        verify(polarionService, never()).getProject(anyString());
+        verify(polarionService, never()).getModule(any(), any());
+        verify(polarionService, never()).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
+    }
+
+    @Test
     void testRepairParamsForwardsConfigs() {
         IWorkItem wi = mock(IWorkItem.class);
         when(wi.getProjectId()).thenReturn("proj");
@@ -247,7 +300,7 @@ class XmlRepairPolarionServiceTest {
         doReturn(List.of(repairer)).when(polarionService).getRepairersForEntity(any());
 
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = polarionService.repairEntity(entity, context);
 
@@ -269,7 +322,7 @@ class XmlRepairPolarionServiceTest {
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
 
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = polarionService.repairEntity(entity, context);
 
@@ -289,7 +342,7 @@ class XmlRepairPolarionServiceTest {
         doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         assertThrows(IllegalArgumentException.class, () -> polarionService.repairEntity(entity, context));
     }
@@ -629,7 +682,7 @@ class XmlRepairPolarionServiceTest {
             when(((IWorkflowObject) entity).getType()).thenReturn(mock(ITypeOpt.class));
 
             ScanEntity scanEntity = ScanEntity.from(entity);
-            ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report());
+            ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report(), new Cache());
 
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
@@ -640,6 +693,7 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
     void testScanEntityCollectionScansSubitems() {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
@@ -669,11 +723,20 @@ class XmlRepairPolarionServiceTest {
             when(((IBaselineCollection) collection).getElements()).thenReturn(List.of(element));
 
             ScanEntity scanEntity = ScanEntity.from(collection);
-            ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report());
+            ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report(), new Cache());
 
             // submodule will trigger scanEntity recursively, which will hit the non-collection branch
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
             when(((IWorkflowObject) module).getType()).thenReturn(mock(ITypeOpt.class));
+
+            // DocumentSelector inherits revision() from ModelObjectSelector<T, S, R>; Mockito's deep-stub
+            // cannot resolve S, so revision() returns a ModelObjectSelector mock and the bytecode cast
+            // to DocumentSelector fails. Override the chain explicitly.
+            DocumentSelector<Document> documentSelector = mock(DocumentSelector.class);
+            Document documentMock = mock(Document.class);
+            when(documentSelector.projectSpaceAndName(any(), any(), any())).thenReturn(documentMock);
+            DocumentSelector<? extends Document> getBySelector = transaction.documents().getBy();
+            doReturn(documentSelector).when(getBySelector).revision(any());
 
             polarionService.scanEntity(scanEntity, context);
 
@@ -693,7 +756,7 @@ class XmlRepairPolarionServiceTest {
         params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
 
-        doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+        doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
 
         ScanResult result = polarionService.scan(params);
 
@@ -719,7 +782,7 @@ class XmlRepairPolarionServiceTest {
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject)).doReturn(List.of())
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
             ScanResult result = polarionService.scan(params);
@@ -750,7 +813,7 @@ class XmlRepairPolarionServiceTest {
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject1, modelObject2)).doReturn(List.of())
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
             ScanResult result = polarionService.scan(params);
@@ -779,7 +842,7 @@ class XmlRepairPolarionServiceTest {
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject1, modelObject2))
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
             ScanResult result = polarionService.scan(params);
@@ -808,7 +871,7 @@ class XmlRepairPolarionServiceTest {
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject))
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
 
             // Make scanEntity throw
             doThrow(new RuntimeException("scan failed")).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
@@ -841,7 +904,7 @@ class XmlRepairPolarionServiceTest {
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject1, modelObject2))
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), anyInt(), anyInt());
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
 
             // Make scanEntity throw so items are not considered "valid" (error != null means they're shown)
             doThrow(new RuntimeException("scan error")).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
@@ -862,8 +925,99 @@ class XmlRepairPolarionServiceTest {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(null);
 
             assertThrows(IllegalStateException.class, () ->
-                    polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null));
+                    polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null, null));
         }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testQueryEntitiesAppliesBaselineRevision() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.baseline(any())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            List<? extends ModelObject> result = polarionService.queryEntities(
+                    "proj", PrototypeEnum.WorkItem, "requirement", "id:PRJ-1", "rev-42", "~updated", 5, 50);
+
+            assertTrue(result.isEmpty());
+            verify(search).baseline("rev-42");
+            verify(search).sort("~updated");
+            verify(search).limit(50);
+            verify(search).offset(5);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testQueryEntitiesDefaultsAndNullRevisionPassedThrough() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.baseline(any())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, null, null, null);
+
+            verify(search).baseline(null);
+            verify(search).sort("created");
+            verify(search).limit(100);
+            verify(search).offset(0);
+        }
+    }
+
+    // ---- getBaselines tests ----
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testGetBaselinesReturnsListSortedByRevisionDescending() {
+        ITrackerProject trackerProject = mock(ITrackerProject.class);
+        when(trackerService.getTrackerProject("proj")).thenReturn(trackerProject);
+
+        IInternalBaselinesManager baselinesManager = mock(IInternalBaselinesManager.class);
+        when(trackerProject.getBaselinesManager()).thenReturn(baselinesManager);
+
+        IBaseline older = mock(IBaseline.class);
+        when(older.getBaseRevision()).thenReturn("100");
+        when(older.getName()).thenReturn("Older");
+        IBaseline newer = mock(IBaseline.class);
+        when(newer.getBaseRevision()).thenReturn("200");
+        when(newer.getName()).thenReturn("Newer");
+
+        IPObjectList<IBaseline> baselineList = mock(IPObjectList.class);
+        when(baselineList.stream()).thenReturn(Stream.of(older, newer));
+        when(baselinesManager.getBaselines()).thenReturn(baselineList);
+
+        List<BaselineInfo> result = polarionService.getBaselines("proj");
+
+        assertEquals(2, result.size());
+        assertEquals("200", result.get(0).revision());
+        assertEquals("Newer", result.get(0).name());
+        assertEquals("100", result.get(1).revision());
+        assertEquals("Older", result.get(1).name());
     }
 
     // ---- Helper methods ----
@@ -887,16 +1041,11 @@ class XmlRepairPolarionServiceTest {
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
              MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
-            return new ScanContext(polarionService, repairers, new UserConfigs(), new Report());
+            return new ScanContext(polarionService, repairers, new UserConfigs(), new Report(), new Cache());
         }
     }
 
     // ---- Helper classes ----
-
-    private Set<FieldMetadata> mockFields(FieldType fieldType, String... ids) {
-        return Stream.of(ids).map(id -> mockFieldWithType(id, fieldType))
-                .collect(Collectors.toSet());
-    }
 
     private FieldMetadata mockFieldWithType(String id, FieldType fieldType) {
         FieldMetadata meta = mock(FieldMetadata.class, id);

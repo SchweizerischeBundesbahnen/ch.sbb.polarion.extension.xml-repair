@@ -4,17 +4,13 @@ import ch.sbb.polarion.extension.generic.fields.FieldType;
 import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
-import ch.sbb.polarion.extension.xml_repair.util.Report;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
@@ -22,8 +18,6 @@ import com.polarion.core.util.types.Text;
 import com.polarion.subterra.base.data.identification.IContextId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -32,9 +26,9 @@ import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExte
 
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.mockFields;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -42,24 +36,6 @@ import static org.mockito.Mockito.*;
 @ExtendWith({MockitoExtension.class, PlatformContextMockExtension.class})
 @MockitoSettings(strictness = Strictness.LENIENT)
 class FieldsRichTextLinksRepairerTest {
-
-    private Set<FieldMetadata> mockFields(FieldType fieldType, String... ids) {
-        return Stream.of(ids).map(id -> {
-            FieldMetadata meta = mock(FieldMetadata.class);
-            when(meta.getId()).thenReturn(id);
-            when(meta.getType()).thenReturn(fieldType.getType());
-            return meta;
-        }).collect(Collectors.toSet());
-    }
-
-    private ScanContext createScanContext(XmlRepairPolarionService polarionService) {
-        lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-        }
-    }
 
     @Test
     void testScanFindsBrokenLinks() {
@@ -141,7 +117,7 @@ class FieldsRichTextLinksRepairerTest {
         when(metaInfo.getString("link")).thenReturn(brokenLink);
         when(metaInfo.serialize()).thenReturn("serialized");
 
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
         RepairResult result = repairer.repair(entity, context);
 
         assertTrue(result.isSuccess());
@@ -163,7 +139,7 @@ class FieldsRichTextLinksRepairerTest {
         when(metaInfo.serialize()).thenReturn("serialized");
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
         RepairResult result = repairer.repair(entity, context);
 
         assertFalse(result.isSuccess());
@@ -176,7 +152,7 @@ class FieldsRichTextLinksRepairerTest {
         List<RepairerConfigMeta> configs = repairer.getConfigs();
 
         assertEquals(1, configs.size());
-        RepairerConfigMeta config = configs.get(0);
+        RepairerConfigMeta config = configs.getFirst();
         assertEquals(BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT, config.getKey());
         assertEquals("Convert unresolvable links to plain text", config.getDescription());
         assertEquals("Replace items which cannot be found by the specified ID in any available project with a plain text", config.getHint());

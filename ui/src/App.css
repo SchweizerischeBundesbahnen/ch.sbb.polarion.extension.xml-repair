@@ -522,6 +522,21 @@
   color: #b8860b;
 }
 
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 4px;
+  border: 1px solid #6c757d;
+  border-radius: 50%;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6c757d;
+  cursor: help;
+}
+
 .warning-popup {
   display: none;
   position: absolute;
@@ -554,6 +569,7 @@
 
 .icon-select {
   flex: 1;
+  min-width: 0;
   position: relative;
 }
 
@@ -567,10 +583,23 @@
   background: #fff;
   cursor: pointer;
   font-size: 13px;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .icon-select-placeholder {
   color: #999;
+}
+
+.icon-select-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #dee2e6;
+  border-top-color: #6c757d;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }
 
 .icon-select-arrow {
@@ -594,6 +623,17 @@
   z-index: 10;
 }
 
+.icon-select-filter {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
 .icon-select-item {
   display: flex;
   align-items: center;
@@ -605,6 +645,14 @@
 
 .icon-select-item.indented {
   padding-left: 30px;
+}
+
+.icon-select-item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .icon-select-item:hover {
@@ -625,4 +673,118 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.icon-select.disabled .icon-select-trigger {
+  background: #f8f9fa;
+  cursor: not-allowed;
+  color: #adb5bd;
+}
+
+/* NumericInput with hints */
+
+.numeric-input-with-hints {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.numeric-input-with-hints .numeric-input-field {
+  flex: 1;
+  min-width: 0;
+  padding-right: 24px;
+}
+
+.numeric-input-chevron {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 10px;
+  color: #666;
+  cursor: pointer;
+  user-select: none;
+}
+
+.numeric-input-spinner {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border: 2px solid #dee2e6;
+  border-top-color: #6c757d;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.numeric-input-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  background: #fff;
+  border: 1px solid #ced4da;
+  border-radius: 3px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.numeric-input-filter {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.numeric-input-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.numeric-input-item:hover {
+  background: #e9ecef;
+}
+
+.numeric-input-item.selected {
+  background: #d0e3ff;
+}
+
+.numeric-input-item-value {
+  font-family: monospace;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.numeric-input-item-label {
+  flex: 1;
+  text-align: right;
+  color: #6c757d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.numeric-input-empty {
+  padding: 8px;
+  color: #999;
+  font-size: 13px;
+  text-align: center;
 }

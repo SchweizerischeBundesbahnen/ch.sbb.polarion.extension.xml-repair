@@ -1,27 +1,21 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
-import ch.sbb.polarion.extension.xml_repair.service.EntityRenderer;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
 import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
-import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
-import ch.sbb.polarion.extension.xml_repair.util.Report;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
-import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
-import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
-import com.polarion.alm.tracker.ITrackerService;
+import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import com.polarion.alm.tracker.internal.ModulePagePart;
 import com.polarion.alm.tracker.model.IModule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 
 import java.util.List;
 
+import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -178,21 +172,12 @@ class ModuleWrongTitleHeadingPositionRepairerTest {
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs());
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(module, repairContext);
 
         assertTrue(result.isSuccess());
         verify(repairer).moveHeadingToProperPosition(module);
-    }
-
-    private ScanContext createScanContext(XmlRepairPolarionService polarionService) {
-        lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-        }
     }
 
     private ModulePagePart mockPart(boolean isHeading, boolean isMacro, boolean isPageBreak, boolean isEmptyParagraph) {

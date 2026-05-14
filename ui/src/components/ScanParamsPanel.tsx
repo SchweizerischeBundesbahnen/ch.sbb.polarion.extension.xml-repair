@@ -2,6 +2,7 @@ import type { KeyboardEvent } from 'react';
 import type { EntityType, IconSelectOption } from '../types';
 import IconSelect from './IconSelect';
 import NumericInput from './NumericInput';
+import type { NumericInputHint } from './NumericInput';
 
 const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   WORKITEM: 'e.g. id:PRJID-123',
@@ -16,6 +17,10 @@ interface ScanParamsPanelProps {
   onEntityChange: (val: string) => void;
   userQuery: string;
   onUserQueryChange: (val: string) => void;
+  revision: number;
+  onRevisionChange: (val: number) => void;
+  revisionHints: NumericInputHint[];
+  revisionLoading: boolean;
   sort: string;
   onSortChange: (val: string) => void;
   limit: number;
@@ -34,6 +39,10 @@ export default function ScanParamsPanel({
   onEntityChange,
   userQuery,
   onUserQueryChange,
+  revision,
+  onRevisionChange,
+  revisionHints,
+  revisionLoading,
   sort,
   onSortChange,
   limit,
@@ -72,6 +81,28 @@ export default function ScanParamsPanel({
       <details className="advanced-section">
         <summary className="advanced-summary">Advanced</summary>
         <div className="advanced-fields">
+          {entityType !== 'COLLECTION' && (
+            <div className="form-row">
+              <label>
+                Revision/Baseline
+                <span
+                  className="help-icon"
+                  title="Selecting specific revision other than HEAD will block the ability to repair issues"
+                >
+                  ?
+                </span>
+              </label>
+              <NumericInput
+                value={revision}
+                defaultValue={0}
+                onChange={onRevisionChange}
+                hints={revisionHints}
+                hintsLoading={revisionLoading}
+                placeholder="HEAD"
+                allowEmpty={true}
+              />
+            </div>
+          )}
           <div className="form-row">
             <label>Sort By</label>
             <input

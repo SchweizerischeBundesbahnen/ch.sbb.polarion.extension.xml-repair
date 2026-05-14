@@ -20,6 +20,11 @@ public class ApiController extends InternalController {
     }
 
     @Override
+    public Response listBaselines(String projectId) {
+        return polarionService.callPrivileged(() -> super.listBaselines(projectId));
+    }
+
+    @Override
     public Response scan(ScanParams scanParams) {
         return polarionService.callPrivileged(() -> super.scan(scanParams));
     }
