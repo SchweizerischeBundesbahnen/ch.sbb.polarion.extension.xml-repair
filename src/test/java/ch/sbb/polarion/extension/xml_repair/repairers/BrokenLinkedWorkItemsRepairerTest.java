@@ -860,6 +860,38 @@ class BrokenLinkedWorkItemsRepairerTest {
         assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
     }
 
+    @Test
+    void testViolatesLinkRulesFromTypesNullSameTypeRuleReturnsFalse() {
+        // '--All Types--' configuration: fromTypes == null means rule applies to any source type
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isSameType()).thenReturn(true);
+        when(rule.getFromTypes()).thenReturn(null);
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
+    }
+
+    @Test
+    void testViolatesLinkRulesFromTypesNullCrossTypeLinkReturnsTrue() {
+        // fromTypes == null with cross-type link: same-type clause fails (src != target),
+        // and the cross-type clause requires fromTypes != null → no rule complies
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isSameType()).thenReturn(false);
+        when(rule.getFromTypes()).thenReturn(null);
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+    }
+
+    @Test
+    void testViolatesLinkRulesToTypesNullCrossTypeLinkReturnsTrue() {
+        // toTypes == null guard: cross-type clause requires toTypes != null → no rule complies
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isSameType()).thenReturn(false);
+        when(rule.getFromTypes()).thenReturn(Set.of("requirement"));
+        when(rule.getToTypes()).thenReturn(null);
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+    }
+
     // --- scan() + LINK_ROLE_RULE_VIOLATED tests ---
 
     @Test

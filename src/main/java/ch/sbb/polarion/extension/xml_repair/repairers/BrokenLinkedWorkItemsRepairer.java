@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
@@ -172,9 +173,15 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
     @VisibleForTesting
     boolean typesPairViolatesLinkRules(@NotNull String srcTypeId, @NotNull String targetTypeId, @Nullable List<ILinkRoleOpt.IRule> rules) {
-        return rules != null && rules.stream().noneMatch(rule ->
-                Objects.equals(srcTypeId, targetTypeId) && rule.getFromTypes().contains(srcTypeId) && rule.isSameType() ||
-                        rule.getFromTypes().contains(srcTypeId) && rule.getToTypes().contains(targetTypeId));
+        return rules != null && rules.stream().noneMatch(rule -> isComplyWithRule(srcTypeId, targetTypeId, rule));
+    }
+
+    private boolean isComplyWithRule(@NotNull String srcTypeId, @NotNull String targetTypeId, ILinkRoleOpt.IRule rule) {
+        Set<String> fromTypes = rule.getFromTypes();
+        Set<String> toTypes = rule.getToTypes();
+        // '--All Types--' item in the enum configuration means fromTypes == null
+        return Objects.equals(srcTypeId, targetTypeId) && (fromTypes == null || fromTypes.contains(srcTypeId)) && rule.isSameType() ||
+                fromTypes != null && toTypes != null && fromTypes.contains(srcTypeId) && toTypes.contains(targetTypeId);
     }
 
 }
