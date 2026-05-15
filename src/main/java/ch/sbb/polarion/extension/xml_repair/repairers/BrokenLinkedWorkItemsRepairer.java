@@ -22,11 +22,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
     public static final String NAME = "Broken Work Item Links";
+    private static final String HEADING_TYPE_ID = "heading";
     private static final String LINK_PROJECT_ID = "linkProjectId";
     private static final String LINK_ROLE = "linkRole";
     private static final String LINK_ID = "linkId";
@@ -173,15 +173,13 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
     @VisibleForTesting
     boolean typesPairViolatesLinkRules(@NotNull String srcTypeId, @NotNull String targetTypeId, @Nullable List<ILinkRoleOpt.IRule> rules) {
-        return rules != null && rules.stream().noneMatch(rule -> isComplyWithRule(srcTypeId, targetTypeId, rule));
-    }
-
-    private boolean isComplyWithRule(@NotNull String srcTypeId, @NotNull String targetTypeId, ILinkRoleOpt.IRule rule) {
-        Set<String> fromTypes = rule.getFromTypes();
-        Set<String> toTypes = rule.getToTypes();
-        // '--All Types--' item in the enum configuration means fromTypes == null
-        return Objects.equals(srcTypeId, targetTypeId) && (fromTypes == null || fromTypes.contains(srcTypeId)) && rule.isSameType() ||
-                fromTypes != null && toTypes != null && fromTypes.contains(srcTypeId) && toTypes.contains(targetTypeId);
+        // Polarion auto-links every work item in a document to its closest heading via the module's structureLinkRole
+        // without consulting link-role rules (see XMLStructuredDocument.createModuleStructureLinks).
+        // Treat any link to a heading as allowed to avoid flagging these Polarion-managed structure links.
+        if (HEADING_TYPE_ID.equals(targetTypeId)) {
+            return false;
+        }
+        return rules != null && rules.stream().noneMatch(rule -> rule.isAllowed(srcTypeId, targetTypeId));
     }
 
 }

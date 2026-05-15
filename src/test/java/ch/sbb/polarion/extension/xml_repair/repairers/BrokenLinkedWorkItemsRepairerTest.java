@@ -32,7 +32,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
@@ -773,6 +772,9 @@ class BrokenLinkedWorkItemsRepairerTest {
     }
 
     // --- typesPairViolatesLinkRules() tests ---
+    // typesPairViolatesLinkRules delegates compliance to Polarion's ILinkRoleOpt.IRule#isAllowed.
+    // These tests cover this wrapper's own logic: null-rules guard, vacuous-truth on empty list,
+    // and noneMatch semantics across multiple rules.
 
     @Test
     void testViolatesLinkRulesNullRulesReturnsFalse() {
@@ -781,115 +783,89 @@ class BrokenLinkedWorkItemsRepairerTest {
 
     @Test
     void testViolatesLinkRulesEmptyListReturnsTrue() {
+        // No rules to comply with -> violation
         assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of()));
     }
 
     @Test
-    void testViolatesLinkRulesSameTypeLinkWithSameTypeRuleReturnsFalse() {
+    void testViolatesLinkRulesSingleAllowingRuleReturnsFalse() {
         ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(true);
-        when(rule.getFromTypes()).thenReturn(Set.of("task"));
-
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
-    }
-
-    @Test
-    void testViolatesLinkRulesCrossTypeLinkWithMatchingCrossTypeRuleReturnsFalse() {
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(Set.of("requirement"));
-        when(rule.getToTypes()).thenReturn(Set.of("task"));
+        when(rule.isAllowed("requirement", "task")).thenReturn(true);
 
         assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+        verify(rule).isAllowed("requirement", "task");
     }
 
     @Test
-    void testViolatesLinkRulesSrcTypeNotInFromTypesReturnsTrue() {
+    void testViolatesLinkRulesSingleDisallowingRuleReturnsTrue() {
         ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(true);
-        when(rule.getFromTypes()).thenReturn(Set.of("bug"));
-        when(rule.getToTypes()).thenReturn(Set.of());
-
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
-    }
-
-    @Test
-    void testViolatesLinkRulesCrossTypeLinkTargetNotInToTypesReturnsTrue() {
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(Set.of("requirement"));
-        when(rule.getToTypes()).thenReturn(Set.of("bug"));
+        when(rule.isAllowed(anyString(), anyString())).thenReturn(false);
 
         assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+        verify(rule).isAllowed("requirement", "task");
     }
 
     @Test
-    void testViolatesLinkRulesSameTypeLinkWithOnlyNonSameTypeRuleReturnsTrue() {
-        // src==target but rule has isSameType=false and "task" not in toTypes
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(Set.of("task"));
-        when(rule.getToTypes()).thenReturn(Set.of("requirement"));
-
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
-    }
-
-    @Test
-    void testViolatesLinkRulesSameTypeLinkValidViaCrossTypeRuleReturnsFalse() {
-        // same src/target is also valid if both appear in a cross-type rule's fromTypes/toTypes
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(Set.of("task"));
-        when(rule.getToTypes()).thenReturn(Set.of("task"));
-
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
-    }
-
-    @Test
-    void testViolatesLinkRulesSecondRuleMatchesReturnsFalse() {
+    void testViolatesLinkRulesSecondRuleAllowsReturnsFalse() {
         ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
-        when(rule1.isSameType()).thenReturn(false);
-        when(rule1.getFromTypes()).thenReturn(Set.of("requirement"));
-        when(rule1.getToTypes()).thenReturn(Set.of("bug"));
-
+        when(rule1.isAllowed(anyString(), anyString())).thenReturn(false);
         ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
-        when(rule2.isSameType()).thenReturn(false);
-        when(rule2.getFromTypes()).thenReturn(Set.of("requirement"));
-        when(rule2.getToTypes()).thenReturn(Set.of("task"));
+        when(rule2.isAllowed("requirement", "task")).thenReturn(true);
 
         assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        verify(rule1).isAllowed("requirement", "task");
+        verify(rule2).isAllowed("requirement", "task");
     }
 
     @Test
-    void testViolatesLinkRulesFromTypesNullSameTypeRuleReturnsFalse() {
-        // '--All Types--' configuration: fromTypes == null means rule applies to any source type
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(true);
-        when(rule.getFromTypes()).thenReturn(null);
+    void testViolatesLinkRulesFirstRuleAllowsShortCircuits() {
+        ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
+        when(rule1.isAllowed("requirement", "task")).thenReturn(true);
+        ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
 
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of(rule)));
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        // noneMatch is short-circuiting — rule2 must not be consulted once rule1 allows
+        verify(rule1).isAllowed("requirement", "task");
+        verify(rule2, never()).isAllowed(anyString(), anyString());
     }
 
     @Test
-    void testViolatesLinkRulesFromTypesNullCrossTypeLinkReturnsTrue() {
-        // fromTypes == null with cross-type link: same-type clause fails (src != target),
-        // and the cross-type clause requires fromTypes != null → no rule complies
+    void testViolatesLinkRulesHeadingTargetBypassesRules() {
+        // Polarion auto-links any work item in a document to its closest heading without consulting rules
+        // (see XMLStructuredDocument.createModuleStructureLinks). Heading-targeted links must never be flagged.
         ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(null);
 
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "heading", List.of(rule)));
+        // rules must not be consulted at all for heading targets
+        verifyNoInteractions(rule);
     }
 
     @Test
-    void testViolatesLinkRulesToTypesNullCrossTypeLinkReturnsTrue() {
-        // toTypes == null guard: cross-type clause requires toTypes != null → no rule complies
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isSameType()).thenReturn(false);
-        when(rule.getFromTypes()).thenReturn(Set.of("requirement"));
-        when(rule.getToTypes()).thenReturn(null);
+    void testViolatesLinkRulesHeadingTargetBypassesEvenWithNullRules() {
+        // null rules normally yield "no violation" anyway, but verify the heading short-circuit handles it cleanly
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "heading", null));
+    }
 
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+    @Test
+    void testViolatesLinkRulesHeadingSourceStillValidated() {
+        // The bypass is target-only — a heading WI with a manual outgoing link to a non-heading must still be validated.
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed(anyString(), anyString())).thenReturn(false);
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("heading", "task", List.of(rule)));
+        verify(rule).isAllowed("heading", "task");
+    }
+
+    @Test
+    void testViolatesLinkRulesAllRulesDisallowReturnsTrue() {
+        ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
+        when(rule1.isAllowed(anyString(), anyString())).thenReturn(false);
+        ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
+        when(rule2.isAllowed(anyString(), anyString())).thenReturn(false);
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        verify(rule1).isAllowed("requirement", "task");
+        verify(rule2).isAllowed("requirement", "task");
     }
 
     // --- scan() + LINK_ROLE_RULE_VIOLATED tests ---
