@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.3.0...v2.3.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* false-positive link role rule violation ([#37](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/37)) ([73ea355](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/73ea35533cbbc2cac037ec7eafcdd40f861d3a91)), closes [#36](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/36)
+
 ## [2.3.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.2.0...v2.3.0) (2026-05-14)
 
 
