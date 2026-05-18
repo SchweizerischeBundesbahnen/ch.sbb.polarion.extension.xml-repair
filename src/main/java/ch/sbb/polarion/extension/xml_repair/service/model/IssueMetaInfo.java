@@ -1,17 +1,19 @@
 package ch.sbb.polarion.extension.xml_repair.service.model;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.UUID;
 import lombok.SneakyThrows;
 
-import java.io.*;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
-public final class IssueMetaInfo implements Serializable {
+public final class IssueMetaInfo {
 
     public static final String PROJECT_ID = "projectId";
     public static final String MODULE_PATH = "modulePath";
@@ -19,12 +21,18 @@ public final class IssueMetaInfo implements Serializable {
     public static final String REPAIRER = "repairer";
     public static final String REVISION = "revision";
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    // Sorting keys keeps serialize() → fromString() → serialize() byte-identical; the UI matches repair results to scan issues by exact string equality of this value.
+    private static final ObjectMapper MAPPER = new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+
     private final Map<String, Object> data = new HashMap<>();
 
     private IssueMetaInfo() {
         data.put("uid", UUID.nextUUID());
+    }
+
+    private IssueMetaInfo(Map<String, Object> data) {
+        this.data.putAll(data);
     }
 
     public static IssueMetaInfo create(IWorkItem workItem) {
@@ -54,10 +62,7 @@ public final class IssueMetaInfo implements Serializable {
     @SneakyThrows
     public static IssueMetaInfo fromString(String issueMetaInfo) {
         byte[] bytes = Base64.getDecoder().decode(issueMetaInfo);
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-             ObjectInputStream ois = new ObjectInputStream(bis)) {
-            return (IssueMetaInfo) ois.readObject();
-        }
+        return new IssueMetaInfo(MAPPER.readValue(bytes, MAP_TYPE));
     }
 
     public IssueMetaInfo set(String key, Object value) {
@@ -79,11 +84,6 @@ public final class IssueMetaInfo implements Serializable {
 
     @SneakyThrows
     public String serialize() {
-        try (ByteArrayOutputStream bos = new ByteArrayOutputStream();
-             ObjectOutputStream oos = new ObjectOutputStream(bos)) {
-            oos.writeObject(this);
-            oos.flush();
-            return Base64.getEncoder().encodeToString(bos.toByteArray());
-        }
+        return Base64.getEncoder().encodeToString(MAPPER.writeValueAsBytes(data));
     }
 }
