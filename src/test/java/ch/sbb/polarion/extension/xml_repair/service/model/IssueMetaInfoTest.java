@@ -177,6 +177,8 @@ class IssueMetaInfoTest {
         assertEquals("elibrary", deserialized.getString(IssueMetaInfo.PROJECT_ID));
         assertEquals("EL-456", deserialized.getString(IssueMetaInfo.ID));
         assertEquals("TestRepairer", deserialized.getString(IssueMetaInfo.REPAIRER));
+        // The UI matches repair results to scan issues by exact string equality.
+        assertEquals(serialized, deserialized.serialize());
     }
 
     @Test
@@ -193,6 +195,7 @@ class IssueMetaInfoTest {
         assertEquals("proj", deserialized.getString(IssueMetaInfo.PROJECT_ID));
         assertEquals("Spec/Doc", deserialized.getString(IssueMetaInfo.MODULE_PATH));
         assertNull(deserialized.getString(IssueMetaInfo.ID));
+        assertEquals(serialized, deserialized.serialize());
     }
 
     @Test
