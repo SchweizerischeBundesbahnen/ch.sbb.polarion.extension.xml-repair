@@ -156,7 +156,7 @@ public class XmlRepairPolarionService extends PolarionService {
         return repairer.repair(entity, context);
     }
 
-    @SuppressWarnings("java:S3776") // Ignore cognitive complexity warning, refactoring would make the code less readable
+    @SuppressWarnings({"java:S3776", "java:S6541"}) // Ignore cognitive complexity/"brain"-method warning, refactoring would make the code less readable
     public ScanResult scan(@NotNull ScanParams params) {
         StopWatch stopWatch = StopWatch.createStarted();
         Report report = new Report();

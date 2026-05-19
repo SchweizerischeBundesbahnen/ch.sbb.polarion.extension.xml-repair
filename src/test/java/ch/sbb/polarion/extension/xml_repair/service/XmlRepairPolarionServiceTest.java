@@ -1032,6 +1032,42 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testScanHideValidKeepsItemWithOwnIssues() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ModelObject modelObject = createMockModelObject("WI-1");
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.WORKITEM);
+            params.setLimit(10);
+            params.setTimeout(60000L);
+            params.setHideValid(true);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(modelObject)).doReturn(List.of())
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+            // Item carries its own issues (no subitems). The first conjunct (getIssues().isEmpty()) is false
+            // and short-circuits the allMatch on subitems.
+            doAnswer(inv -> {
+                ScanEntity entity = inv.getArgument(0);
+                entity.getIssues().add(createIssueForRepairer("RepairerA"));
+                return null;
+            }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
+
+            ScanResult result = polarionService.scan(params);
+
+            assertEquals(1, result.getItems().size(), "Item with its own issues must remain visible when hideValid=true");
+            assertEquals(1, result.getItems().getFirst().getIssues().size());
+        }
+    }
+
+    @Test
     void testScanHideValidDisabledKeepsCollectionWithoutSubitemIssues() {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
