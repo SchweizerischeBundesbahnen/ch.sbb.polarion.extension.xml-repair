@@ -222,6 +222,7 @@ public class XmlRepairPolarionService extends PolarionService {
 
         report.info("Scan process finished. %d items processed, %d items shown.".formatted(processedItemsCount, result.getItems().size()));
         report.info("Total execution time: %s".formatted(stopWatch.formatTime()));
+        appendRepairerBreakdown(report, result);
         if (skipScanTimeLimitReached) {
             report.warn(SCAN_TIME_LIMIT_REACHED_WARNING);
         }
@@ -349,6 +350,37 @@ public class XmlRepairPolarionService extends PolarionService {
     @VisibleForTesting
     List<IRepairer> getRepairersForEntity(IUniqueObject entity) {
         return REPAIRERS.get(EntityType.fromPrototype(entity.getPrototype()));
+    }
+
+    @VisibleForTesting
+    void appendRepairerBreakdown(@NotNull Report report, @NotNull ScanResult result) {
+        Map<String, Integer> countByRepairer = new HashMap<>();
+        for (ScanEntity item : result.getItems()) {
+            countIssuesRecursive(item, countByRepairer);
+        }
+        if (countByRepairer.isEmpty()) {
+            return;
+        }
+        Map<String, String> repairerNames = REPAIRERS.values().stream()
+                .flatMap(List::stream)
+                .collect(Collectors.toMap(IRepairer::getRepairerId, IRepairer::getDisplayName, (a, b) -> a));
+        StringBuilder sb = new StringBuilder("Issues by repairer:");
+        countByRepairer.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .forEach(e -> sb.append("\n  ")
+                        .append(repairerNames.getOrDefault(e.getKey(), e.getKey()))
+                        .append(": ")
+                        .append(e.getValue()));
+        report.info(sb.toString());
+    }
+
+    private void countIssuesRecursive(@NotNull ScanEntity entity, @NotNull Map<String, Integer> acc) {
+        for (Issue issue : entity.getIssues()) {
+            acc.merge(issue.getRepairer(), 1, Integer::sum);
+        }
+        for (ScanEntity sub : entity.getSubitems()) {
+            countIssuesRecursive(sub, acc);
+        }
     }
 
     public Set<FieldMetadata> getAllFields(String proto, IContextId contextId, String typeId, boolean compareTypeClass, IType... fieldTypes) {

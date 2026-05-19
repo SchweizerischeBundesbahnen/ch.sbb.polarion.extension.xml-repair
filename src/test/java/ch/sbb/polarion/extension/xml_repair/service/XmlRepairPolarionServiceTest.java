@@ -13,6 +13,8 @@ import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExte
 import ch.sbb.polarion.extension.generic.test_extensions.TransactionalExecutorExtension;
 import ch.sbb.polarion.extension.generic.util.ScopeUtils;
 import ch.sbb.polarion.extension.xml_repair.service.model.*;
+import ch.sbb.polarion.extension.xml_repair.repairers.BaseRepairer;
+import ch.sbb.polarion.extension.xml_repair.repairers.BrokenLinkedWorkItemsRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.IRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
@@ -915,6 +917,159 @@ class XmlRepairPolarionServiceTest {
             assertEquals(1, result.getItems().size());
             assertTrue(result.getReport().contains("Top items limit reached"));
         }
+    }
+
+    // ---- appendRepairerBreakdown tests ----
+
+    @Test
+    void testAppendRepairerBreakdownEmptyResultAppendsNothing() {
+        ScanResult result = new ScanResult();
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        assertFalse(report.toString().contains("Issues by repairer"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownItemsWithoutIssuesAppendNothing() {
+        ScanResult result = new ScanResult();
+        result.getItems().add(createScanEntity("WI-1"));
+        result.getItems().add(createScanEntity("WI-2"));
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        assertFalse(report.toString().contains("Issues by repairer"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownSingleRepairerCountsAllIssues() {
+        ScanResult result = new ScanResult();
+        ScanEntity entity = createScanEntity("WI-1");
+        entity.getIssues().add(createIssueForRepairer("RepairerA"));
+        entity.getIssues().add(createIssueForRepairer("RepairerA"));
+        entity.getIssues().add(createIssueForRepairer("RepairerA"));
+        result.getItems().add(entity);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        String text = report.toString();
+        assertTrue(text.contains("Issues by repairer:"));
+        assertTrue(text.contains("RepairerA: 3"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownSortsRepairersByCountDescending() {
+        ScanResult result = new ScanResult();
+        ScanEntity entity = createScanEntity("WI-1");
+        entity.getIssues().add(createIssueForRepairer("RepairerLow"));
+        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
+        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
+        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
+        entity.getIssues().add(createIssueForRepairer("RepairerMid"));
+        entity.getIssues().add(createIssueForRepairer("RepairerMid"));
+        result.getItems().add(entity);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        String text = report.toString();
+        int highIdx = text.indexOf("RepairerHigh: 3");
+        int midIdx = text.indexOf("RepairerMid: 2");
+        int lowIdx = text.indexOf("RepairerLow: 1");
+        assertTrue(highIdx >= 0 && midIdx >= 0 && lowIdx >= 0, "All three repairers must appear in the report");
+        assertTrue(highIdx < midIdx, "Higher count must appear before mid count");
+        assertTrue(midIdx < lowIdx, "Mid count must appear before lower count");
+    }
+
+    @Test
+    void testAppendRepairerBreakdownUsesDisplayNameWhenRepairerIsKnown() {
+        ScanResult result = new ScanResult();
+        ScanEntity entity = createScanEntity("WI-1");
+        entity.getIssues().add(createIssueWithRealRepairer(new BrokenLinkedWorkItemsRepairer()));
+        result.getItems().add(entity);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        String text = report.toString();
+        assertTrue(text.contains(BrokenLinkedWorkItemsRepairer.NAME + ": 1"));
+        assertFalse(text.contains("BrokenLinkedWorkItemsRepairer:"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownFallsBackToIdWhenRepairerIsUnknown() {
+        ScanResult result = new ScanResult();
+        ScanEntity entity = createScanEntity("WI-1");
+        entity.getIssues().add(createIssueForRepairer("NotInRepairersMap"));
+        result.getItems().add(entity);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        assertTrue(report.toString().contains("NotInRepairersMap: 1"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownAggregatesIssuesFromSubitems() {
+        ScanResult result = new ScanResult();
+        ScanEntity collection = createScanEntity("COL-1");
+        ScanEntity sub1 = createScanEntity("WI-1");
+        sub1.getIssues().add(createIssueForRepairer("RepairerA"));
+        sub1.getIssues().add(createIssueForRepairer("RepairerB"));
+        ScanEntity sub2 = createScanEntity("WI-2");
+        sub2.getIssues().add(createIssueForRepairer("RepairerA"));
+        collection.getSubitems().add(sub1);
+        collection.getSubitems().add(sub2);
+        result.getItems().add(collection);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        String text = report.toString();
+        assertTrue(text.contains("RepairerA: 2"));
+        assertTrue(text.contains("RepairerB: 1"));
+    }
+
+    @Test
+    void testAppendRepairerBreakdownMergesItemAndSubitemIssuesUnderSameRepairer() {
+        ScanResult result = new ScanResult();
+        ScanEntity item = createScanEntity("DOC-1");
+        item.getIssues().add(createIssueForRepairer("RepairerA"));
+        ScanEntity sub = createScanEntity("WI-1");
+        sub.getIssues().add(createIssueForRepairer("RepairerA"));
+        item.getSubitems().add(sub);
+        result.getItems().add(item);
+        Report report = new Report();
+
+        polarionService.appendRepairerBreakdown(report, result);
+
+        assertTrue(report.toString().contains("RepairerA: 2"));
+    }
+
+    private ScanEntity createScanEntity(String entityId) {
+        var wi = mock(UniqueObject.class, withSettings()
+                .extraInterfaces(IWorkItem.class, IWorkflowObject.class)
+                .defaultAnswer(RETURNS_DEEP_STUBS));
+        when(wi.getPrototype().getName()).thenReturn(IWorkItem.PROTO);
+        when(wi.getProjectId()).thenReturn("proj");
+        when(wi.getId()).thenReturn(entityId);
+        return ScanEntity.from(wi);
+    }
+
+    private Issue createIssueForRepairer(String repairerId) {
+        BaseRepairer repairer = mock(BaseRepairer.class);
+        when(repairer.getRepairerId()).thenReturn(repairerId);
+        return createIssueWithRealRepairer(repairer);
+    }
+
+    private <T extends BaseRepairer> Issue createIssueWithRealRepairer(T repairer) {
+        IWorkItem wi = mock(IWorkItem.class);
+        when(wi.getProjectId()).thenReturn("proj");
+        when(wi.getId()).thenReturn("WI-1");
+        return new Issue(IssueMetaInfo.create(wi), repairer, "test issue");
     }
 
     // ---- queryEntities tests ----
