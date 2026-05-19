@@ -919,6 +919,163 @@ class XmlRepairPolarionServiceTest {
         }
     }
 
+    @Test
+    void testScanHideValidKeepsCollectionWithSubitemIssues() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ModelObject modelObject = createMockCollectionModelObject();
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.COLLECTION);
+            params.setLimit(10);
+            params.setTimeout(60000L);
+            params.setHideValid(true);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(modelObject)).doReturn(List.of())
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+            // Simulate the collection scan populating a subitem with issues
+            doAnswer(inv -> {
+                ScanEntity entity = inv.getArgument(0);
+                ScanEntity sub = createScanEntity("DOC-1");
+                sub.getIssues().add(createIssueForRepairer("RepairerA"));
+                entity.getSubitems().add(sub);
+                return null;
+            }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
+
+            ScanResult result = polarionService.scan(params);
+
+            assertEquals(1, result.getItems().size(), "Collection with subitem issues must remain visible");
+            assertEquals(1, result.getItems().getFirst().getSubitems().size());
+            assertEquals(1, result.getItems().getFirst().getSubitems().getFirst().getIssues().size());
+        }
+    }
+
+    @Test
+    void testScanHideValidHidesCollectionWithoutSubitemIssues() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ModelObject modelObject = createMockCollectionModelObject();
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.COLLECTION);
+            params.setLimit(10);
+            params.setTimeout(60000L);
+            params.setHideValid(true);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(modelObject)).doReturn(List.of())
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+            // Collection populated with subitems that have no issues
+            doAnswer(inv -> {
+                ScanEntity entity = inv.getArgument(0);
+                entity.getSubitems().add(createScanEntity("DOC-1"));
+                entity.getSubitems().add(createScanEntity("DOC-2"));
+                return null;
+            }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
+
+            ScanResult result = polarionService.scan(params);
+
+            assertTrue(result.getItems().isEmpty(), "Collection with no subitem issues must be hidden when hideValid=true");
+        }
+    }
+
+    @Test
+    void testScanHideValidKeepsCollectionWithMixedSubitems() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ModelObject modelObject = createMockCollectionModelObject();
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.COLLECTION);
+            params.setLimit(10);
+            params.setTimeout(60000L);
+            params.setHideValid(true);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(modelObject)).doReturn(List.of())
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+            // Mix: one subitem with issues, one without
+            doAnswer(inv -> {
+                ScanEntity entity = inv.getArgument(0);
+                ScanEntity sub1 = createScanEntity("DOC-1");
+                sub1.getIssues().add(createIssueForRepairer("RepairerA"));
+                ScanEntity sub2 = createScanEntity("DOC-2");
+                entity.getSubitems().add(sub1);
+                entity.getSubitems().add(sub2);
+                return null;
+            }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
+
+            ScanResult result = polarionService.scan(params);
+
+            assertEquals(1, result.getItems().size(), "Collection with at least one issue-bearing subitem must remain visible");
+            assertEquals(2, result.getItems().getFirst().getSubitems().size());
+        }
+    }
+
+    @Test
+    void testScanHideValidDisabledKeepsCollectionWithoutSubitemIssues() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ModelObject modelObject = createMockCollectionModelObject();
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.COLLECTION);
+            params.setLimit(10);
+            params.setTimeout(60000L);
+            params.setHideValid(false);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(modelObject)).doReturn(List.of())
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+            doAnswer(inv -> {
+                ScanEntity entity = inv.getArgument(0);
+                entity.getSubitems().add(createScanEntity("DOC-1"));
+                return null;
+            }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
+
+            ScanResult result = polarionService.scan(params);
+
+            assertEquals(1, result.getItems().size(), "hideValid=false must short-circuit the hide check");
+        }
+    }
+
+    private ModelObject createMockCollectionModelObject() {
+        ModelObject modelObject = mock(ModelObject.class);
+        var entity = mock(UniqueObject.class, withSettings()
+                .extraInterfaces(IBaselineCollection.class)
+                .defaultAnswer(RETURNS_DEEP_STUBS));
+        when(entity.getPrototype().getName()).thenReturn(IBaselineCollection.PROTO);
+        when(entity.getProjectId()).thenReturn("proj");
+        when(entity.getId()).thenReturn("COL-1");
+        when(modelObject.getOldApi()).thenReturn(entity);
+        return modelObject;
+    }
+
     // ---- appendRepairerBreakdown tests ----
 
     @Test

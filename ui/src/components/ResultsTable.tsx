@@ -74,7 +74,7 @@ export default function ResultsTable({
     if (!hideValidAtScanTime) return true;
     if (hasSubitems(item)) {
       const originalTotal = item.subitems.reduce((s, sub) => s + sub.issues.length, 0);
-      return originalTotal === 0 || item.subitems.some(subitemIsVisible);
+      return originalTotal === 0 || item.subitems.some((sub) => visibleIssueCount(sub) > 0);
     }
     return item.issues.length === 0 || visibleIssueCount(item) > 0;
   };

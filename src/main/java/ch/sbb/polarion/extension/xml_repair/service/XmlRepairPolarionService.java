@@ -201,7 +201,9 @@ public class XmlRepairPolarionService extends PolarionService {
                     scanEntity.getWarnings().add("Time limit reached, the entity scan is skipped.");
                 }
 
-                if (params.isHideValid() && scanEntity.getIssues().isEmpty() && scanError == null) {
+                boolean noIssues = scanEntity.getIssues().isEmpty()
+                        && scanEntity.getSubitems().stream().allMatch(sub -> sub.getIssues().isEmpty());
+                if (params.isHideValid() && noIssues && scanError == null) {
                     report.info("Item '%s' will be hidden".formatted(entity.getId()));
                 } else {
                     result.getItems().add(scanEntity);
