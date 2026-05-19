@@ -167,7 +167,7 @@ export default function ResultsTable({
                       allExpandableKeys.push(parentKey);
                       if (hasSubitems(it)) {
                         it.subitems.forEach((sub) => {
-                          if (sub.issues.length > 0) {
+                          if (visibleIssueCount(sub) > 0) {
                             allExpandableKeys.push(subitemKey(parentKey, sub));
                           }
                         });
