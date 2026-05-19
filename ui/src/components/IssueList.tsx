@@ -4,6 +4,7 @@ interface IssueListProps {
   issues: Issue[];
   selected: Set<number>;
   repairers: Repairer[];
+  hiddenRepairers?: Set<string>;
   onToggle: (index: number) => void;
   disabled: boolean;
   disabledTitle?: string;
@@ -14,6 +15,7 @@ export default function IssueList({
   issues,
   selected,
   repairers,
+  hiddenRepairers,
   onToggle,
   disabled,
   disabledTitle,
@@ -21,7 +23,9 @@ export default function IssueList({
 }: IssueListProps) {
   return (
     <ul className={`issue-list${className ? ` ${className}` : ''}`}>
-      {issues.map((issue, i) => (
+      {issues.map((issue, i) => {
+        if (hiddenRepairers?.has(issue.repairer)) return null;
+        return (
         <li
           key={i}
           className={`issue-item${issue.repairResult?.success ? ' issue-success' : ''}${issue.repairResult && !issue.repairResult.success ? ' issue-failed' : ''}`}
@@ -54,7 +58,8 @@ export default function IssueList({
             </ul>
           )}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

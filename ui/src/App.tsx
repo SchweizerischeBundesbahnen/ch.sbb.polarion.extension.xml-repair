@@ -84,6 +84,8 @@ export default function App() {
   const [batchRepairing, setBatchRepairing] = useState(false);
   const [repairingEntity, setRepairingEntity] = useState<string | null>(null);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [resultHideValid, setResultHideValid] = useState(false);
+  const [hiddenRepairers, setHiddenRepairers] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -298,14 +300,15 @@ export default function App() {
     setError(null);
   };
 
-  const toggleEntitySelection = (entityKey: string, totalIssues: number) => {
+  const toggleEntitySelection = (entityKey: string, indices: number[]) => {
     setSelectedIssues((prev) => {
       const next = new Map(prev);
       const current = next.get(entityKey) || new Set();
-      if (current.size === totalIssues) {
+      const allSelected = indices.length > 0 && indices.every((i) => current.has(i));
+      if (allSelected) {
         next.delete(entityKey);
       } else {
-        next.set(entityKey, new Set(Array.from({ length: totalIssues }, (_, i) => i)));
+        next.set(entityKey, new Set(indices));
       }
       return next;
     });
@@ -341,18 +344,75 @@ export default function App() {
 
   const hasAnySelection = selectedIssues.size > 0;
 
+  const toggleRepairerHidden = (id: string) => {
+    const next = new Set(hiddenRepairers);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+
+    setHiddenRepairers(next);
+    if (!result) return;
+
+    const hiddenIndicesByKey = new Map<string, Set<number>>();
+    const collect = (entity: ScanEntity, key: string) => {
+      const hiddenIdx = new Set<number>();
+      entity.issues.forEach((iss, i) => {
+        if (next.has(iss.repairer)) hiddenIdx.add(i);
+      });
+      if (hiddenIdx.size > 0) hiddenIndicesByKey.set(key, hiddenIdx);
+    };
+    for (const item of result.items) {
+      if (hasSubitems(item)) {
+        const parentKey = itemKey(item);
+        for (const sub of item.subitems) {
+          if (sub.issues.length > 0) collect(sub, subitemKey(parentKey, sub));
+        }
+      } else if (item.issues.length > 0) {
+        collect(item, itemKey(item));
+      }
+    }
+
+    setSelectedIssues((sel) => {
+      const updated = new Map(sel);
+      let changed = false;
+      for (const [key, selected] of sel) {
+        const hiddenIdx = hiddenIndicesByKey.get(key);
+        if (!hiddenIdx) continue;
+        const filtered = new Set<number>();
+        selected.forEach((i) => {
+          if (!hiddenIdx.has(i)) filtered.add(i);
+        });
+        if (filtered.size !== selected.size) {
+          changed = true;
+          if (filtered.size === 0) updated.delete(key);
+          else updated.set(key, filtered);
+        }
+      }
+      return changed ? updated : sel;
+    });
+  };
+
+  const visibleIssueIndices = (entity: ScanEntity, hidden: Set<string>): number[] => {
+    const out: number[] = [];
+    entity.issues.forEach((iss, i) => {
+      if (!hidden.has(iss.repairer)) out.push(i);
+    });
+    return out;
+  };
+
   const collectSelectableKeys = (items: ScanEntity[]) => {
-    const keys: { key: string; count: number }[] = [];
+    const keys: { key: string; indices: number[] }[] = [];
     for (const item of items) {
       if (hasSubitems(item)) {
         const parentKey = itemKey(item);
         for (const sub of item.subitems) {
           if (sub.issues.length > 0 && !sub.repaired && !sub.revision) {
-            keys.push({ key: subitemKey(parentKey, sub), count: sub.issues.length });
+            const indices = visibleIssueIndices(sub, hiddenRepairers);
+            if (indices.length > 0) keys.push({ key: subitemKey(parentKey, sub), indices });
           }
         }
       } else if (item.issues.length > 0 && !item.repaired && !item.revision) {
-        keys.push({ key: itemKey(item), count: item.issues.length });
+        const indices = visibleIssueIndices(item, hiddenRepairers);
+        if (indices.length > 0) keys.push({ key: itemKey(item), indices });
       }
     }
     return keys;
@@ -361,9 +421,9 @@ export default function App() {
   const selectableKeys = result ? collectSelectableKeys(result.items) : [];
   const allItemsSelected =
     selectableKeys.length > 0 &&
-    selectableKeys.every(({ key, count }) => {
+    selectableKeys.every(({ key, indices }) => {
       const sel = selectedIssues.get(key);
-      return sel && sel.size === count;
+      return !!sel && indices.every((i) => sel.has(i));
     });
   const someItemsSelected = hasAnySelection && !allItemsSelected;
 
@@ -372,8 +432,8 @@ export default function App() {
       setSelectedIssues(new Map());
     } else {
       const next = new Map<string, Set<number>>();
-      selectableKeys.forEach(({ key, count }) => {
-        next.set(key, new Set(Array.from({ length: count }, (_, i) => i)));
+      selectableKeys.forEach(({ key, indices }) => {
+        next.set(key, new Set(indices));
       });
       setSelectedIssues(next);
     }
@@ -381,21 +441,23 @@ export default function App() {
 
   const toggleCollectionSelection = (item: ScanEntity) => {
     const parentKey = itemKey(item);
-    const subs = item.subitems.filter((sub) => sub.issues.length > 0 && !sub.repaired && !sub.revision);
+    const subs = item.subitems
+      .filter((sub) => sub.issues.length > 0 && !sub.repaired && !sub.revision)
+      .map((sub) => ({ sub, indices: visibleIssueIndices(sub, hiddenRepairers) }))
+      .filter(({ indices }) => indices.length > 0);
     const allSubsSelected =
       subs.length > 0 &&
-      subs.every((sub) => {
-        const key = subitemKey(parentKey, sub);
-        const sel = selectedIssues.get(key);
-        return sel && sel.size === sub.issues.length;
+      subs.every(({ sub, indices }) => {
+        const sel = selectedIssues.get(subitemKey(parentKey, sub));
+        return !!sel && indices.every((i) => sel.has(i));
       });
     setSelectedIssues((prev) => {
       const next = new Map(prev);
       if (allSubsSelected) {
-        subs.forEach((sub) => next.delete(subitemKey(parentKey, sub)));
+        subs.forEach(({ sub }) => next.delete(subitemKey(parentKey, sub)));
       } else {
-        subs.forEach((sub) => {
-          next.set(subitemKey(parentKey, sub), new Set(Array.from({ length: sub.issues.length }, (_, i) => i)));
+        subs.forEach(({ sub, indices }) => {
+          next.set(subitemKey(parentKey, sub), new Set(indices));
         });
       }
       return next;
@@ -472,6 +534,8 @@ export default function App() {
 
       if (response.ok) {
         const scanResult: ScanResult = await response.json();
+        setResultHideValid(hideValid);
+        setHiddenRepairers(new Set());
         setResult(scanResult);
       } else {
         const errData = await response.json().catch(() => null);
@@ -699,6 +763,9 @@ export default function App() {
           {result && (
             <ResultsTable
               result={result}
+              hideValidAtScanTime={resultHideValid}
+              hiddenRepairers={hiddenRepairers}
+              onToggleRepairer={toggleRepairerHidden}
               repairers={repairers}
               selectedIssues={selectedIssues}
               expandedRows={expandedRows}
