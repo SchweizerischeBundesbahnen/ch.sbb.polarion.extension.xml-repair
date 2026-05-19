@@ -28,16 +28,9 @@ export default function RepairerBreakdownTable({ rows, hiddenRepairers, onToggle
               <td>{r.name}</td>
               <td>{r.count}</td>
               <td>
-                <a
-                  href="#"
-                  className="breakdown-filter"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    onToggleRepairer(r.id);
-                  }}
-                >
+                <button type="button" className="breakdown-filter" onClick={() => onToggleRepairer(r.id)}>
                   ({hidden ? 'show' : 'hide'})
-                </a>
+                </button>
               </td>
             </tr>
           );

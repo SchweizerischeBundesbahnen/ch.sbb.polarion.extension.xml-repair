@@ -117,16 +117,13 @@ export default function ResultsTable({
             {' '}
             (
             {totalIssues > 0 ? (
-              <a
-                href="#"
+              <button
+                type="button"
                 className="breakdown-toggle"
-                onClick={(e) => {
-                  e.preventDefault();
-                  setBreakdownOpen((open) => !open);
-                }}
+                onClick={() => setBreakdownOpen((open) => !open)}
               >
                 {summaryText}
-              </a>
+              </button>
             ) : (
               summaryText
             )}

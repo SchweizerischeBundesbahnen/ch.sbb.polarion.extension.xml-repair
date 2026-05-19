@@ -500,6 +500,10 @@
 }
 
 .breakdown-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
   color: #0d6efd;
   text-decoration: underline;
   cursor: pointer;
@@ -552,6 +556,10 @@
 }
 
 .breakdown-filter {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
   color: #0d6efd;
   text-decoration: underline;
   cursor: pointer;
