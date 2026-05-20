@@ -9,6 +9,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
+import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.StringUtils;
@@ -62,7 +63,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                     if (roleOpt == null) {
                         metaInfo.set(ISSUE_TYPE, IssueType.UNKNOWN_LINK_ROLE_ID.name());
                         message = "Unknown '%s' role specified for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
-                    } else if (typesPairViolatesLinkRules(workItem, link.getLinkedItem(), roleOpt)) {
+                    } else if (linkViolatesRules(workItem, link, roleOpt)) {
                         metaInfo.set(ISSUE_TYPE, IssueType.LINK_ROLE_RULE_VIOLATED.name());
                         message = "Link role '%s' rule violated for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
                     }
@@ -172,14 +173,19 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     }
 
     @VisibleForTesting
-    boolean typesPairViolatesLinkRules(@NotNull IWorkItem srcWorkItem, @NotNull IWorkItem targetWorkItem, @NotNull ILinkRoleOpt roleOpt) {
+    boolean linkViolatesRules(@NotNull IWorkItem srcWorkItem, @NotNull ILinkedWorkItemStruct link, @NotNull ILinkRoleOpt roleOpt) {
         // Polarion auto-links every work item in a document to its closest heading or parent via the module's structureLinkRole
         // without consulting link-role rules (see XMLStructuredDocument.createModuleStructureLinks).
         // Treat structureLinkRole links as allowed to avoid flagging these Polarion-managed structure links.
-        if (srcWorkItem.getModule() != null && !srcWorkItem.getModule().isUnresolvable()
-                && targetWorkItem.getModule() != null && !targetWorkItem.getModule().isUnresolvable()
-                && Objects.equals(srcWorkItem.getModule(), targetWorkItem.getModule())
-                && srcWorkItem.getModule().getStructureLinkRole().getId().equals(roleOpt.getId())) {
+        IWorkItem targetWorkItem = link.getLinkedItem();
+        IModule srcModule = srcWorkItem.getModule();
+        IModule targetModule = targetWorkItem.getModule();
+        if (srcModule != null && !srcModule.isUnresolvable() && targetModule != null && !targetModule.isUnresolvable()
+                && Objects.equals(srcModule.getProjectId(), targetModule.getProjectId())
+                && Objects.equals(srcModule.getModuleFolder(), targetModule.getModuleFolder())
+                && Objects.equals(srcModule.getModuleName(), targetModule.getModuleName())
+                && Objects.equals(srcModule.getRevision(), link.getRevision())
+                && srcModule.getStructureLinkRole().getId().equals(roleOpt.getId())) {
             return false;
         }
         List<ILinkRoleOpt.IRule> rules = roleOpt.getRules();
