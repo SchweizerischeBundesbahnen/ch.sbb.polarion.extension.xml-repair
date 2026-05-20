@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.4.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.3.1...v2.4.0) (2026-05-20)
+
+
+### Features
+
+* new check for standard structure link role usage in a LiveDoc ([#52](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/52)) ([a4a7dbc](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/a4a7dbc3f6f4e68410511fbd9c75f2389111dd05)), closes [#41](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/41)
+* show statistics about found XML Problems on the plugin report page ([#48](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/48)) ([0183069](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/018306922bbfe5a9912289f0780f757988b332dc)), closes [#43](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/43)
+
+
+### Bug Fixes
+
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v14.1.4 ([#51](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/51)) ([f9eae0d](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/f9eae0d9b170286acb7489f00e4f94f47dcda2f7))
+
 ## [2.3.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.3.0...v2.3.1) (2026-05-15)
 
 
