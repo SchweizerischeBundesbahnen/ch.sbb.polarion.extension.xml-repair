@@ -23,6 +23,10 @@ import type {
 
 const COOKIE_PREFIX = 'xmlRepair_';
 
+// Repairer IDs (Java class simple names) that should be off by default for first-time users.
+// Existing users with a saved cookie are unaffected — their cookie won't list these IDs anyway.
+const OPT_OUT_BY_DEFAULT_REPAIRERS = new Set<string>(['ModuleStandardStructureLinkRoleRepairer']);
+
 function getCookie(key: string): string | null {
   const name = COOKIE_PREFIX + key + '=';
   const parts = document.cookie.split('; ');
@@ -147,12 +151,13 @@ export default function App() {
       const data: Repairer[] = await response.json();
       setRepairers(data);
       const availableIds = data.map((r) => r.id);
+      const defaultSelectedIds = availableIds.filter((id) => !OPT_OUT_BY_DEFAULT_REPAIRERS.has(id));
       if (isFirstRender.current) {
         const savedRaw = getCookie(`repairers_${entityType}`);
         const savedIds = savedRaw ? savedRaw.split(',').filter((id) => availableIds.includes(id)) : [];
-        setSelectedRepairers(savedIds.length > 0 ? savedIds : availableIds);
+        setSelectedRepairers(savedIds.length > 0 ? savedIds : defaultSelectedIds);
       } else {
-        setSelectedRepairers(availableIds);
+        setSelectedRepairers(defaultSelectedIds);
       }
       const defaults: Record<string, Record<string, boolean>> = {};
       data.forEach((r) => {

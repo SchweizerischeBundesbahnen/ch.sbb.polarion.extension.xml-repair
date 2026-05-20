@@ -482,8 +482,8 @@ class XmlRepairPolarionServiceTest {
 
     @Test
     void testGetRepairerMetas() {
-        assertEquals(10, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
-        assertEquals(10, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
+        assertEquals(11, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
+        assertEquals(11, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
         assertEquals(5, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
     }
 
@@ -494,7 +494,7 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(10, repairers.size());
+        assertEquals(11, repairers.size());
     }
 
     @Test
@@ -504,7 +504,7 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(10, repairers.size());
+        assertEquals(11, repairers.size());
     }
 
     @Test

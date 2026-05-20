@@ -13,6 +13,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
+import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.ITrackerProject;
 import com.polarion.alm.tracker.model.ITypeOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
@@ -88,7 +89,9 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(true);
-        doReturn(mock(ILinkRoleOpt.class)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
+        // Mockito's RETURNS_DEFAULTS yields an empty list for getRules(), which would flag every link as a violation.
+        // Use a roleOpt with rules == null to express "no rule-based restrictions" (no violation).
+        doReturn(mockRoleOpt("relates", null)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -205,7 +208,8 @@ class BrokenLinkedWorkItemsRepairerTest {
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
         when(polarionService.isWorkItemExists("drivepilot", "EL-2", null)).thenReturn(false);
-        doReturn(mock(ILinkRoleOpt.class)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
+        // rules == null => no rule-based restrictions; only the broken-link issue is expected.
+        doReturn(mockRoleOpt("relates", null)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -773,105 +777,239 @@ class BrokenLinkedWorkItemsRepairerTest {
 
     // --- typesPairViolatesLinkRules() tests ---
     // typesPairViolatesLinkRules delegates compliance to Polarion's ILinkRoleOpt.IRule#isAllowed.
-    // These tests cover this wrapper's own logic: null-rules guard, vacuous-truth on empty list,
-    // and noneMatch semantics across multiple rules.
+    // These tests cover:
+    //  - structureLinkRole bypass for Polarion-managed structure links within the same module
+    //  - null-rules guard, vacuous-truth on empty list, and noneMatch semantics
+    //  - Optional.orElse("") fallback when source/target type is null
 
     @Test
     void testViolatesLinkRulesNullRulesReturnsFalse() {
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", null));
+        IWorkItem src = mockWorkItem("task", null);
+        IWorkItem tgt = mockWorkItem("task", null);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", null);
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
     }
 
     @Test
     void testViolatesLinkRulesEmptyListReturnsTrue() {
         // No rules to comply with -> violation
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("task", "task", List.of()));
+        IWorkItem src = mockWorkItem("task", null);
+        IWorkItem tgt = mockWorkItem("task", null);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of());
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
     }
 
     @Test
     void testViolatesLinkRulesSingleAllowingRuleReturnsFalse() {
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", null);
         ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
         when(rule.isAllowed("requirement", "task")).thenReturn(true);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule));
 
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
         verify(rule).isAllowed("requirement", "task");
     }
 
     @Test
     void testViolatesLinkRulesSingleDisallowingRuleReturnsTrue() {
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", null);
         ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
         when(rule.isAllowed(anyString(), anyString())).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule));
 
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule)));
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
         verify(rule).isAllowed("requirement", "task");
     }
 
     @Test
     void testViolatesLinkRulesSecondRuleAllowsReturnsFalse() {
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", null);
         ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
         when(rule1.isAllowed(anyString(), anyString())).thenReturn(false);
         ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
         when(rule2.isAllowed("requirement", "task")).thenReturn(true);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule1, rule2));
 
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
         verify(rule1).isAllowed("requirement", "task");
         verify(rule2).isAllowed("requirement", "task");
     }
 
     @Test
     void testViolatesLinkRulesFirstRuleAllowsShortCircuits() {
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", null);
         ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
         when(rule1.isAllowed("requirement", "task")).thenReturn(true);
         ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule1, rule2));
 
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
         // noneMatch is short-circuiting — rule2 must not be consulted once rule1 allows
         verify(rule1).isAllowed("requirement", "task");
         verify(rule2, never()).isAllowed(anyString(), anyString());
     }
 
     @Test
-    void testViolatesLinkRulesHeadingTargetBypassesRules() {
-        // Polarion auto-links any work item in a document to its closest heading without consulting rules
-        // (see XMLStructuredDocument.createModuleStructureLinks). Heading-targeted links must never be flagged.
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "heading", List.of(rule)));
-        // rules must not be consulted at all for heading targets
-        verifyNoInteractions(rule);
-    }
-
-    @Test
-    void testViolatesLinkRulesHeadingTargetBypassesEvenWithNullRules() {
-        // null rules normally yield "no violation" anyway, but verify the heading short-circuit handles it cleanly
-        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "heading", null));
-    }
-
-    @Test
-    void testViolatesLinkRulesHeadingSourceStillValidated() {
-        // The bypass is target-only — a heading WI with a manual outgoing link to a non-heading must still be validated.
-        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
-        when(rule.isAllowed(anyString(), anyString())).thenReturn(false);
-
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("heading", "task", List.of(rule)));
-        verify(rule).isAllowed("heading", "task");
-    }
-
-    @Test
     void testViolatesLinkRulesAllRulesDisallowReturnsTrue() {
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", null);
         ILinkRoleOpt.IRule rule1 = mock(ILinkRoleOpt.IRule.class);
         when(rule1.isAllowed(anyString(), anyString())).thenReturn(false);
         ILinkRoleOpt.IRule rule2 = mock(ILinkRoleOpt.IRule.class);
         when(rule2.isAllowed(anyString(), anyString())).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule1, rule2));
 
-        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules("requirement", "task", List.of(rule1, rule2)));
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
         verify(rule1).isAllowed("requirement", "task");
         verify(rule2).isAllowed("requirement", "task");
+    }
+
+    // --- structureLinkRole bypass tests ---
+    // Polarion auto-links every work item in a document to its closest heading/parent via the module's
+    // structureLinkRole without consulting link-role rules (see XMLStructuredDocument.createModuleStructureLinks).
+    // Such links must not be flagged as violations.
+
+    @Test
+    void testViolatesLinkRulesStructureLinkInSameModuleBypassesRules() {
+        IModule module = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", module);
+        IWorkItem tgt = mockWorkItem("task", module);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+        // Rules must not even be consulted
+        verifyNoInteractions(rule);
+    }
+
+    @Test
+    void testViolatesLinkRulesStructureLinkBypassWorksWithNullRules() {
+        // Bypass takes effect regardless of nullness of rules
+        IModule module = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", module);
+        IWorkItem tgt = mockWorkItem("task", module);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", null);
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenSrcModuleNull() {
+        IModule tgtModule = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem("task", tgtModule);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+        verify(rule).isAllowed("requirement", "task");
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenSrcModuleUnresolvable() {
+        IModule srcModule = mockModule(true);
+        IModule tgtModule = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", srcModule);
+        IWorkItem tgt = mockWorkItem("task", tgtModule);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenTargetModuleNull() {
+        IModule srcModule = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", srcModule);
+        IWorkItem tgt = mockWorkItem("task", null);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenTargetModuleUnresolvable() {
+        IModule srcModule = mockModule(false);
+        IModule tgtModule = mockModule(true);
+        IWorkItem src = mockWorkItem("requirement", srcModule);
+        IWorkItem tgt = mockWorkItem("task", tgtModule);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenModulesDiffer() {
+        // Both modules are resolvable and share the same structureLinkRole id, but src and target live in different modules.
+        IModule srcModule = mockModule(false);
+        IModule tgtModule = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", srcModule);
+        IWorkItem tgt = mockWorkItem("task", tgtModule);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        ILinkRoleOpt roleOpt = mockRoleOpt("parent", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNoBypassWhenRoleIsNotStructureLinkRole() {
+        IModule module = mockModule(false);
+        IWorkItem src = mockWorkItem("requirement", module);
+        IWorkItem tgt = mockWorkItem("task", module);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "task")).thenReturn(false);
+        // The role being validated ("relates") is not the module's structureLinkRole ("parent")
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule));
+
+        assertTrue(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+    }
+
+    @Test
+    void testViolatesLinkRulesNullSrcTypeUsesEmptyString() {
+        // Optional.orElse("") branch for null source type
+        IWorkItem src = mockWorkItem(null, null);
+        IWorkItem tgt = mockWorkItem("task", null);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("", "task")).thenReturn(true);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule));
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+        verify(rule).isAllowed("", "task");
+    }
+
+    @Test
+    void testViolatesLinkRulesNullTargetTypeUsesEmptyString() {
+        // Optional.orElse("") branch for null target type
+        IWorkItem src = mockWorkItem("requirement", null);
+        IWorkItem tgt = mockWorkItem(null, null);
+        ILinkRoleOpt.IRule rule = mock(ILinkRoleOpt.IRule.class);
+        when(rule.isAllowed("requirement", "")).thenReturn(true);
+        ILinkRoleOpt roleOpt = mockRoleOpt("relates", List.of(rule));
+
+        assertFalse(new BrokenLinkedWorkItemsRepairer().typesPairViolatesLinkRules(src, tgt, roleOpt));
+        verify(rule).isAllowed("requirement", "");
     }
 
     // --- scan() + LINK_ROLE_RULE_VIOLATED tests ---
 
     @Test
-    void testScanLinkedItemTypeNullSkipsRuleViolationCheck() {
+    void testScanLinkedItemTypeNullStillInvokesRuleCheck() {
+        // The old inline guard `link.getLinkedItem().getType() != null` in scan() was removed.
+        // The rule check is now always invoked when the role resolves; null target type is handled
+        // internally via Optional.orElse("") in typesPairViolatesLinkRules.
         BrokenLinkedWorkItemsRepairer repairer = spy(new BrokenLinkedWorkItemsRepairer());
 
         IWorkItem entity = mock(IWorkItem.class);
@@ -879,18 +1017,20 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(entity.getProjectId()).thenReturn("elibrary");
         when(entity.getId()).thenReturn("WI-1");
         ILinkedWorkItemStruct link = mockLink("elibrary", "EL-100", null, "relates", false);
-        // linked item type is null — rule check must be skipped
+        // linked item type intentionally not stubbed — getType() returns null
         when(entity.getLinkedWorkItemsStructsDirect()).thenReturn(new ArrayList<>(List.of(link)));
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists("elibrary", "EL-100", null)).thenReturn(true);
         doReturn(mock(ILinkRoleOpt.class)).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
+        doReturn(false).when(repairer).typesPairViolatesLinkRules(any(IWorkItem.class), any(IWorkItem.class), any(ILinkRoleOpt.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
 
         assertTrue(issues.isEmpty());
-        verify(repairer, never()).typesPairViolatesLinkRules(any(), any(), any());
+        // The method IS invoked now — the inline null-type guard at scan() level was removed.
+        verify(repairer).typesPairViolatesLinkRules(any(IWorkItem.class), any(IWorkItem.class), any(ILinkRoleOpt.class));
     }
 
     @Test
@@ -915,7 +1055,7 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         ILinkRoleOpt roleOpt = mock(ILinkRoleOpt.class);
         doReturn(roleOpt).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
-        doReturn(true).when(repairer).typesPairViolatesLinkRules(eq("requirement"), eq("task"), any());
+        doReturn(true).when(repairer).typesPairViolatesLinkRules(any(IWorkItem.class), any(IWorkItem.class), any(ILinkRoleOpt.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -947,7 +1087,7 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         ILinkRoleOpt roleOpt = mock(ILinkRoleOpt.class);
         doReturn(roleOpt).when(repairer).getRoleOpt(any(IWorkItem.class), eq("relates"), any(ScanContext.class));
-        doReturn(false).when(repairer).typesPairViolatesLinkRules(eq("requirement"), eq("task"), any());
+        doReturn(false).when(repairer).typesPairViolatesLinkRules(any(IWorkItem.class), any(IWorkItem.class), any(ILinkRoleOpt.class));
         ScanContext context = createScanContext(polarionService);
 
         List<Issue> issues = repairer.scan(entity, context);
@@ -1005,5 +1145,32 @@ class BrokenLinkedWorkItemsRepairerTest {
             when(link.getLinkRole()).thenReturn(role);
         }
         return link;
+    }
+
+    private static IWorkItem mockWorkItem(String typeId, IModule module) {
+        IWorkItem wi = mock(IWorkItem.class);
+        if (typeId != null) {
+            ITypeOpt type = mock(ITypeOpt.class);
+            when(type.getId()).thenReturn(typeId);
+            when(wi.getType()).thenReturn(type);
+        }
+        when(wi.getModule()).thenReturn(module);
+        return wi;
+    }
+
+    private static IModule mockModule(boolean unresolvable) {
+        IModule module = mock(IModule.class);
+        when(module.isUnresolvable()).thenReturn(unresolvable);
+        ILinkRoleOpt structureRole = mock(ILinkRoleOpt.class);
+        when(structureRole.getId()).thenReturn("parent");
+        when(module.getStructureLinkRole()).thenReturn(structureRole);
+        return module;
+    }
+
+    private static ILinkRoleOpt mockRoleOpt(String roleId, List<ILinkRoleOpt.IRule> rules) {
+        ILinkRoleOpt roleOpt = mock(ILinkRoleOpt.class);
+        when(roleOpt.getId()).thenReturn(roleId);
+        when(roleOpt.getRules()).thenReturn(rules);
+        return roleOpt;
     }
 }
