@@ -9,24 +9,25 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
+import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.StringUtils;
+import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
 
     public static final String NAME = "Broken Work Item Links";
-    private static final String HEADING_TYPE_ID = "heading";
     private static final String LINK_PROJECT_ID = "linkProjectId";
     private static final String LINK_ROLE = "linkRole";
     private static final String LINK_ID = "linkId";
@@ -62,7 +63,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
                     if (roleOpt == null) {
                         metaInfo.set(ISSUE_TYPE, IssueType.UNKNOWN_LINK_ROLE_ID.name());
                         message = "Unknown '%s' role specified for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
-                    } else if (link.getLinkedItem().getType() != null && typesPairViolatesLinkRules(workItem.getType().getId(), link.getLinkedItem().getType().getId(), roleOpt.getRules())) {
+                    } else if (linkViolatesRules(workItem, link, roleOpt)) {
                         metaInfo.set(ISSUE_TYPE, IssueType.LINK_ROLE_RULE_VIOLATED.name());
                         message = "Link role '%s' rule violated for '%s/%s'".formatted(linkRoleId, projectId, workItemId);
                     }
@@ -172,14 +173,24 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     }
 
     @VisibleForTesting
-    boolean typesPairViolatesLinkRules(@NotNull String srcTypeId, @NotNull String targetTypeId, @Nullable List<ILinkRoleOpt.IRule> rules) {
-        // Polarion auto-links every work item in a document to its closest heading via the module's structureLinkRole
+    boolean linkViolatesRules(@NotNull IWorkItem srcWorkItem, @NotNull ILinkedWorkItemStruct link, @NotNull ILinkRoleOpt roleOpt) {
+        // Polarion auto-links every work item in a document to its closest heading or parent via the module's structureLinkRole
         // without consulting link-role rules (see XMLStructuredDocument.createModuleStructureLinks).
-        // Treat any link to a heading as allowed to avoid flagging these Polarion-managed structure links.
-        if (HEADING_TYPE_ID.equals(targetTypeId)) {
+        // Treat structureLinkRole links as allowed to avoid flagging these Polarion-managed structure links.
+        IWorkItem targetWorkItem = link.getLinkedItem();
+        IModule srcModule = srcWorkItem.getModule();
+        IModule targetModule = targetWorkItem.getModule();
+        if (srcModule != null && !srcModule.isUnresolvable() && targetModule != null && !targetModule.isUnresolvable()
+                && Objects.equals(srcModule.getProjectId(), targetModule.getProjectId())
+                && Objects.equals(srcModule.getModuleFolder(), targetModule.getModuleFolder())
+                && Objects.equals(srcModule.getModuleName(), targetModule.getModuleName())
+                && Objects.equals(srcModule.getRevision(), link.getRevision())
+                && srcModule.getStructureLinkRole().getId().equals(roleOpt.getId())) {
             return false;
         }
-        return rules != null && rules.stream().noneMatch(rule -> rule.isAllowed(srcTypeId, targetTypeId));
+        List<ILinkRoleOpt.IRule> rules = roleOpt.getRules();
+        return rules != null && rules.stream().noneMatch(rule ->
+                rule.isAllowed(Optional.ofNullable(srcWorkItem.getType()).map(IEnumOption::getId).orElse(""), Optional.ofNullable(targetWorkItem.getType()).map(IEnumOption::getId).orElse("")));
     }
 
 }
