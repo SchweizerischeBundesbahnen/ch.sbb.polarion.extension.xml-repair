@@ -48,7 +48,7 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
     protected @NotNull RepairResult repair(IModule module, RepairContext context) {
         IssueMetaInfo issueMetaInfo = context.issueMetaInfo();
         String linkToFix = issueMetaInfo.getString(LINK);
-        String html = module.getHomePageContent().getContent();
+        String html = StringUtils.getEmptyIfNull(module.getHomePageContent().getContent());
         if (!html.contains(linkToFix)) {
             return new RepairResult(issueMetaInfo, false, "Work item was not found in the content, possibly it was already fixed or the content was changed since the scan.");
         }
@@ -84,7 +84,7 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
         Map<String, String> parameters = new HashMap<>();
         String[] parts = paramsString.split("\\|");
         for (String part : parts) {
-            int index = part.indexOf(61);
+            int index = part.indexOf("=");
             if (index > 0 && index + 1 < part.length()) {
                 String name = part.substring(0, index);
                 String value = part.substring(index + 1);
