@@ -333,15 +333,25 @@ public class XmlRepairPolarionService extends PolarionService {
         }
         String scopedQuery = ((InternalPolarionUtils) transaction.utils())
                 .addScopeToLuceneQuery(new ScopeFactoryImpl().fromPath(projectId), query);
+        String sortNormalized = normalizeSort(sort);
 
         IterableWithSize<? extends ModelObject> results = search
                 .query(scopedQuery)
                 .baseline(revision)
-                .sort(StringUtils.isEmpty(sort) ? "created" : sort)
+                .sort(StringUtils.isEmpty(sortNormalized) ? "created" : sortNormalized)
                 .limit(limit == null ? DEFAULT_LIMIT : limit)
                 .offset(offset == null ? 0 : offset);
 
         return results.toArrayList();
+    }
+
+    /**
+     * Polarion has a bug: a leading space like " created" or two or more consecutive spaces between fields (e.g. "created  updated")
+     * lead to StringIndexOutOfBoundsException. This method normalizes the sort parameter to prevent such exceptions.
+     */
+    @VisibleForTesting
+    String normalizeSort(@Nullable String sort) {
+        return sort == null ? "" : sort.trim().replaceAll("\\s+", " ");
     }
 
     @VisibleForTesting
