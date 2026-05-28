@@ -60,6 +60,9 @@ import com.polarion.subterra.base.data.model.IType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -1335,6 +1338,84 @@ class XmlRepairPolarionServiceTest {
             verify(search).limit(100);
             verify(search).offset(0);
         }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testQueryEntitiesNormalizesSortWithExtraSpaces() {
+        // Leading, trailing and repeated inner spaces would make Polarion's createSort throw
+        // StringIndexOutOfBoundsException; they must be collapsed before reaching search.sort().
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        ModelObjectsSearch search = mockSearchForQueryEntities(transaction);
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, " created  ~updated ", null, null);
+
+            verify(search).sort("created ~updated");
+        }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testQueryEntitiesBlankSortFallsBackToCreated() {
+        // A whitespace-only sort normalizes to "" and must fall back to the "created" default
+        // instead of being passed through (which previously crashed Polarion).
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        ModelObjectsSearch search = mockSearchForQueryEntities(transaction);
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, null, null, "   ", null, null);
+
+            verify(search).sort("created");
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private ModelObjectsSearch mockSearchForQueryEntities(InternalReadOnlyTransaction transaction) {
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.baseline(any())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+        return search;
+    }
+
+    // ---- normalizeSort tests ----
+
+    @ParameterizedTest
+    @MethodSource("normalizeSortCases")
+    void testNormalizeSort(String input, String expected) {
+        assertEquals(expected, polarionService.normalizeSort(input));
+    }
+
+    private static Stream<Arguments> normalizeSortCases() {
+        return Stream.of(
+                Arguments.of(null, ""),                              // null guard
+                Arguments.of("", ""),                                // empty stays empty
+                Arguments.of("   ", ""),                             // spaces only -> empty after trim
+                Arguments.of("\t\n ", ""),                           // mixed whitespace only -> empty after trim
+                Arguments.of("created", "created"),                  // already normal, unchanged
+                Arguments.of("~updated", "~updated"),                // revert prefix preserved
+                Arguments.of(" created", "created"),                 // leading space (the original crash trigger)
+                Arguments.of("created ", "created"),                 // trailing space (crash trigger for baseline scans)
+                Arguments.of("  created  ", "created"),              // leading + trailing
+                Arguments.of("created  updated", "created updated"), // double inner space (crash trigger)
+                Arguments.of("~created   ~updated", "~created ~updated"), // triple inner space collapsed
+                Arguments.of("a\tb", "a b"),                         // tab collapsed to single space
+                Arguments.of("created\nupdated", "created updated")  // newline collapsed to single space
+        );
     }
 
     // ---- getBaselines tests ----
