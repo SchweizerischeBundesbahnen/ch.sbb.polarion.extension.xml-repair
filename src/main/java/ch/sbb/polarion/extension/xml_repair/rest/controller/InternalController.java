@@ -33,7 +33,7 @@ import javax.ws.rs.core.Response;
 @Singleton
 @Hidden
 @Path("/internal")
-@Tag(name = "")
+@Tag(name = "XML Repair")
 public class InternalController {
 
     protected final XmlRepairPolarionService polarionService = new XmlRepairPolarionService();

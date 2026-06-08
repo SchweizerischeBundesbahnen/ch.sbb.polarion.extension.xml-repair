@@ -34,7 +34,10 @@
             "description": "Successfully retrieved the list of baselines"
           }
         },
-        "summary": "Get list of baselines for the specified project"
+        "summary": "Get list of baselines for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/context": {
@@ -87,7 +90,10 @@
             "description": "Successfully retrieved the list of document types"
           }
         },
-        "summary": "Get list of document types for the specified project"
+        "summary": "Get list of document types for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/repair": {
@@ -109,7 +115,10 @@
             "description": "Processing completed successfully"
           }
         },
-        "summary": "Repair XML issues in the specified entity"
+        "summary": "Repair XML issues in the specified entity",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/repairers": {
@@ -146,7 +155,10 @@
             "description": "Successfully retrieved the list of available repairers"
           }
         },
-        "summary": "Get list of available repairers for the specified entity type"
+        "summary": "Get list of available repairers for the specified entity type",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/scan": {
@@ -168,7 +180,10 @@
             "description": "Scan completed successfully"
           }
         },
-        "summary": "Scan a list of entities for XML issues based on the provided parameters"
+        "summary": "Scan a list of entities for XML issues based on the provided parameters",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/settings": {
@@ -547,7 +562,10 @@
             "description": "Successfully retrieved the list of work item types"
           }
         },
-        "summary": "Get list of work item types for the specified project"
+        "summary": "Get list of work item types for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
       }
     }
   },
