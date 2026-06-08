@@ -201,26 +201,22 @@ export default function App() {
       return;
     }
 
-    const enumPaths = {
-      WORKITEM: '~/work-item-type/~',
-      DOCUMENT: 'documents/document-type/~',
+    const typeEndpoints = {
+      WORKITEM: '/work-item-types',
+      DOCUMENT: '/document-types',
     };
 
     const loadAllSubtypes = async () => {
-      const headers: Record<string, string> = {};
-      if (import.meta.env.VITE_BEARER_TOKEN) {
-        headers['Authorization'] = `Bearer ${import.meta.env.VITE_BEARER_TOKEN}`;
-      }
       const result: Record<string, EntitySubtype[]> = {};
       await Promise.all(
-        Object.entries(enumPaths).map(async ([type, enumPath]) => {
+        Object.entries(typeEndpoints).map(async ([type, endpoint]) => {
           try {
-            const params = new URLSearchParams({ 'fields[enumerations]': '@all' });
-            const url = `/polarion/rest/v1/projects/${encodeURIComponent(projectId)}/enumerations/${enumPath}?${params}`;
-            const response = await fetch(url, { headers });
+            const response = await sendRequest({
+              method: 'GET',
+              url: `${endpoint}?projectId=${encodeURIComponent(projectId)}`,
+            });
             if (response.ok) {
-              const json = await response.json();
-              result[type] = json.data?.attributes?.options || [];
+              result[type] = await response.json();
             }
           } catch {
             toast.error(`Failed to load ${type.toLowerCase()} subtypes`);
@@ -230,7 +226,7 @@ export default function App() {
       setAllSubtypes(result);
     };
     void loadAllSubtypes();
-  }, [projectId]);
+  }, [projectId, sendRequest]);
 
   // Validate saved entitySubtype once subtypes are loaded
   useEffect(() => {

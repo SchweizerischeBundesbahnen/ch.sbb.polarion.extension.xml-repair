@@ -25,6 +25,16 @@ public class ApiController extends InternalController {
     }
 
     @Override
+    public Response listWorkItemTypes(String projectId) {
+        return polarionService.callPrivileged(() -> super.listWorkItemTypes(projectId));
+    }
+
+    @Override
+    public Response listDocumentTypes(String projectId) {
+        return polarionService.callPrivileged(() -> super.listDocumentTypes(projectId));
+    }
+
+    @Override
     public Response scan(ScanParams scanParams) {
         return polarionService.callPrivileged(() -> super.scan(scanParams));
     }

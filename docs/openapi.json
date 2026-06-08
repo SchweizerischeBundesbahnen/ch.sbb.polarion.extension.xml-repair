@@ -34,7 +34,10 @@
             "description": "Successfully retrieved the list of baselines"
           }
         },
-        "summary": "Get list of baselines for the specified project"
+        "summary": "Get list of baselines for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/context": {
@@ -58,6 +61,41 @@
         ]
       }
     },
+    "/api/document-types": {
+      "get": {
+        "operationId": "listDocumentTypes",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of document types"
+          }
+        },
+        "summary": "Get list of document types for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
     "/api/repair": {
       "post": {
         "operationId": "repair",
@@ -77,7 +115,10 @@
             "description": "Processing completed successfully"
           }
         },
-        "summary": "Repair XML issues in the specified entity"
+        "summary": "Repair XML issues in the specified entity",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/repairers": {
@@ -114,7 +155,10 @@
             "description": "Successfully retrieved the list of available repairers"
           }
         },
-        "summary": "Get list of available repairers for the specified entity type"
+        "summary": "Get list of available repairers for the specified entity type",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/scan": {
@@ -136,7 +180,10 @@
             "description": "Scan completed successfully"
           }
         },
-        "summary": "Scan a list of entities for XML issues based on the provided parameters"
+        "summary": "Scan a list of entities for XML issues based on the provided parameters",
+        "tags": [
+          "XML Repair"
+        ]
       }
     },
     "/api/settings": {
@@ -485,6 +532,41 @@
           "Extension Information"
         ]
       }
+    },
+    "/api/work-item-types": {
+      "get": {
+        "operationId": "listWorkItemTypes",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of work item types"
+          }
+        },
+        "summary": "Get list of work item types for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
+      }
     }
   },
   "components": {
@@ -756,6 +838,29 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "TypeInfo": {
+        "description": "Work item or document type information",
+        "properties": {
+          "iconURL": {
+            "description": "The type icon URL",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The type id",
+            "type": "string"
+          },
+          "name": {
+            "description": "The type display name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "UserConfigs": {
