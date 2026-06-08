@@ -30,6 +30,8 @@ import com.polarion.alm.shared.api.model.ModelObject;
 import com.polarion.alm.shared.api.model.ModelObjectsSearch;
 import com.polarion.alm.shared.api.model.PrototypeEnum;
 import com.polarion.alm.shared.api.model.document.Document;
+import com.polarion.alm.shared.api.model.eo.EnumOption;
+import com.polarion.alm.shared.api.model.eo.Enumeration;
 import com.polarion.alm.shared.api.transaction.ReadOnlyTransaction;
 import com.polarion.alm.shared.api.utils.collections.IterableWithSize;
 import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
@@ -67,6 +69,10 @@ import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NO_PERMIS
 public class XmlRepairPolarionService extends PolarionService {
 
     public static final String SCAN_TIME_LIMIT_REACHED_WARNING = "Scan time limit was reached during processing, some items may remain unchecked. Please consider increasing the time limit or narrow the query.";
+
+    // Enumeration ids as resolved by Polarion's REST v1 enumerations endpoint (see EnumerationResourceReference#enumId)
+    private static final String WORK_ITEM_TYPE_ENUM_ID = "work-item-type";
+    private static final String DOCUMENT_TYPE_ENUM_ID = "documents/document-type";
 
     public static final Map<EntityType, List<IRepairer>> REPAIRERS = Map.of(
             EntityType.COLLECTION, List.of(
@@ -416,6 +422,27 @@ public class XmlRepairPolarionService extends PolarionService {
         return projectBaselines.stream()
                 .map(b -> new BaselineInfo(b.getBaseRevision(), b.getName()))
                 .sorted().toList();
+    }
+
+    public List<TypeInfo> getWorkItemTypes(@NotNull String projectId) {
+        return getEnumerationTypes(projectId, WORK_ITEM_TYPE_ENUM_ID);
+    }
+
+    public List<TypeInfo> getDocumentTypes(@NotNull String projectId) {
+        return getEnumerationTypes(projectId, DOCUMENT_TYPE_ENUM_ID);
+    }
+
+    private List<TypeInfo> getEnumerationTypes(@NotNull String projectId, @NotNull String enumId) {
+        ReadOnlyTransaction transaction = TransactionalExecutorImpl.currentTransaction();
+        if (transaction == null) {
+            throw new IllegalStateException("This method must be called within a transaction");
+        }
+        Enumeration enumeration = transaction.enumerations().getEnumeration(enumId).forProject(projectId);
+        List<TypeInfo> types = new ArrayList<>();
+        for (EnumOption option : enumeration.options()) {
+            types.add(new TypeInfo(option.id(), option.fields().name().get(), option.fields().iconURL().url()));
+        }
+        return types;
     }
 
 }

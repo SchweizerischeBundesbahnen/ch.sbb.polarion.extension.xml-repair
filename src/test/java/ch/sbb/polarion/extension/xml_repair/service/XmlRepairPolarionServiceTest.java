@@ -32,13 +32,19 @@ import com.polarion.alm.projects.IProjectService;
 import com.polarion.alm.projects.model.IProject;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
+import com.polarion.alm.shared.api.ScopeWithTypeSelector;
 import com.polarion.alm.shared.api.model.ModelObject;
 import com.polarion.alm.shared.api.model.ModelObjectsSearch;
 import com.polarion.alm.shared.api.model.PrototypeEnum;
 import com.polarion.alm.shared.api.model.document.Document;
 import com.polarion.alm.shared.api.model.document.DocumentSelector;
+import com.polarion.alm.shared.api.model.eo.EnumOption;
+import com.polarion.alm.shared.api.model.eo.Enumeration;
+import com.polarion.alm.shared.api.model.eo.Enumerations;
 import com.polarion.alm.shared.api.impl.ScopeFactoryImpl;
+import com.polarion.alm.shared.api.transaction.ReadOnlyTransaction;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
+import com.polarion.alm.shared.api.utils.collections.IterableWithSize;
 import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
@@ -1447,6 +1453,105 @@ class XmlRepairPolarionServiceTest {
         assertEquals("Newer", result.get(0).name());
         assertEquals("100", result.get(1).revision());
         assertEquals("Older", result.get(1).name());
+    }
+
+    // ---- getWorkItemTypes / getDocumentTypes tests ----
+
+    @Test
+    void testGetWorkItemTypesMapsOptionsToTypeInfoPreservingOrder() {
+        ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            List<EnumOption> options = List.of(
+                    mockEnumOption("requirement", "Requirement", "/icons/req.gif"),
+                    mockEnumOption("task", "Task", "/icons/task.gif"));
+            Enumerations enumerations = mockEnumerationChain(transaction, "work-item-type", options);
+
+            List<TypeInfo> result = polarionService.getWorkItemTypes("proj");
+
+            assertEquals(List.of(
+                    new TypeInfo("requirement", "Requirement", "/icons/req.gif"),
+                    new TypeInfo("task", "Task", "/icons/task.gif")), result);
+            verify(enumerations).getEnumeration("work-item-type");
+        }
+    }
+
+    @Test
+    void testGetWorkItemTypesKeepsNullIconUrl() {
+        ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            mockEnumerationChain(transaction, "work-item-type",
+                    List.of(mockEnumOption("requirement", "Requirement", null)));
+
+            List<TypeInfo> result = polarionService.getWorkItemTypes("proj");
+
+            assertEquals(1, result.size());
+            assertEquals(new TypeInfo("requirement", "Requirement", null), result.getFirst());
+            assertNull(result.getFirst().iconURL());
+        }
+    }
+
+    @Test
+    void testGetDocumentTypesUsesDocumentEnumId() {
+        ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            Enumerations enumerations = mockEnumerationChain(transaction, "documents/document-type",
+                    List.of(mockEnumOption("req_specification", "Requirements Specification", "/icons/doc.gif")));
+
+            List<TypeInfo> result = polarionService.getDocumentTypes("proj");
+
+            assertEquals(List.of(new TypeInfo("req_specification", "Requirements Specification", "/icons/doc.gif")), result);
+            verify(enumerations).getEnumeration("documents/document-type");
+        }
+    }
+
+    @Test
+    void testGetWorkItemTypesEmptyOptionsReturnsEmptyList() {
+        ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            mockEnumerationChain(transaction, "work-item-type", List.of());
+
+            assertTrue(polarionService.getWorkItemTypes("proj").isEmpty());
+        }
+    }
+
+    @Test
+    void testGetTypesThrowsWhenNoTransaction() {
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(null);
+
+            assertThrows(IllegalStateException.class, () -> polarionService.getWorkItemTypes("proj"));
+            assertThrows(IllegalStateException.class, () -> polarionService.getDocumentTypes("proj"));
+        }
+    }
+
+    private EnumOption mockEnumOption(String id, String name, String iconUrl) {
+        EnumOption option = mock(EnumOption.class, RETURNS_DEEP_STUBS);
+        when(option.id()).thenReturn(id);
+        when(option.fields().name().get()).thenReturn(name);
+        when(option.fields().iconURL().url()).thenReturn(iconUrl);
+        return option;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Enumerations mockEnumerationChain(ReadOnlyTransaction transaction, String enumId, List<EnumOption> options) {
+        Enumerations enumerations = mock(Enumerations.class);
+        when(transaction.enumerations()).thenReturn(enumerations);
+        ScopeWithTypeSelector<Enumeration> selector = mock(ScopeWithTypeSelector.class);
+        when(enumerations.getEnumeration(enumId)).thenReturn(selector);
+        Enumeration enumeration = mock(Enumeration.class);
+        when(selector.forProject("proj")).thenReturn(enumeration);
+        IterableWithSize<EnumOption> iterable = mock(IterableWithSize.class);
+        when(iterable.iterator()).thenReturn(options.iterator());
+        when(enumeration.options()).thenReturn(iterable);
+        return enumerations;
     }
 
     // ---- Helper methods ----

@@ -4,6 +4,7 @@ import ch.sbb.polarion.extension.generic.service.PolarionBaselineExecutor;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
+import ch.sbb.polarion.extension.xml_repair.service.model.TypeInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
@@ -64,6 +65,36 @@ public class InternalController {
     public Response listBaselines(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
         return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
                 transaction -> polarionService.getBaselines(projectId))).build();
+    }
+
+    @GET
+    @Path("/work-item-types")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of work item types for the specified project",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Successfully retrieved the list of work item types",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = TypeInfo.class)))
+                    )
+            })
+    public Response listWorkItemTypes(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
+        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
+                transaction -> polarionService.getWorkItemTypes(projectId))).build();
+    }
+
+    @GET
+    @Path("/document-types")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of document types for the specified project",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Successfully retrieved the list of document types",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = TypeInfo.class)))
+                    )
+            })
+    public Response listDocumentTypes(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
+        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
+                transaction -> polarionService.getDocumentTypes(projectId))).build();
     }
 
     @POST

@@ -58,6 +58,38 @@
         ]
       }
     },
+    "/api/document-types": {
+      "get": {
+        "operationId": "listDocumentTypes",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of document types"
+          }
+        },
+        "summary": "Get list of document types for the specified project"
+      }
+    },
     "/api/repair": {
       "post": {
         "operationId": "repair",
@@ -485,6 +517,38 @@
           "Extension Information"
         ]
       }
+    },
+    "/api/work-item-types": {
+      "get": {
+        "operationId": "listWorkItemTypes",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of work item types"
+          }
+        },
+        "summary": "Get list of work item types for the specified project"
+      }
     }
   },
   "components": {
@@ -756,6 +820,29 @@
             "type": "string"
           }
         },
+        "type": "object"
+      },
+      "TypeInfo": {
+        "description": "Work item or document type information",
+        "properties": {
+          "iconURL": {
+            "description": "The type icon URL",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "description": "The type id",
+            "type": "string"
+          },
+          "name": {
+            "description": "The type display name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
         "type": "object"
       },
       "UserConfigs": {
