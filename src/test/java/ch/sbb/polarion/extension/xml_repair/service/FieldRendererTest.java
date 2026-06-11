@@ -47,10 +47,12 @@ class FieldRendererTest {
         field.set(target, value);
     }
 
-    private HtmlFragmentBuilder setupFragmentBuilder(RichTextRenderTarget renderTarget, String returnValue) {
+    private HtmlFragmentBuilder setupFragmentBuilder(InternalReadOnlyTransaction transaction, String returnValue) {
         HtmlFragmentBuilder fragmentBuilder = mock(HtmlFragmentBuilder.class);
         when(fragmentBuilder.toString()).thenReturn(returnValue);
-        when(renderTarget.selectBuilderTarget(any())).thenReturn(fragmentBuilder);
+        // RichTextRenderTarget is a sealed enum and cannot be mocked since Polarion 2606; use the real
+        // PDF_EXPORT literal (as in production) whose selectBuilderTarget delegates to selector.notifications().
+        when(transaction.context().createHtmlFragmentBuilderFor().notifications()).thenReturn(fragmentBuilder);
         return fragmentBuilder;
     }
 
@@ -58,9 +60,9 @@ class FieldRendererTest {
     void testRenderSelfLinkWithWorkItemRenderer() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(renderTarget,"<rendered>");
+        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(transaction,"<rendered>");
 
         ModelObject modelObject = mock(ModelObject.class, RETURNS_DEEP_STUBS);
         IWorkItem workItem = mock(IWorkItem.class);
@@ -86,9 +88,9 @@ class FieldRendererTest {
     void testRenderSelfLinkWithNonWorkItemRenderer() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        setupFragmentBuilder(renderTarget,"<rendered>");
+        setupFragmentBuilder(transaction,"<rendered>");
 
         ModelObject modelObject = mock(ModelObject.class, RETURNS_DEEP_STUBS);
         IWorkItem workItem = mock(IWorkItem.class);
@@ -108,9 +110,9 @@ class FieldRendererTest {
     void testRenderRegularField() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(renderTarget,"<field-html>");
+        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(transaction,"<field-html>");
         HtmlContentBuilder htmlContentBuilder = mock(HtmlContentBuilder.class);
         when(fragmentBuilder.html("")).thenReturn(htmlContentBuilder);
 
@@ -135,9 +137,9 @@ class FieldRendererTest {
     void testRenderLinkedWorkItemsField() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(renderTarget,"<linked>");
+        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(transaction,"<linked>");
         HtmlContentBuilder htmlContentBuilder = mock(HtmlContentBuilder.class);
         when(fragmentBuilder.html("")).thenReturn(htmlContentBuilder);
 
@@ -162,7 +164,7 @@ class FieldRendererTest {
     void testRenderEntityNotWorkItemCreatesTemporary() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
         IWorkItem tempWorkItem = mock(IWorkItem.class);
         IProject project = mock(IProject.class);
@@ -173,7 +175,7 @@ class FieldRendererTest {
         when(nonWiEntity.getFieldLabel("someField")).thenReturn("Some Field");
         when(trackerService.createWorkItem(project)).thenReturn(tempWorkItem);
 
-        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(renderTarget,"<non-wi>");
+        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(transaction,"<non-wi>");
         HtmlContentBuilder htmlContentBuilder = mock(HtmlContentBuilder.class);
         when(fragmentBuilder.html("")).thenReturn(htmlContentBuilder);
 
@@ -193,9 +195,9 @@ class FieldRendererTest {
     void testRenderExceptionInsideTryReturnsFallback() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(renderTarget,"<unused>");
+        HtmlFragmentBuilder fragmentBuilder = setupFragmentBuilder(transaction,"<unused>");
         HtmlContentBuilder htmlContentBuilder = mock(HtmlContentBuilder.class);
         when(fragmentBuilder.html("")).thenReturn(htmlContentBuilder);
 
@@ -218,9 +220,9 @@ class FieldRendererTest {
     void testRenderExceptionInSelfLinkReturnsFallback() throws Exception {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         ITrackerService trackerService = mock(ITrackerService.class);
-        RichTextRenderTarget renderTarget = mock(RichTextRenderTarget.class);
+        RichTextRenderTarget renderTarget = RichTextRenderTarget.PDF_EXPORT;
 
-        setupFragmentBuilder(renderTarget,"<unused>");
+        setupFragmentBuilder(transaction,"<unused>");
 
         ModelObject modelObject = mock(ModelObject.class, RETURNS_DEEP_STUBS);
         IWorkItem workItem = mock(IWorkItem.class);
