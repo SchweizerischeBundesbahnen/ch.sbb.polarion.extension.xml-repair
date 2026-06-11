@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.5.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.5.0...v2.5.1) (2026-06-09)
+
+
+### Bug Fixes
+
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v14.1.5 ([#66](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/66)) ([2749150](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/2749150d45bdc2f11d3417e35e7f87f4abaf86b4))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v14.1.6 ([#73](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/73)) ([0cded98](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/0cded98733c8086f689235840b5f472d953a6c55))
+* extra spaces in the 'sort' field cause StringIndexOutOfBoundsExc… ([#62](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/62)) ([cbc4907](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/cbc4907c5967834b984650b3a66649c1da411482))
+* extra spaces in the 'sort' field cause StringIndexOutOfBoundsException ([cbc4907](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/cbc4907c5967834b984650b3a66649c1da411482)), closes [#61](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/61)
+* missing types for documents and work items in the 'Entity Type' … ([#75](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/75)) ([4f981e6](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/4f981e642df32dae44fea9acf0872c4682ba5fda))
+* missing types for documents and work items in the 'Entity Type' dropdown ([4f981e6](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/4f981e642df32dae44fea9acf0872c4682ba5fda)), closes [#74](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/74)
+
 ## [2.5.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.4.0...v2.5.0) (2026-05-27)
 
 
