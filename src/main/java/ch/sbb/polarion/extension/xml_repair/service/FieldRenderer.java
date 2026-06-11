@@ -13,7 +13,7 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.ui.shared.FieldRenderType;
 import com.polarion.core.util.logging.Logger;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 public class FieldRenderer {

@@ -5,9 +5,9 @@ import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 
-import javax.inject.Singleton;
-import javax.ws.rs.Path;
-import javax.ws.rs.core.Response;
+import jakarta.inject.Singleton;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.core.Response;
 
 @Singleton
 @Secured
