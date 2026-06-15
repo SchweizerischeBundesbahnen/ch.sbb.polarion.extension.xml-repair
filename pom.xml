@@ -55,7 +55,7 @@
         <slf4j-api.version>2.0.18</slf4j-api.version>
 
         <node.version>v20.11.0</node.version>
-        <frontend-maven-plugin.version>2.0.0</frontend-maven-plugin.version>
+        <frontend-maven-plugin.version>2.0.1</frontend-maven-plugin.version>
 
         <vite.sources.root>${project.basedir}/ui</vite.sources.root>
         <vite.destination.root>${project.basedir}/src/main/resources/webapp/xml-repair-app</vite.destination.root>
