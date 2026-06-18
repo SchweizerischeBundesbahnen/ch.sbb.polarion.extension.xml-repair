@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+@SuppressWarnings("java:S125") // suppress false-positive commented-out lines of code
 class HtmlUtilsTest {
 
     // === Plain input / no normalization needed ===

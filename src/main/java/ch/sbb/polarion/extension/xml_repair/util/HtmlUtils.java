@@ -16,7 +16,7 @@ public class HtmlUtils {
     // HTML-encoded whitespace: the named non-breaking space entity plus any numeric character reference
     // (decimal "&#160;" or hex "&#xA0;"). We match all numeric references here and later decode them to
     // decide whether each one actually represents a whitespace character (see decodesToWhitespace).
-    private final Pattern HTML_SPACE_ENTITY = Pattern.compile("&nbsp;|&#x?[0-9a-fA-F]+;", Pattern.CASE_INSENSITIVE);
+    private final Pattern HTML_SPACE_ENTITY = Pattern.compile("&nbsp;|&#x?[0-9a-f]+;", Pattern.CASE_INSENSITIVE);
 
     /**
      * Normalizes whitespace in a string to plain spaces so that it can be compared reliably. Handles both

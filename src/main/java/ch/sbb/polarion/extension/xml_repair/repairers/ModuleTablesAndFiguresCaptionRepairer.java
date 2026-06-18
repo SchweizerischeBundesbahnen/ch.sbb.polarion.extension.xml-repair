@@ -16,6 +16,8 @@ import com.polarion.core.util.types.Text;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 
+import static org.springframework.web.util.HtmlUtils.htmlUnescape;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -59,7 +61,7 @@ public class ModuleTablesAndFiguresCaptionRepairer extends BaseRepairer {
             String dataSequenceTrimmed = regexEngine.group(DATA_SEQUENCE).trim();
 
             if (!Objects.equals(prefixTrimmed, dataSequenceTrimmed)) {
-                String description = "Misaligned caption id '%s' with the label '%s'".formatted(org.springframework.web.util.HtmlUtils.htmlUnescape(dataSequenceTrimmed), org.springframework.web.util.HtmlUtils.htmlUnescape(prefixTrimmed));
+                String description = "Misaligned caption id '%s' with the label '%s'".formatted(htmlUnescape(dataSequenceTrimmed), htmlUnescape(prefixTrimmed));
                 Issue existingIssue = issues.stream().filter(i -> i.getDescription().equals(description)).findFirst().orElse(null);
                 if (existingIssue != null) {
                     existingIssue.getRawMetaInfo().set(WORK_ITEM, workItem || Boolean.TRUE.equals(existingIssue.getRawMetaInfo().getBoolean(WORK_ITEM)));
