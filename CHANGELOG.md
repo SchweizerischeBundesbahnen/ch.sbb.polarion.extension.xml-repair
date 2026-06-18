@@ -1,5 +1,22 @@
 # Changelog
 
+## [3.0.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.5.1...v3.0.0) (2026-06-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* Polarion 2606 support ([#78](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/78))
+
+### Features
+
+* ability to adjust workitem-prefix during broken links repair ([#92](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/92)) ([af31c61](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/af31c6171289a8acb119313436430b52c4a0274a)), closes [#67](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/67)
+* Polarion 2606 support ([#78](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/78)) ([d6f1d7c](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d6f1d7cf02907390c02fc1348aa4dceecb61796f)), closes [#77](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/77)
+
+
+### Bug Fixes
+
+* ToT/ToF repairer doesn't fix captions after the first run ([#93](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/93)) ([c105de5](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/c105de5c1dc0169c528ae37d6b9b8d85bed1eac1)), closes [#86](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/86)
+
 ## [2.5.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.5.0...v2.5.1) (2026-06-09)
 
 
