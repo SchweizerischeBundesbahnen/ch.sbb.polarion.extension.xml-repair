@@ -80,12 +80,20 @@ class ModuleContentLinksRepairerTest {
         ModuleContentLinksRepairer repairer = new ModuleContentLinksRepairer();
         List<RepairerConfigMeta> configs = repairer.getConfigs();
 
-        assertEquals(1, configs.size());
-        RepairerConfigMeta config = configs.getFirst();
-        assertEquals(BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT, config.getKey());
-        assertEquals("Convert unresolvable links to plain text", config.getDescription());
-        assertEquals("Replace items which cannot be found by the specified ID in any available project with a plain text", config.getHint());
-        assertEquals(RepairerConfigType.BOOLEAN, config.getType());
-        assertEquals(false, config.getDefaultValue());
+        assertEquals(2, configs.size());
+
+        RepairerConfigMeta convertConfig = configs.getFirst();
+        assertEquals(BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT, convertConfig.getKey());
+        assertEquals("Convert unresolvable links to plain text", convertConfig.getDescription());
+        assertEquals("Replace items which cannot be found by the specified ID in any available project with a plain text", convertConfig.getHint());
+        assertEquals(RepairerConfigType.BOOLEAN, convertConfig.getType());
+        assertEquals(false, convertConfig.getDefaultValue());
+
+        RepairerConfigMeta adjustConfig = configs.get(1);
+        assertEquals(BaseLinksRepairer.ADJUST_WORK_ITEM_PREFIX, adjustConfig.getKey());
+        assertEquals("Adjust workitem-prefix", adjustConfig.getDescription());
+        assertEquals("Replace workitem prefix if a workitem with the given number exists in the current project", adjustConfig.getHint());
+        assertEquals(RepairerConfigType.BOOLEAN, adjustConfig.getType());
+        assertEquals(false, adjustConfig.getDefaultValue());
     }
 }
