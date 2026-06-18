@@ -27,6 +27,7 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith({MockitoExtension.class, PlatformContextMockExtension.class})
 @MockitoSettings(strictness = Strictness.LENIENT)
+@SuppressWarnings("java:S125") // suppress false-positive commented-out lines of code
 class BaseLinksRepairerTest {
 
     private static class TestableLinksRepairer extends BaseLinksRepairer {
@@ -521,10 +522,81 @@ class BaseLinksRepairerTest {
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
 
         assertTrue(result.isSuccess());
+        // both the item id and the custom label (which equals the old id) must be adjusted, the scope removed
         verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
                 && ((Text) t).getContent().contains("data-item-id=\"NEW-1\"")
+                && ((Text) t).getContent().contains("data-custom-label=\"NEW-1\"")
                 && !((Text) t).getContent().contains("data-item-id=\"OLD-1\"")
+                && !((Text) t).getContent().contains("data-custom-label=\"OLD-1\"")
                 && !((Text) t).getContent().contains("data-scope=\"otherProject\"")));
+    }
+
+    @Test
+    void testRepairAdjustPrefixCustomLabelWithoutId() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // custom label does not contain the work item id -> label stays unchanged, only the id is adjusted
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-custom-label=\"My Label\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("otherProject", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "NEW-1", null)).thenReturn(true);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("data-item-id=\"NEW-1\"")
+                && ((Text) t).getContent().contains("data-custom-label=\"My Label\"")));
+    }
+
+    @Test
+    void testRepairAdjustPrefixWithoutCustomLabel() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // no data-custom-label attribute at all -> customLabel is null, label replacement is a no-op
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("otherProject", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "NEW-1", null)).thenReturn(true);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("data-item-id=\"NEW-1\"")
+                && !((Text) t).getContent().contains("data-custom-label")));
     }
 
     @Test
