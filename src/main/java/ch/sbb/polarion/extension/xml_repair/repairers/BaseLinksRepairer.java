@@ -11,6 +11,7 @@ import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.StringUtils;
 import com.polarion.core.util.types.Text;
 import com.polarion.platform.persistence.model.IPObjectList;
+import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,8 +20,10 @@ import java.util.Objects;
 public abstract class BaseLinksRepairer extends BaseRepairer {
 
     public static final String CONVERT_TO_PLAIN_TEXT = "convertToPlainText";
+    public static final String ADJUST_WORK_ITEM_PREFIX = "adjustWorkItemPrefix";
     private static final String LINK = "link";
     private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
+    private static final String DATA_ITEM_ID_TEMPLATE = "data-item-id=\"%s\"";
 
     private static final String LINK_REGEX = "<span\\s+" +
             "(?=[^>]*class=\"polarion-rte-link\")" +
@@ -77,6 +80,12 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             if (providedProjectId != null && polarionService.isWorkItemExists(entity.getProjectId(), workItemId, workItemRevision)) {
                 result.setSuccess(true);
                 return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "");
+            } else if (userConfigs.getBoolean(getClass(), ADJUST_WORK_ITEM_PREFIX)) {
+                String adjustedWorkItemId = replaceWorkItemPrefix(workItemId, entity.getProject().getTrackerPrefix());
+                if (!Objects.equals(workItemId, adjustedWorkItemId) && polarionService.isWorkItemExists(entity.getProjectId(), adjustedWorkItemId, workItemRevision)) {
+                    result.setSuccess(true);
+                    return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "").replace(DATA_ITEM_ID_TEMPLATE.formatted(workItemId), DATA_ITEM_ID_TEMPLATE.formatted(adjustedWorkItemId));
+                }
             }
 
             // otherwise try to search globally
@@ -107,6 +116,16 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             entity.setValue(issueMetaInfo.getString(FIELD_ID), text.isPlain() ? Text.plain(fixedHtml) : Text.html(fixedHtml));
         }
         return result;
+    }
+
+    @VisibleForTesting
+    String replaceWorkItemPrefix(String workItemId, String newPrefix) {
+        int dashPosition = workItemId.indexOf("-");
+        if (dashPosition > 0 && dashPosition < workItemId.length() - 1) {
+            return "%s-%s".formatted(newPrefix, workItemId.substring(dashPosition + 1));
+        } else {
+            return workItemId;
+        }
     }
 
 }
