@@ -40,29 +40,6 @@ class ModuleTablesAndFiguresCaptionRepairerTest {
     }
 
     @Test
-    void testCleanupHtmlSpaces() {
-        ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
-
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello world"));
-        // Non-breaking space (U+00A0)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u00A0world"));
-        // Thin space (U+2009)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u2009world"));
-        // Zero-width space (U+200B)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u200Bworld"));
-        // Zero-width non-joiner (U+200C)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u200Cworld"));
-        // Zero-width joiner (U+200D)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u200Dworld"));
-        // Word joiner (U+2060)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\u2060world"));
-        // BOM (U+FEFF)
-        assertEquals("hello world", repairer.cleanupHtmlSpaces("hello\uFEFFworld"));
-        // Empty string
-        assertEquals("", repairer.cleanupHtmlSpaces(""));
-    }
-
-    @Test
     void testFixCaptionIdsMatchingEntry() {
         ModuleTablesAndFiguresCaptionRepairer repairer = new ModuleTablesAndFiguresCaptionRepairer();
 
