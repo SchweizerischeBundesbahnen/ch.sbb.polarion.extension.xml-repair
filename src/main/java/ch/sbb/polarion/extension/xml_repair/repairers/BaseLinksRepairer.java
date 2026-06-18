@@ -22,8 +22,9 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
     public static final String CONVERT_TO_PLAIN_TEXT = "convertToPlainText";
     public static final String ADJUST_WORK_ITEM_PREFIX = "adjustWorkItemPrefix";
     private static final String LINK = "link";
-    private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
+    private static final String DATA_CUSTOM_LABEL_TEMPLATE = "data-custom-label=\"%s\"";
     private static final String DATA_ITEM_ID_TEMPLATE = "data-item-id=\"%s\"";
+    private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
 
     private static final String LINK_REGEX = "<span\\s+" +
             "(?=[^>]*class=\"polarion-rte-link\")" +
@@ -84,7 +85,10 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
                 String adjustedWorkItemId = replaceWorkItemPrefix(workItemId, entity.getProject().getTrackerPrefix());
                 if (!Objects.equals(workItemId, adjustedWorkItemId) && polarionService.isWorkItemExists(entity.getProjectId(), adjustedWorkItemId, workItemRevision)) {
                     result.setSuccess(true);
-                    return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "").replace(DATA_ITEM_ID_TEMPLATE.formatted(workItemId), DATA_ITEM_ID_TEMPLATE.formatted(adjustedWorkItemId));
+                    String adjustedCustomLabel = customLabel == null ? "" : customLabel.replace(workItemId, adjustedWorkItemId);
+                    return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "")
+                            .replace(DATA_CUSTOM_LABEL_TEMPLATE.formatted(customLabel), DATA_CUSTOM_LABEL_TEMPLATE.formatted(adjustedCustomLabel))
+                            .replace(DATA_ITEM_ID_TEMPLATE.formatted(workItemId), DATA_ITEM_ID_TEMPLATE.formatted(adjustedWorkItemId));
                 }
             }
 
