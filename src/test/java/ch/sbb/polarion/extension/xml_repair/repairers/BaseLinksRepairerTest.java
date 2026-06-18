@@ -20,6 +20,7 @@ import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExte
 import java.util.List;
 import java.util.Map;
 
+import static ch.sbb.polarion.extension.xml_repair.repairers.BaseLinksRepairer.ADJUST_WORK_ITEM_PREFIX;
 import static ch.sbb.polarion.extension.xml_repair.repairers.BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -486,5 +487,213 @@ class BaseLinksRepairerTest {
         // The other link should be preserved unchanged
         verify(entity).setValue(eq("content"), argThat(t ->
                 t instanceof Text && ((Text) t).getContent().contains("data-scope=\"validProject\"")));
+    }
+
+    // ---- adjustWorkItemPrefix config tests ----
+
+    @Test
+    void testRepairAdjustPrefixFindsItemInCurrentProject() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-custom-label=\"OLD-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        // original id not found anywhere
+        when(polarionService.isWorkItemExists("otherProject", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "OLD-1", null)).thenReturn(false);
+        // adjusted id exists in the current project
+        when(polarionService.isWorkItemExists("elibrary", "NEW-1", null)).thenReturn(true);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("data-item-id=\"NEW-1\"")
+                && !((Text) t).getContent().contains("data-item-id=\"OLD-1\"")
+                && !((Text) t).getContent().contains("data-scope=\"otherProject\"")));
+    }
+
+    @Test
+    void testRepairAdjustPrefixWithoutScope() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // No data-scope provided -> first 'if' branch is skipped, else-if (adjust) is reached
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-custom-label=\"OLD-1\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("elibrary", "OLD-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "NEW-1", null)).thenReturn(true);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("data-item-id=\"NEW-1\"")));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testRepairAdjustPrefixAdjustedItemNotFoundFallsBackToGlobalSearch() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        // neither original nor adjusted id is found
+        when(polarionService.isWorkItemExists(anyString(), anyString(), isNull())).thenReturn(false);
+
+        IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
+        when(searchResults.size()).thenReturn(0);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"OLD-1\""), isNull(), eq(2))).thenReturn(searchResults);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("does not exist")));
+        verify(entity, never()).setValue(anyString(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testRepairAdjustPrefixUnchangedIdFallsBackToGlobalSearch() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // work item id has no dash -> replaceWorkItemPrefix returns it unchanged -> adjust branch is a no-op
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"NODASH\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists(anyString(), anyString(), isNull())).thenReturn(false);
+
+        IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
+        when(searchResults.size()).thenReturn(0);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"NODASH\""), isNull(), eq(2))).thenReturn(searchResults);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertFalse(result.isSuccess());
+        // adjusted id equals original, so it must never be queried with a different id
+        verify(polarionService, never()).isWorkItemExists(eq("elibrary"), eq("NEW-NODASH"), isNull());
+        verify(entity, never()).setValue(anyString(), any());
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testRepairAdjustPrefixDisabledSkipsAdjustment() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"OLD-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists(anyString(), anyString(), isNull())).thenReturn(false);
+        // adjusted id would exist, but config is disabled so it must not be used
+        when(polarionService.isWorkItemExists("elibrary", "NEW-1", null)).thenReturn(true);
+
+        IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
+        when(searchResults.size()).thenReturn(0);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"OLD-1\""), isNull(), eq(2))).thenReturn(searchResults);
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
+
+        assertFalse(result.isSuccess());
+        verify(entity, never()).getProject();
+        verify(entity, never()).setValue(anyString(), any());
+    }
+
+    // ---- replaceWorkItemPrefix tests ----
+
+    @Test
+    void testReplaceWorkItemPrefixReplacesPrefix() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("NEW-1", repairer.replaceWorkItemPrefix("OLD-1", "NEW"));
+    }
+
+    @Test
+    void testReplaceWorkItemPrefixKeepsRemainderAfterFirstDash() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("NEW-12-3", repairer.replaceWorkItemPrefix("OLD-12-3", "NEW"));
+    }
+
+    @Test
+    void testReplaceWorkItemPrefixNoDash() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("NODASH", repairer.replaceWorkItemPrefix("NODASH", "NEW"));
+    }
+
+    @Test
+    void testReplaceWorkItemPrefixDashAtStart() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("-1", repairer.replaceWorkItemPrefix("-1", "NEW"));
+    }
+
+    @Test
+    void testReplaceWorkItemPrefixDashAtEnd() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("OLD-", repairer.replaceWorkItemPrefix("OLD-", "NEW"));
+    }
+
+    @Test
+    void testReplaceWorkItemPrefixEmptyString() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        assertEquals("", repairer.replaceWorkItemPrefix("", "NEW"));
     }
 }

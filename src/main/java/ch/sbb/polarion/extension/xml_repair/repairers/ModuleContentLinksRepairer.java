@@ -41,7 +41,9 @@ public class ModuleContentLinksRepairer extends BaseLinksRepairer {
     public List<RepairerConfigMeta> getConfigs() {
         return List.of(
                 new RepairerConfigMeta(BaseLinksRepairer.CONVERT_TO_PLAIN_TEXT, "Convert unresolvable links to plain text",
-                        "Replace items which cannot be found by the specified ID in any available project with a plain text", RepairerConfigType.BOOLEAN, false)
+                        "Replace items which cannot be found by the specified ID in any available project with a plain text", RepairerConfigType.BOOLEAN, false),
+                new RepairerConfigMeta(BaseLinksRepairer.ADJUST_WORK_ITEM_PREFIX, "Adjust workitem-prefix",
+                        "Replace workitem prefix if a workitem with the given number exists in the current project", RepairerConfigType.BOOLEAN, false)
         );
     }
 
