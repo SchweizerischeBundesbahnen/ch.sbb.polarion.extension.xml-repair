@@ -7,6 +7,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
+import ch.sbb.polarion.extension.xml_repair.util.HtmlUtils;
 import com.polarion.alm.tracker.IModuleManager;
 import com.polarion.alm.tracker.IModulePageLayouter;
 import com.polarion.alm.tracker.model.IModule;
@@ -14,7 +15,8 @@ import com.polarion.core.util.StringUtils;
 import com.polarion.core.util.types.Text;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
-import org.springframework.web.util.HtmlUtils;
+
+import static org.springframework.web.util.HtmlUtils.htmlUnescape;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,11 +57,11 @@ public class ModuleTablesAndFiguresCaptionRepairer extends BaseRepairer {
 
     private void findIssues(String content, IModule module, List<Issue> issues, boolean workItem) {
         RegexMatcher.get(CAPTION_REGEX).useJavaUtil().processEntry(content, regexEngine -> {
-            String prefixTrimmed = cleanupHtmlSpaces(regexEngine.group(PREFIX)).trim();
+            String prefixTrimmed = HtmlUtils.cleanupHtmlSpaces(regexEngine.group(PREFIX)).trim();
             String dataSequenceTrimmed = regexEngine.group(DATA_SEQUENCE).trim();
 
             if (!Objects.equals(prefixTrimmed, dataSequenceTrimmed)) {
-                String description = "Misaligned caption id '%s' with the label '%s'".formatted(HtmlUtils.htmlUnescape(dataSequenceTrimmed), HtmlUtils.htmlUnescape(prefixTrimmed));
+                String description = "Misaligned caption id '%s' with the label '%s'".formatted(htmlUnescape(dataSequenceTrimmed), htmlUnescape(prefixTrimmed));
                 Issue existingIssue = issues.stream().filter(i -> i.getDescription().equals(description)).findFirst().orElse(null);
                 if (existingIssue != null) {
                     existingIssue.getRawMetaInfo().set(WORK_ITEM, workItem || Boolean.TRUE.equals(existingIssue.getRawMetaInfo().getBoolean(WORK_ITEM)));
@@ -108,7 +110,7 @@ public class ModuleTablesAndFiguresCaptionRepairer extends BaseRepairer {
         String expectedDataSequenceTrimmed = issueMetaInfo.getString(DATA_SEQUENCE);
         return RegexMatcher.get(CAPTION_REGEX).useJavaUtil().replace(content, regexEngine -> {
             String caption = regexEngine.group();
-            String prefixTrimmed = cleanupHtmlSpaces(regexEngine.group(PREFIX)).trim();
+            String prefixTrimmed = HtmlUtils.cleanupHtmlSpaces(regexEngine.group(PREFIX)).trim();
             String dataSequence = regexEngine.group(DATA_SEQUENCE);
             String dataSequenceTrimmed = dataSequence.trim();
 
@@ -128,16 +130,6 @@ public class ModuleTablesAndFiguresCaptionRepairer extends BaseRepairer {
             IModulePageLayouter layouter = moduleManager.getModulePageLayouter(layout.getLayouter());
             return layouter.getRenderedFieldIds(layout).stream();
         }).collect(Collectors.toSet());
-    }
-
-    /**
-     * Replaces Unicode whitespace and zero-width characters with regular spaces.
-     * Users may copy-paste text from external sources containing non-standard space characters
-     * (e.g. nbsp, thin space, zero-width space) that break string comparison and regex matching.
-     */
-    @VisibleForTesting
-    String cleanupHtmlSpaces(String inputString) {
-        return inputString.replaceAll("[\\p{Zs}\\u200B-\\u200D\\u2060\\uFEFF]", " ");
     }
 
     public String getDisplayName() {
