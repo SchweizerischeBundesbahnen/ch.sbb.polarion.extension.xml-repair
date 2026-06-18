@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.5.1...v2.6.0) (2026-06-18)
+
+
+### Features
+
+* ability to adjust workitem-prefix during broken links repair ([#88](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/88)) ([d8713d6](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d8713d62498a061f4e576fd5383206df4b83da3b)), closes [#67](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/67)
+
 ## [2.5.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v2.5.0...v2.5.1) (2026-06-09)
 
 
