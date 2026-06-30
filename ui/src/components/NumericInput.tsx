@@ -103,7 +103,7 @@ export default function NumericInput({
         onKeyDown={handleKeyDown}
       />
       {hintsLoading ? (
-        <span className="numeric-input-spinner" />
+        <img className="numeric-input-spinner" src="/polarion/ria/images/progressWheel48.svg" alt="" />
       ) : (
         <span
           className="numeric-input-chevron"

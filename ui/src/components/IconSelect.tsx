@@ -64,7 +64,7 @@ export default function IconSelect({
           <span className="icon-select-placeholder">{placeholder}</span>
         )}
         {loading ? (
-          <span className="icon-select-spinner" />
+          <img className="icon-select-spinner" src="/polarion/ria/images/progressWheel48.svg" alt="" />
         ) : (
           <span className="icon-select-arrow">{open ? '▴' : '▾'}</span>
         )}

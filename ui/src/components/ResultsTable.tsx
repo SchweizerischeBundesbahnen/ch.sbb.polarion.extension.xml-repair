@@ -283,7 +283,7 @@ export default function ResultsTable({
                       )}
                     </td>
                     <td className="entity-cell">
-                      {isRepairing && <span className="spinner spinner-sm" />}
+                      {isRepairing && <img className="spinner spinner-sm" src="/polarion/ria/images/progressWheel48.svg" alt="" />}
                       <EntityRef html={item.fields?.['$_self']?.renderedValue} fallback={item.entityId} />
                       <span
                         className={`expand-arrow${hasIssues ? ' clickable' : ''}`}
@@ -365,7 +365,7 @@ export default function ResultsTable({
                               )}
                             </td>
                             <td className="entity-cell subitem-entity">
-                              {subIsRepairing && <span className="spinner spinner-sm" />}
+                              {subIsRepairing && <img className="spinner spinner-sm" src="/polarion/ria/images/progressWheel48.svg" alt="" />}
                               <EntityRef html={sub.fields?.['$_self']?.renderedValue} fallback={sub.entityId} />
                               <span
                                 className={`expand-arrow${subHasIssues ? ' clickable' : ''}`}
