@@ -754,7 +754,7 @@ export default function App() {
 
           {scanning && (
             <div className="scanning-indicator">
-              <img className="spinner" src="/polarion/ria/images/progressWheel48.svg" alt="" />
+              <span className="spinner" />
               <span>Scanning... {(elapsed / 1000).toFixed(1)}s</span>
             </div>
           )}

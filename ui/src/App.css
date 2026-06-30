@@ -252,6 +252,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .error-message {
@@ -655,6 +656,7 @@
   width: 12px;
   height: 12px;
   flex-shrink: 0;
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .icon-select-arrow {
@@ -773,6 +775,7 @@
   transform: translateY(-50%);
   width: 12px;
   height: 12px;
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .numeric-input-dropdown {
