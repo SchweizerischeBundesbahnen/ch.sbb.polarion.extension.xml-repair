@@ -155,8 +155,8 @@
 }
 
 .repairer-card.active {
-  border-color: #b6d4fe;
-  background: #f0f6ff;
+  border-color: #a9d6dd;
+  background: #E5F2F4;
 }
 
 .repairer-header {
@@ -189,7 +189,7 @@
 .repairer-settings {
   margin: 6px 0 2px 22px;
   padding: 4px 8px;
-  border-left: 2px solid #b6d4fe;
+  border-left: 2px solid #a9d6dd;
 }
 
 .repairer-setting {
@@ -223,11 +223,11 @@
 }
 
 .btn-scan {
-  background: #0d6efd;
+  background: #007993;
 }
 
 .btn-scan:hover:not(:disabled) {
-  background: #0b5ed7;
+  background: #005159;
 }
 
 .btn-repair {
@@ -244,7 +244,7 @@
   justify-content: center;
   gap: 8px;
   min-height: 200px;
-  color: #0d47a1;
+  color: #007993;
   font-size: 13px;
 }
 
@@ -252,8 +252,8 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #b6d4fe;
-  border-top-color: #0d6efd;
+  border: 2px solid #a9d6dd;
+  border-top-color: #007993;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -504,13 +504,13 @@
   border: none;
   padding: 0;
   font: inherit;
-  color: #0d6efd;
+  color: #007993;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .breakdown-toggle:hover {
-  color: #0a58ca;
+  color: #005159;
 }
 
 .breakdown-table {
@@ -560,13 +560,13 @@
   border: none;
   padding: 0;
   font: inherit;
-  color: #0d6efd;
+  color: #007993;
   text-decoration: underline;
   cursor: pointer;
 }
 
 .breakdown-filter:hover {
-  color: #0a58ca;
+  color: #005159;
 }
 
 .report-section pre {
@@ -730,7 +730,7 @@
 }
 
 .icon-select-item.selected {
-  background: #d0e3ff;
+  background: #cce9ed;
 }
 
 .icon-select-icon {
@@ -834,7 +834,7 @@
 }
 
 .numeric-input-item.selected {
-  background: #d0e3ff;
+  background: #cce9ed;
 }
 
 .numeric-input-item-value {
