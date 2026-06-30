@@ -252,16 +252,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  border: 2px solid #a9d6dd;
-  border-top-color: #007993;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .error-message {
@@ -476,7 +467,6 @@
 .spinner-sm {
   width: 12px;
   height: 12px;
-  border-width: 1px;
   margin-right: 4px;
   vertical-align: middle;
 }
@@ -665,11 +655,8 @@
   display: inline-block;
   width: 12px;
   height: 12px;
-  border: 2px solid #dee2e6;
-  border-top-color: #6c757d;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
   flex-shrink: 0;
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .icon-select-arrow {
@@ -788,10 +775,7 @@
   transform: translateY(-50%);
   width: 12px;
   height: 12px;
-  border: 2px solid #dee2e6;
-  border-top-color: #6c757d;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
 }
 
 .numeric-input-dropdown {
