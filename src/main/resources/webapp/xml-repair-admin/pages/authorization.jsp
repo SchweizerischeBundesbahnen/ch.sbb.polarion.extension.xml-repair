@@ -11,16 +11,6 @@
     <title>Repair Authorization</title>
     <link rel="stylesheet" href="../ui/generic/css/common.css?bundle=<%= version.getBundleBuildTimestampDigitsOnly() %>">
     <script type="module" src="../js/authorization.js?bundle=<%= version.getBundleBuildTimestampDigitsOnly() %>"></script>
-    <style type="text/css">
-        .roles_table {
-            margin: 20px;
-        }
-
-        .roles_table table td {
-            vertical-align: middle;
-            padding: 3px;
-        }
-    </style>
 </head>
 
 <body>
