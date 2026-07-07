@@ -27,6 +27,10 @@ export default function SearchableInput({
   const inputRef = useRef<HTMLInputElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sdRef = useRef<any>(null);
+  // Latest hints, so the mount effect (which runs after an async module import) seeds the dropdown
+  // with whatever loaded by then — not the possibly-empty value captured in its [] closure.
+  const hintsRef = useRef(hints);
+  hintsRef.current = hints;
 
   const toItems = (hs?: NumericInputHint[]) => (hs || []).map((h) => ({ value: String(h.value), label: h.label }));
 
@@ -40,7 +44,7 @@ export default function SearchableInput({
         sdRef.current = module.createEditableSelect(element, {
           inputFilter: (v: string) => v.replace(/\D/g, ''),
           placeholder,
-          items: toItems(hints),
+          items: toItems(hintsRef.current),
         });
       })
       .catch(() => { /* keep the native <input> */ });
