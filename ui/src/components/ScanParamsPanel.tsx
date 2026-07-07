@@ -1,7 +1,8 @@
 import type { KeyboardEvent } from 'react';
 import type { EntityType, IconSelectOption } from '../types';
-import IconSelect from './IconSelect';
+import SearchableSelect from './SearchableSelect';
 import NumericInput from './NumericInput';
+import SearchableInput from './SearchableInput';
 import type { NumericInputHint } from './NumericInput';
 
 const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
@@ -65,7 +66,7 @@ export default function ScanParamsPanel({
     >
       <div className="form-row">
         <label>Entity Type</label>
-        <IconSelect value={entityValue} onChange={onEntityChange} options={combinedEntityOptions} allowEmpty={false} />
+        <SearchableSelect value={entityValue} onChange={onEntityChange} options={combinedEntityOptions} allowEmpty={false} />
       </div>
 
       <div className="form-row">
@@ -92,14 +93,13 @@ export default function ScanParamsPanel({
                   ?
                 </span>
               </label>
-              <NumericInput
+              <SearchableInput
                 value={revision}
                 defaultValue={0}
                 onChange={onRevisionChange}
                 hints={revisionHints}
                 hintsLoading={revisionLoading}
                 placeholder="HEAD"
-                allowEmpty={true}
               />
             </div>
           )}

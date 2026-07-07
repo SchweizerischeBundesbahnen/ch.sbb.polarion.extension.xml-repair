@@ -140,7 +140,7 @@ export default function ResultsTable({
       )}
 
       {result.items.length > 0 ? (
-        <table className={`issues-table${batchRepairing ? ' disabled' : ''}`}>
+        <table className={`sbb-table sbb-table--grid sbb-table--compact issues-table${batchRepairing ? ' disabled' : ''}`}>
           <thead>
             <tr>
               <th className="col-checkbox">

@@ -22,6 +22,9 @@ export default function IconSelect({
 }: IconSelectProps) {
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
+  // Single highlight like the generic SearchableDropdown: starts on the selected option when the
+  // menu opens, then follows the pointer (only one option highlighted at a time).
+  const [activeId, setActiveId] = useState<string>(value);
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,8 +45,11 @@ export default function IconSelect({
   }, []);
 
   useEffect(() => {
-    if (open) inputRef.current?.focus();
-  }, [open]);
+    if (open) {
+      inputRef.current?.focus();
+      setActiveId(value);
+    }
+  }, [open, value]);
 
   return (
     <div className={`icon-select${disabled ? ' disabled' : ''}`} ref={ref}>
@@ -71,25 +77,37 @@ export default function IconSelect({
       </div>
       {open && (
         <div className="icon-select-dropdown">
-          <input
-            ref={inputRef}
-            className="icon-select-filter"
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                e.stopPropagation();
+          <div className="icon-select-search-row">
+            <input
+              ref={inputRef}
+              className="icon-select-filter"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setFilter('');
+                } else if (e.key === 'Enter') {
+                  // Prevent the parent panel's Enter handler from starting a scan while filtering.
+                  e.stopPropagation();
+                }
+              }}
+              placeholder="Filter..."
+            />
+            <span
+              className="icon-select-erase"
+              title="Clear filter"
+              onMouseDown={(e) => {
+                e.preventDefault();
                 setFilter('');
-              } else if (e.key === 'Enter') {
-                // Prevent the parent panel's Enter handler from starting a scan while filtering.
-                e.stopPropagation();
-              }
-            }}
-            placeholder="Filter..."
-          />
+                inputRef.current?.focus();
+              }}
+            />
+          </div>
           {allowEmpty && (
             <div
-              className={`icon-select-item ${!value ? 'selected' : ''}`}
+              className={`icon-select-item ${activeId === '' ? 'active' : ''}`}
+              onMouseEnter={() => setActiveId('')}
               onClick={() => {
                 onChange('');
                 close();
@@ -101,7 +119,8 @@ export default function IconSelect({
           {filtered.map((o) => (
             <div
               key={o.id}
-              className={`icon-select-item ${o.id === value ? 'selected' : ''}${o.indent ? ' indented' : ''}`}
+              className={`icon-select-item ${o.id === activeId ? 'active' : ''}${o.indent ? ' indented' : ''}`}
+              onMouseEnter={() => setActiveId(o.id)}
               onClick={() => {
                 onChange(o.id);
                 close();

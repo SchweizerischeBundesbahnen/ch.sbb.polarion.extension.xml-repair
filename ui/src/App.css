@@ -11,23 +11,23 @@
 .xml-repair-app input[type='checkbox'] {
   -webkit-appearance: none;
   appearance: none;
-  width: 15px;
-  height: 15px;
+  width: var(--sbb-toggle-size, 15px);
+  height: var(--sbb-toggle-size, 15px);
   flex-shrink: 0;
   box-sizing: border-box;
   margin: 0 4px 0 0;
   vertical-align: middle;
   cursor: pointer;
-  background: url('/polarion/ria/images/checkbox/unchecked.png') no-repeat center;
-  background-size: 15px 15px;
+  background: var(--sbb-checkbox-unchecked, url('/polarion/ria/images/checkbox/unchecked.png')) no-repeat center;
+  background-size: var(--sbb-toggle-size, 15px) var(--sbb-toggle-size, 15px);
 }
 
 .xml-repair-app input[type='checkbox']:checked {
-  background-image: url('/polarion/ria/images/checkbox/checked.png');
+  background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
 }
 
 .xml-repair-app input[type='checkbox']:indeterminate {
-  background-image: url('/polarion/ria/images/checkbox/grayed.png');
+  background-image: var(--sbb-checkbox-indeterminate, url('/polarion/ria/images/checkbox/grayed.png'));
 }
 
 .layout-columns {
@@ -102,7 +102,7 @@
 .form-row select {
   flex: 1;
   padding: 5px 8px;
-  border: 1px solid #c9c9c9;
+  border: 1px solid var(--sbb-control-border, #c9c9c9);
   border-radius: 3px;
   font-size: 13px;
 }
@@ -277,7 +277,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  background: url('/polarion/ria/images/progressWheel48.svg') center / contain no-repeat;
+  background: var(--sbb-spinner, url('/polarion/ria/images/progressWheel48.svg')) center / contain no-repeat;
 }
 
 .error-message {
@@ -306,23 +306,10 @@
   margin-top: 0;
 }
 
+/* Base look (width, borders, header tint, padding) comes from generic .sbb-table
+   + .sbb-table--grid + .sbb-table--compact; only layout/state specifics remain here. */
 .issues-table {
-  width: 100%;
-  border-collapse: collapse;
   margin-bottom: 12px;
-  font-size: 12px;
-}
-
-.issues-table th,
-.issues-table td {
-  padding: 6px 8px;
-  border: 1px solid #dddddd;
-  text-align: left;
-}
-
-.issues-table th {
-  background: #e8e8e3;
-  font-weight: 600;
 }
 
 .issues-table.disabled {
@@ -528,8 +515,9 @@
   color: #005159;
 }
 
+/* Base look from generic .sbb-table + .sbb-table--grid; keeps its own auto width,
+   compact font, wider cell padding and middle-aligned cells. */
 .breakdown-table {
-  border-collapse: collapse;
   margin: 6px 0 14px 0;
   font-size: 12px;
   width: auto;
@@ -539,14 +527,7 @@
 .breakdown-table th,
 .breakdown-table td {
   padding: 6px 14px;
-  border: 1px solid #dddddd;
-  text-align: left;
   vertical-align: middle;
-}
-
-.breakdown-table th {
-  background: #e8e8e3;
-  font-weight: 600;
 }
 
 .breakdown-table td:nth-child(2),
@@ -650,244 +631,39 @@
   display: block;
 }
 
-/* IconSelect */
-
-.icon-select {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-}
-
-.icon-select-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 23px;
-  box-sizing: border-box;
-  padding: 2px 6px;
-  border: 1px solid #c9c9c9;
-  border-radius: 2px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.icon-select-placeholder {
-  color: #999;
-}
-
-.icon-select-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  background: url('/polarion/ria/images/progressWheel48.svg') center / contain no-repeat;
-}
-
-.icon-select-arrow {
-  margin-left: 8px;
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-  font-size: 0;
-  background: url('/polarion/ria/images/combo_box_old.png') center / contain no-repeat;
-}
-
-.icon-select-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 2px;
-  background: #fff;
-  border: 1px solid #c9c9c9;
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 10;
-}
-
-.icon-select-filter {
-  display: block;
-  width: 100%;
-  padding: 5px 8px;
-  border: none;
-  border-bottom: 1px solid #dddddd;
-  font-size: 13px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.icon-select-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.icon-select-item.indented {
-  padding-left: 30px;
-}
-
-.icon-select-item-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.icon-select-item:hover {
-  background: #ebf7f8;
-}
-
-.icon-select-item.selected {
-  background: #ebf7f8;
-}
-
-.icon-select-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.icon-select-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-}
-
-.icon-select.disabled .icon-select-trigger {
-  background: #f3f3f0;
-  cursor: not-allowed;
-  color: #adb5bd;
-}
-
-/* NumericInput with hints */
-
-.numeric-input-with-hints {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.numeric-input-with-hints .numeric-input-field {
-  flex: 1;
-  min-width: 0;
-  padding-right: 24px;
-}
-
-.numeric-input-chevron {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 10px;
-  color: #666;
-  cursor: pointer;
-  user-select: none;
-}
-
-.numeric-input-spinner {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 12px;
-  height: 12px;
-  background: url('/polarion/ria/images/progressWheel48.svg') center / contain no-repeat;
-}
-
-.numeric-input-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 2px;
-  background: #fff;
-  border: 1px solid #c9c9c9;
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 10;
-}
-
-.numeric-input-filter {
-  display: block;
-  width: 100%;
-  padding: 5px 8px;
-  border: none;
-  border-bottom: 1px solid #dddddd;
-  font-size: 13px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.numeric-input-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.numeric-input-item:hover {
-  background: #ebf7f8;
-}
-
-.numeric-input-item.selected {
-  background: #ebf7f8;
-}
-
-.numeric-input-item-value {
-  font-family: monospace;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.numeric-input-item-label {
-  flex: 1;
-  text-align: right;
-  color: #6c757d;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.numeric-input-empty {
-  padding: 8px;
-  color: #999;
-  font-size: 13px;
-  text-align: center;
-}
-
-/* ---- Polarion 2606 look: focus ring + selected-row emphasis (added for visual parity) ---- */
-
+/* ---- Polarion 2606 look: focus ring on the plain text/number inputs and native selects. ---- */
 .xml-repair-app .form-row input:focus,
-.xml-repair-app .form-row select:focus,
-.xml-repair-app .numeric-input-field:focus,
-.xml-repair-app .icon-select-filter:focus,
-.xml-repair-app .numeric-input-filter:focus,
-.xml-repair-app .icon-select-trigger:focus {
-  border-color: #1491eb;
+.xml-repair-app .form-row select:focus {
+  border-color: var(--sbb-control-border-focus, #1491eb);
   outline: none;
 }
 
-/* Selected dropdown row a touch stronger than the hover tint so the two are distinguishable. */
-.xml-repair-app .icon-select-item.selected,
-.xml-repair-app .numeric-input-item.selected {
-  background: #d6edf0;
-  font-weight: 600;
+/* ---- Match the generic 2606 text inputs: square corners, 23px height, 600 weight and the
+        shared soft hover/focus shadow (inputs.css), so text fields match the comboboxes. ---- */
+.xml-repair-app .form-row input:not([type='checkbox']),
+.xml-repair-app .form-row select {
+  height: var(--sbb-control-height, 23px);
+  box-sizing: border-box;
+  border-radius: var(--sbb-control-radius, 0);
+  font-weight: var(--sbb-control-font-weight, 600);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.xml-repair-app .form-row input:not([type='checkbox']):hover,
+.xml-repair-app .form-row input:not([type='checkbox']):focus,
+.xml-repair-app .form-row select:hover,
+.xml-repair-app .form-row select:focus {
+  box-shadow: var(--sbb-control-shadow-hover, 0 2px 6px 0 rgba(0, 0, 0, 0.2));
+}
+
+/* The Entity Type combobox is now the shared generic SearchableDropdown (see SearchableSelect):
+   make it fill the form row like the inputs, and indent nested subtype options — the `indented`
+   class is forwarded onto the popup option via preserveOptionClasses. (.sd-portal is body-level.) */
+.xml-repair-app .form-row .searchable-dropdown {
+  flex: 1;
+  width: auto;
+}
+
+.sd-portal .option.indented {
+  padding-left: 30px;
 }
