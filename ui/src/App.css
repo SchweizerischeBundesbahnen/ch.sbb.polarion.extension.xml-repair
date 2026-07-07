@@ -1,9 +1,33 @@
 .xml-repair-app {
   margin: 0 auto;
   padding: 16px 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Segoe UI', 'Selawik', 'Open Sans', Arial, sans-serif;
   font-size: 13px;
-  color: #333;
+  color: #1a1a1a;
+}
+
+/* Polarion 2606 checkboxes — render with Polarion's own images instead of the browser's native
+   blue, matching every other admin surface (generic checkboxes.css). */
+.xml-repair-app input[type='checkbox'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: var(--sbb-toggle-size, 15px);
+  height: var(--sbb-toggle-size, 15px);
+  flex-shrink: 0;
+  box-sizing: border-box;
+  margin: 0 4px 0 0;
+  vertical-align: middle;
+  cursor: pointer;
+  background: var(--sbb-checkbox-unchecked, url('/polarion/ria/images/checkbox/unchecked.png')) no-repeat center;
+  background-size: var(--sbb-toggle-size, 15px) var(--sbb-toggle-size, 15px);
+}
+
+.xml-repair-app input[type='checkbox']:checked {
+  background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
+}
+
+.xml-repair-app input[type='checkbox']:indeterminate {
+  background-image: var(--sbb-checkbox-indeterminate, url('/polarion/ria/images/checkbox/grayed.png'));
 }
 
 .layout-columns {
@@ -22,8 +46,8 @@
   flex: 1;
   min-width: 400px;
   min-height: 224px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: #f3f3f0;
+  border: 1px solid #dddddd;
   border-radius: 4px;
   padding: 12px;
 }
@@ -53,8 +77,8 @@
 .form-section {
   margin-bottom: 16px;
   padding: 12px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: #f3f3f0;
+  border: 1px solid #dddddd;
   border-radius: 4px;
 }
 
@@ -74,18 +98,18 @@
   font-weight: 500;
 }
 
-.form-row input,
+.form-row input:not([type='checkbox']),
 .form-row select {
   flex: 1;
   padding: 5px 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--sbb-control-border, #c9c9c9);
   border-radius: 3px;
   font-size: 13px;
 }
 
 .advanced-section {
   margin-top: 10px;
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid #dddddd;
   padding-top: 8px;
 }
 
@@ -98,11 +122,6 @@
 
 .advanced-fields {
   margin-top: 8px;
-}
-
-.advanced-fields .form-row input[type='checkbox'] {
-  flex: 0;
-  width: auto;
 }
 
 .repairers-section {
@@ -126,8 +145,8 @@
 
 .repairers-list {
   padding: 8px 12px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: #f3f3f0;
+  border: 1px solid #dddddd;
   border-radius: 4px;
 }
 
@@ -141,7 +160,7 @@
 
 .repairer-item.select-all {
   font-weight: 600;
-  border-bottom: 1px solid #dee2e6;
+  border-bottom: 1px solid #dddddd;
   padding-bottom: 6px;
   margin-bottom: 4px;
 }
@@ -149,7 +168,7 @@
 .repairer-card {
   padding: 6px 8px;
   margin-bottom: 4px;
-  border: 1px solid #e9ecef;
+  border: 1px solid #dddddd;
   border-radius: 4px;
   background: #fff;
 }
@@ -208,17 +227,23 @@
 }
 
 .btn {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 3px;
+  padding: 5px 16px;
+  border: 1px solid #007993;
+  border-radius: 2px;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 700;
   cursor: pointer;
   color: #fff;
+  background: #007993;
+}
+
+.btn:hover:not(:disabled) {
+  background: #00606f;
+  border-color: #00606f;
 }
 
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
 }
 
@@ -227,15 +252,15 @@
 }
 
 .btn-scan:hover:not(:disabled) {
-  background: #005159;
+  background: #00606f;
 }
 
 .btn-repair {
-  background: #198754;
+  background: #007993;
 }
 
 .btn-repair:hover:not(:disabled) {
-  background: #157347;
+  background: #00606f;
 }
 
 .scanning-indicator {
@@ -252,7 +277,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
+  background: var(--sbb-spinner, url('/polarion/ria/images/progressWheel48.svg')) center / contain no-repeat;
 }
 
 .error-message {
@@ -281,23 +306,10 @@
   margin-top: 0;
 }
 
+/* Base look (width, borders, header tint, padding) comes from generic .sbb-table
+   + .sbb-table--grid + .sbb-table--compact; only layout/state specifics remain here. */
 .issues-table {
-  width: 100%;
-  border-collapse: collapse;
   margin-bottom: 12px;
-  font-size: 12px;
-}
-
-.issues-table th,
-.issues-table td {
-  padding: 6px 8px;
-  border: 1px solid #dee2e6;
-  text-align: left;
-}
-
-.issues-table th {
-  background: #e9ecef;
-  font-weight: 600;
 }
 
 .issues-table.disabled {
@@ -503,8 +515,9 @@
   color: #005159;
 }
 
+/* Base look from generic .sbb-table + .sbb-table--grid; keeps its own auto width,
+   compact font, wider cell padding and middle-aligned cells. */
 .breakdown-table {
-  border-collapse: collapse;
   margin: 6px 0 14px 0;
   font-size: 12px;
   width: auto;
@@ -514,14 +527,7 @@
 .breakdown-table th,
 .breakdown-table td {
   padding: 6px 14px;
-  border: 1px solid #dee2e6;
-  text-align: left;
   vertical-align: middle;
-}
-
-.breakdown-table th {
-  background: #e9ecef;
-  font-weight: 600;
 }
 
 .breakdown-table td:nth-child(2),
@@ -561,8 +567,8 @@
 
 .report-section pre {
   padding: 10px;
-  background: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background: #f3f3f0;
+  border: 1px solid #dddddd;
   border-radius: 4px;
   overflow-x: auto;
   font-size: 11px;
@@ -625,220 +631,39 @@
   display: block;
 }
 
-/* IconSelect */
-
-.icon-select {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-}
-
-.icon-select-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 8px;
-  border: 1px solid #ced4da;
-  border-radius: 3px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 13px;
-  min-width: 0;
-  overflow: hidden;
-}
-
-.icon-select-placeholder {
-  color: #999;
-}
-
-.icon-select-spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
-}
-
-.icon-select-arrow {
-  margin-left: 8px;
-  font-size: 10px;
-  color: #666;
-}
-
-.icon-select-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 2px;
-  background: #fff;
-  border: 1px solid #ced4da;
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 10;
-}
-
-.icon-select-filter {
-  display: block;
-  width: 100%;
-  padding: 5px 8px;
-  border: none;
-  border-bottom: 1px solid #dee2e6;
-  font-size: 13px;
+/* ---- Polarion 2606 look: focus ring on the plain text/number inputs and native selects. ---- */
+.xml-repair-app .form-row input:focus,
+.xml-repair-app .form-row select:focus {
+  border-color: var(--sbb-control-border-focus, #1491eb);
   outline: none;
+}
+
+/* ---- Match the generic 2606 text inputs: square corners, 23px height, 600 weight and the
+        shared soft hover/focus shadow (inputs.css), so text fields match the comboboxes. ---- */
+.xml-repair-app .form-row input:not([type='checkbox']),
+.xml-repair-app .form-row select {
+  height: var(--sbb-control-height, 23px);
   box-sizing: border-box;
+  border-radius: var(--sbb-control-radius, 0);
+  font-weight: var(--sbb-control-font-weight, 600);
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
-.icon-select-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 8px;
-  cursor: pointer;
-  font-size: 13px;
+.xml-repair-app .form-row input:not([type='checkbox']):hover,
+.xml-repair-app .form-row input:not([type='checkbox']):focus,
+.xml-repair-app .form-row select:hover,
+.xml-repair-app .form-row select:focus {
+  box-shadow: var(--sbb-control-shadow-hover, 0 2px 6px 0 rgba(0, 0, 0, 0.2));
 }
 
-.icon-select-item.indented {
+/* The Entity Type combobox is now the shared generic SearchableDropdown (see SearchableSelect):
+   make it fill the form row like the inputs, and indent nested subtype options — the `indented`
+   class is forwarded onto the popup option via preserveOptionClasses. (.sd-portal is body-level.) */
+.xml-repair-app .form-row .searchable-dropdown {
+  flex: 1;
+  width: auto;
+}
+
+.sd-portal .option.indented {
   padding-left: 30px;
-}
-
-.icon-select-item-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.icon-select-item:hover {
-  background: #e9ecef;
-}
-
-.icon-select-item.selected {
-  background: #cce9ed;
-}
-
-.icon-select-icon {
-  width: 16px;
-  height: 16px;
-  flex-shrink: 0;
-}
-
-.icon-select-option {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  flex: 1;
-  overflow: hidden;
-}
-
-.icon-select.disabled .icon-select-trigger {
-  background: #f8f9fa;
-  cursor: not-allowed;
-  color: #adb5bd;
-}
-
-/* NumericInput with hints */
-
-.numeric-input-with-hints {
-  flex: 1;
-  min-width: 0;
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.numeric-input-with-hints .numeric-input-field {
-  flex: 1;
-  min-width: 0;
-  padding-right: 24px;
-}
-
-.numeric-input-chevron {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 10px;
-  color: #666;
-  cursor: pointer;
-  user-select: none;
-}
-
-.numeric-input-spinner {
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 12px;
-  height: 12px;
-  background: url("/polarion/ria/images/progressWheel48.svg") center / contain no-repeat;
-}
-
-.numeric-input-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 2px;
-  background: #fff;
-  border: 1px solid #ced4da;
-  border-radius: 3px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 10;
-}
-
-.numeric-input-filter {
-  display: block;
-  width: 100%;
-  padding: 5px 8px;
-  border: none;
-  border-bottom: 1px solid #dee2e6;
-  font-size: 13px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.numeric-input-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.numeric-input-item:hover {
-  background: #e9ecef;
-}
-
-.numeric-input-item.selected {
-  background: #cce9ed;
-}
-
-.numeric-input-item-value {
-  font-family: monospace;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.numeric-input-item-label {
-  flex: 1;
-  text-align: right;
-  color: #6c757d;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.numeric-input-empty {
-  padding: 8px;
-  color: #999;
-  font-size: 13px;
-  text-align: center;
 }

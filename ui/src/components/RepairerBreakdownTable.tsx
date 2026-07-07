@@ -12,7 +12,7 @@ interface RepairerBreakdownTableProps {
 
 export default function RepairerBreakdownTable({ rows, hiddenRepairers, onToggleRepairer }: RepairerBreakdownTableProps) {
   return (
-    <table className="breakdown-table">
+    <table className="sbb-table sbb-table--grid breakdown-table">
       <thead>
         <tr>
           <th>Repairer</th>
