@@ -57,10 +57,13 @@ export default function SearchableInput({
   // Refresh the suggestion list when hints load/change (the wrapped element is an <input>, so there
   // are no <option> children for SearchableDropdown to observe).
   useEffect(() => {
-    if (sdRef.current) {
-      // Update the suggestions for the next open (refresh() would close an open popup, so we do not
-      // call it here — the list is small and the user reopens to see freshly-loaded hints).
-      sdRef.current.items = toItems(hints);
+    const sd = sdRef.current;
+    if (!sd) return;
+    sd.items = toItems(hints);
+    // If the popup is open when hints arrive, re-filter it live so they appear immediately —
+    // dispatching 'input' re-renders the open list without closing it (unlike refresh()).
+    if (sd.isOpen && sd.trigger) {
+      sd.trigger.dispatchEvent(new Event('input'));
     }
   }, [hints]);
 
