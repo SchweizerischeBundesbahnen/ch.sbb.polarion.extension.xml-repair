@@ -26,10 +26,10 @@
   background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
 }
 
-/* Polarion ships no indeterminate checkbox image (grayed.png is a 404 in 2606); generic hosts the PNGs
+/* Polarion has no indeterminate checkbox image; generic hosts the PNGs
    (images/checkbox-indeterminate*.png). Reference them by a path relative to this bundled stylesheet
    (app/assets/ -> app/ -> ui/ -> generic/images/). The --sbb-checkbox-indeterminate token can't be
-   used here: a relative URL in a custom property resolves against the using stylesheet, so it 404s. */
+   used here: a relative URL in a custom property resolves against the using stylesheet, which 404s. */
 .xml-repair-app input[type='checkbox']:indeterminate {
   background-image: url('../../generic/images/checkbox-indeterminate.png');
 }
