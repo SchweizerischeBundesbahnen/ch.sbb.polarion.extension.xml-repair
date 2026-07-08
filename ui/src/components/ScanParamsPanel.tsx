@@ -121,8 +121,8 @@ export default function ScanParamsPanel({
             <NumericInput value={timeout} defaultValue={60} onChange={onTimeoutChange} />
           </div>
           <div className="form-row">
-            <label>Show items with issues only</label>
-            <input type="checkbox" checked={hideValid} onChange={(e) => onHideValidChange(e.target.checked)} />
+            <label htmlFor="hide-valid">Show items with issues only</label>
+            <input id="hide-valid" type="checkbox" checked={hideValid} onChange={(e) => onHideValidChange(e.target.checked)} />
           </div>
         </div>
       </details>
