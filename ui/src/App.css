@@ -26,11 +26,12 @@
   background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
 }
 
-/* Polarion ships no indeterminate checkbox image (grayed.png is a 404 in 2606); generic provides one
-   as --sbb-checkbox-indeterminate (the unchecked box with a dash baked in). No ria fallback exists,
-   so this relies on the token from generic control-tokens.css (linked in index.html). */
+/* Polarion ships no indeterminate checkbox image (grayed.png is a 404 in 2606); generic hosts the PNGs
+   (images/checkbox-indeterminate*.png). Reference them by a path relative to this bundled stylesheet
+   (app/assets/ -> app/ -> ui/ -> generic/images/). The --sbb-checkbox-indeterminate token can't be
+   used here: a relative URL in a custom property resolves against the using stylesheet, so it 404s. */
 .xml-repair-app input[type='checkbox']:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate);
+  background-image: url('../../generic/images/checkbox-indeterminate.png');
 }
 
 /* Disabled (e.g. items with no fixable issue, or already-revisioned): use Polarion's greyed
@@ -45,7 +46,7 @@
 }
 
 .xml-repair-app input[type='checkbox']:disabled:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate-readonly);
+  background-image: url('../../generic/images/checkbox-indeterminate-readonly.png');
 }
 
 /* Keyboard focus: Polarion's focus-ring images via :focus-visible (keyboard nav, not a mouse click);
@@ -60,7 +61,7 @@
 }
 
 .xml-repair-app input[type='checkbox']:focus-visible:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate-focus);
+  background-image: url('../../generic/images/checkbox-indeterminate-focus.png');
 }
 
 .layout-columns {
