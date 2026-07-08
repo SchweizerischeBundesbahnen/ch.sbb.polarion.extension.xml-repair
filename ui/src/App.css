@@ -26,8 +26,41 @@
   background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
 }
 
+/* Polarion ships no indeterminate checkbox image (grayed.png is a 404 in 2606); generic provides one
+   as --sbb-checkbox-indeterminate (the unchecked box with a dash baked in). No ria fallback exists,
+   so this relies on the token from generic control-tokens.css (linked in index.html). */
 .xml-repair-app input[type='checkbox']:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate, url('/polarion/ria/images/checkbox/grayed.png'));
+  background-image: var(--sbb-checkbox-indeterminate);
+}
+
+/* Disabled (e.g. items with no fixable issue, or already-revisioned): use Polarion's greyed
+   read-only images so the checkbox visibly reads as non-selectable. */
+.xml-repair-app input[type='checkbox']:disabled {
+  cursor: default;
+  background-image: var(--sbb-checkbox-unchecked-readonly, url('/polarion/ria/images/checkbox/unchecked_readonly.png'));
+}
+
+.xml-repair-app input[type='checkbox']:disabled:checked {
+  background-image: var(--sbb-checkbox-checked-readonly, url('/polarion/ria/images/checkbox/checked_readonly.png'));
+}
+
+.xml-repair-app input[type='checkbox']:disabled:indeterminate {
+  background-image: var(--sbb-checkbox-indeterminate-readonly);
+}
+
+/* Keyboard focus: Polarion's focus-ring images via :focus-visible (keyboard nav, not a mouse click);
+   the image is the focus indicator, so the default outline is suppressed. */
+.xml-repair-app input[type='checkbox']:focus-visible {
+  outline: none;
+  background-image: var(--sbb-checkbox-unchecked-focus, url('/polarion/ria/images/checkbox/unchecked_focus.png'));
+}
+
+.xml-repair-app input[type='checkbox']:focus-visible:checked {
+  background-image: var(--sbb-checkbox-checked-focus, url('/polarion/ria/images/checkbox/checked_focus.png'));
+}
+
+.xml-repair-app input[type='checkbox']:focus-visible:indeterminate {
+  background-image: var(--sbb-checkbox-indeterminate-focus);
 }
 
 .layout-columns {
