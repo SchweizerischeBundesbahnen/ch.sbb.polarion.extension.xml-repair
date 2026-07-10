@@ -16,7 +16,10 @@
          widths and row states on top of this generic base. -->
     <link rel="stylesheet" href="/polarion/xml-repair-app/ui/generic/css/tables.css" />
   </head>
-  <body>
+  <!-- .sbb-ui scopes generic's --sbb-* design tokens to the app (issue #515): controls read tokens
+       from this app's own bundled generic instead of a foreign :root, and keep resolving once
+       generic drops the :root fallback. On <body> so body-level dropdown portals are covered too. -->
+  <body class="sbb-ui">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
