@@ -11,23 +11,57 @@
 .xml-repair-app input[type='checkbox'] {
   -webkit-appearance: none;
   appearance: none;
-  width: var(--sbb-toggle-size, 15px);
-  height: var(--sbb-toggle-size, 15px);
+  width: var(--sbb-toggle-size);
+  height: var(--sbb-toggle-size);
   flex-shrink: 0;
   box-sizing: border-box;
   margin: 0 4px 0 0;
   vertical-align: middle;
   cursor: pointer;
-  background: var(--sbb-checkbox-unchecked, url('/polarion/ria/images/checkbox/unchecked.png')) no-repeat center;
-  background-size: var(--sbb-toggle-size, 15px) var(--sbb-toggle-size, 15px);
+  background: var(--sbb-checkbox-unchecked) no-repeat center;
+  background-size: var(--sbb-toggle-size) var(--sbb-toggle-size);
 }
 
 .xml-repair-app input[type='checkbox']:checked {
-  background-image: var(--sbb-checkbox-checked, url('/polarion/ria/images/checkbox/checked.png'));
+  background-image: var(--sbb-checkbox-checked);
 }
 
+/* Polarion has no indeterminate checkbox image; generic hosts the PNGs
+   (images/checkbox-indeterminate*.png). Reference them by a path relative to this bundled stylesheet
+   (app/assets/ -> app/ -> ui/ -> generic/images/). The --sbb-checkbox-indeterminate token can't be
+   used here: a relative URL in a custom property resolves against the using stylesheet, which 404s. */
 .xml-repair-app input[type='checkbox']:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate, url('/polarion/ria/images/checkbox/grayed.png'));
+  background-image: url('../../generic/images/checkbox-indeterminate.png');
+}
+
+/* Disabled (e.g. items with no fixable issue, or already-revisioned): use Polarion's greyed
+   read-only images so the checkbox visibly reads as non-selectable. */
+.xml-repair-app input[type='checkbox']:disabled {
+  cursor: default;
+  background-image: var(--sbb-checkbox-unchecked-readonly);
+}
+
+.xml-repair-app input[type='checkbox']:disabled:checked {
+  background-image: var(--sbb-checkbox-checked-readonly);
+}
+
+.xml-repair-app input[type='checkbox']:disabled:indeterminate {
+  background-image: url('../../generic/images/checkbox-indeterminate-readonly.png');
+}
+
+/* Keyboard focus: Polarion's focus-ring images via :focus-visible (keyboard nav, not a mouse click);
+   the image is the focus indicator, so the default outline is suppressed. */
+.xml-repair-app input[type='checkbox']:focus-visible {
+  outline: none;
+  background-image: var(--sbb-checkbox-unchecked-focus);
+}
+
+.xml-repair-app input[type='checkbox']:focus-visible:checked {
+  background-image: var(--sbb-checkbox-checked-focus);
+}
+
+.xml-repair-app input[type='checkbox']:focus-visible:indeterminate {
+  background-image: url('../../generic/images/checkbox-indeterminate-focus.png');
 }
 
 .layout-columns {
@@ -102,7 +136,7 @@
 .form-row select {
   flex: 1;
   padding: 5px 8px;
-  border: 1px solid var(--sbb-control-border, #c9c9c9);
+  border: 1px solid var(--sbb-control-border);
   border-radius: 3px;
   font-size: 13px;
 }
@@ -277,7 +311,7 @@
   display: inline-block;
   width: 16px;
   height: 16px;
-  background: var(--sbb-spinner, url('/polarion/ria/images/progressWheel48.svg')) center / contain no-repeat;
+  background: var(--sbb-spinner) center / contain no-repeat;
 }
 
 .error-message {
@@ -634,7 +668,7 @@
 /* ---- Polarion 2606 look: focus ring on the plain text/number inputs and native selects. ---- */
 .xml-repair-app .form-row input:focus,
 .xml-repair-app .form-row select:focus {
-  border-color: var(--sbb-control-border-focus, #1491eb);
+  border-color: var(--sbb-control-border-focus);
   outline: none;
 }
 
@@ -642,10 +676,10 @@
         shared soft hover/focus shadow (inputs.css), so text fields match the comboboxes. ---- */
 .xml-repair-app .form-row input:not([type='checkbox']),
 .xml-repair-app .form-row select {
-  height: var(--sbb-control-height, 23px);
+  height: var(--sbb-control-height);
   box-sizing: border-box;
-  border-radius: var(--sbb-control-radius, 0);
-  font-weight: var(--sbb-control-font-weight, 600);
+  border-radius: var(--sbb-control-radius);
+  font-weight: var(--sbb-control-font-weight);
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
 }
 
@@ -653,7 +687,7 @@
 .xml-repair-app .form-row input:not([type='checkbox']):focus,
 .xml-repair-app .form-row select:hover,
 .xml-repair-app .form-row select:focus {
-  box-shadow: var(--sbb-control-shadow-hover, 0 2px 6px 0 rgba(0, 0, 0, 0.2));
+  box-shadow: var(--sbb-control-shadow-hover);
 }
 
 /* The Entity Type combobox is now the shared generic SearchableDropdown (see SearchableSelect):
