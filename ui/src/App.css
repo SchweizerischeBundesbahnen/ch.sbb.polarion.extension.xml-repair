@@ -262,13 +262,13 @@
 
 .btn {
   padding: 5px 16px;
-  border: 1px solid #007993;
+  border: 1px solid var(--sbb-accent);
   border-radius: 2px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   color: #fff;
-  background: #007993;
+  background: var(--sbb-accent);
 }
 
 .btn:hover:not(:disabled) {
@@ -282,7 +282,7 @@
 }
 
 .btn-scan {
-  background: #007993;
+  background: var(--sbb-accent);
 }
 
 .btn-scan:hover:not(:disabled) {
@@ -290,7 +290,7 @@
 }
 
 .btn-repair {
-  background: #007993;
+  background: var(--sbb-accent);
 }
 
 .btn-repair:hover:not(:disabled) {
@@ -303,7 +303,7 @@
   justify-content: center;
   gap: 8px;
   min-height: 200px;
-  color: #007993;
+  color: var(--sbb-accent);
   font-size: 13px;
 }
 
@@ -540,7 +540,7 @@
   border: none;
   padding: 0;
   font: inherit;
-  color: #007993;
+  color: var(--sbb-accent);
   text-decoration: underline;
   cursor: pointer;
 }
@@ -590,7 +590,7 @@
   border: none;
   padding: 0;
   font: inherit;
-  color: #007993;
+  color: var(--sbb-accent);
   text-decoration: underline;
   cursor: pointer;
 }
