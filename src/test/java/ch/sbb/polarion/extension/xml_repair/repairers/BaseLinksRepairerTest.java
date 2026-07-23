@@ -60,15 +60,31 @@ class BaseLinksRepairerTest {
         assertTrue(issues.isEmpty());
     }
 
-    @Test
-    void testScanLinksInHtmlValidLink() {
+    static Stream<Arguments> testScanLinksInHtmlValidLink() {
+        return Stream.of(
+                // workItem link without scope - validated against the entity's own project
+                Arguments.of("workItem link without scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-custom-label=\"EL-1\" data-option-id=\"long\"></span>",
+                        "elibrary", "EL-1"),
+                // workItem link whose scope matches the entity's own project
+                Arguments.of("workItem link with matching scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"elibrary\" data-option-id=\"long\"></span>",
+                        "elibrary", "EL-1"),
+                // polarion (wiki/document) link with the id in data-url's 'selection' parameter
+                Arguments.of("polarion link with id in data-url",
+                        "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>",
+                        "docx_exporter_elibrary_st_st_103c721ee242", "EL-266"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource
+    void testScanLinksInHtmlValidLink(String name, String html, String effectiveProjectId, String itemId) {
         TestableLinksRepairer repairer = new TestableLinksRepairer();
         IWorkItem entity = mock(IWorkItem.class);
         when(entity.getProjectId()).thenReturn("elibrary");
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
+        when(polarionService.isWorkItemExists(effectiveProjectId, itemId, null)).thenReturn(true);
 
-        String html = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-custom-label=\"EL-1\" data-option-id=\"long\"></span>";
         List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
 
         assertTrue(issues.isEmpty());
@@ -136,34 +152,6 @@ class BaseLinksRepairerTest {
 
         assertEquals(1, issues.size());
         assertTrue(issues.getFirst().getDescription().contains("EL-1:42"));
-    }
-
-    @Test
-    void testScanLinksInHtmlScopeMatchesEntityProject() {
-        TestableLinksRepairer repairer = new TestableLinksRepairer();
-        IWorkItem entity = mock(IWorkItem.class);
-        when(entity.getProjectId()).thenReturn("elibrary");
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
-
-        String html = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"elibrary\" data-option-id=\"long\"></span>";
-        List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
-
-        assertTrue(issues.isEmpty());
-    }
-
-    @Test
-    void testScanLinksInHtmlValidPolarionLink() {
-        TestableLinksRepairer repairer = new TestableLinksRepairer();
-        IWorkItem entity = mock(IWorkItem.class);
-        when(entity.getProjectId()).thenReturn("elibrary");
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        when(polarionService.isWorkItemExists("docx_exporter_elibrary_st_st_103c721ee242", "EL-266", null)).thenReturn(true);
-
-        String html = "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>";
-        List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
-
-        assertTrue(issues.isEmpty());
     }
 
     // ---- repairLinksInHtml tests ----
