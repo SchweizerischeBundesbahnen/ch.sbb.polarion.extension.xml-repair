@@ -26,13 +26,18 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
     private static final String DATA_ITEM_ID_TEMPLATE = "data-item-id=\"%s\"";
     private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
 
+    // Matches all three kinds of 'polarion-rte-link' spans: 'workItem' and 'crossReference' carry the id in
+    // 'data-item-id', while 'polarion' (wiki/document) links carry it inside 'data-url' as the 'selection' query
+    // parameter and have no 'data-item-id'. Consequently both id sources are optional; callers must fall back from
+    // 'workItemId' to 'selectionId'.
     private static final String LINK_REGEX = "<span\\s+" +
             "(?=[^>]*class=\"polarion-rte-link\")" +
-            "(?=[^>]*data-type=\"workItem\")" +
+            "(?=[^>]*data-type=\"(?<linkType>workItem|crossReference|polarion)\")" +
             "(?=[^>]*data-custom-label=\"(?<customLabel>[^\"]+?)\")?" +
-            "(?=[^>]*data-item-id=\"(?<workItemId>[^\"]+?)\")" +
+            "(?=[^>]*data-item-id=\"(?<workItemId>[^\"]+?)\")?" +
             "(?=[^>]*data-scope=\"(?<workItemProjectId>[^\"]+)\")?" +
             "(?=[^>]*data-revision=\"(?<workItemRevision>[^\"]+)\")?" +
+            "(?=[^>]*data-url=\"[^\"]*selection=(?<selectionId>[^\"&]+))?" +
             "[^>]*?></span>";
 
     public List<Issue> scanLinksInHtml(String html, IWorkflowObject entity, String fieldId, XmlRepairPolarionService polarionService) {
@@ -41,7 +46,11 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             String link = regexEngine.group();
             String providedProjectId = regexEngine.group("workItemProjectId");
             String workItemRevision = regexEngine.group("workItemRevision");
-            String workItemId = regexEngine.group("workItemId");
+            // 'polarion' links have no 'data-item-id'; their id lives in the 'data-url' 'selection' parameter
+            String workItemId = regexEngine.group("workItemId") != null ? regexEngine.group("workItemId") : regexEngine.group("selectionId");
+            if (workItemId == null) {
+                return; // a 'polarion-rte-link' span without an identifiable work item id - nothing to check
+            }
 
             String effectiveProjectId = StringUtils.isEmpty(providedProjectId) ? entity.getProjectId() : providedProjectId;
             if (!polarionService.isWorkItemExists(effectiveProjectId, workItemId, workItemRevision)) {
@@ -69,11 +78,13 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             }
             String providedProjectId = regexEngine.group("workItemProjectId");
             String workItemRevision = regexEngine.group("workItemRevision");
-            String workItemId = regexEngine.group("workItemId");
+            String dataItemId = regexEngine.group("workItemId");
+            // 'polarion' links have no 'data-item-id'; their id lives in the 'data-url' 'selection' parameter
+            String workItemId = dataItemId != null ? dataItemId : regexEngine.group("selectionId");
             String customLabel = regexEngine.group("customLabel");
 
             String effectiveProjectId = StringUtils.isEmpty(providedProjectId) ? entity.getProjectId() : providedProjectId;
-            if (polarionService.isWorkItemExists(effectiveProjectId, workItemId, workItemRevision)) {
+            if (workItemId == null || polarionService.isWorkItemExists(effectiveProjectId, workItemId, workItemRevision)) {
                 return link;
             }
 
@@ -107,19 +118,23 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
                     return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), DATA_SCOPE_TEMPLATE.formatted(itemsFound.getFirst().getProjectId()));
                 }
             } else {
-                if (userConfigs.getBoolean(getClass(), CONVERT_TO_PLAIN_TEXT)) {
-                    result.setSuccess(true);
-                    return "<span class=\"xml-repair-replaced-link\">%s</span>".formatted(StringUtils.isEmpty(customLabel) ? workItemId : customLabel);
-                } else {
-                    result.getWarnings().add("Work item '%s' does not exist in the project '%s'".formatted(workItemId, entity.getProjectId()));
-                    return link;
-                }
+                return convertToPlainTextOrKeep(link, workItemId, customLabel, entity, userConfigs, result);
             }
         });
         if (!Objects.equals(fixedHtml, html)) {
             entity.setValue(issueMetaInfo.getString(FIELD_ID), text.isPlain() ? Text.plain(fixedHtml) : Text.html(fixedHtml));
         }
         return result;
+    }
+
+    private String convertToPlainTextOrKeep(String link, String workItemId, String customLabel, IWorkflowObject entity, UserConfigs userConfigs, RepairResult result) {
+        if (userConfigs.getBoolean(getClass(), CONVERT_TO_PLAIN_TEXT)) {
+            result.setSuccess(true);
+            return "<span class=\"xml-repair-replaced-link\">%s</span>".formatted(StringUtils.isEmpty(customLabel) ? workItemId : customLabel);
+        } else {
+            result.getWarnings().add("Work item '%s' does not exist in the project '%s'".formatted(workItemId, entity.getProjectId()));
+            return link;
+        }
     }
 
     @VisibleForTesting

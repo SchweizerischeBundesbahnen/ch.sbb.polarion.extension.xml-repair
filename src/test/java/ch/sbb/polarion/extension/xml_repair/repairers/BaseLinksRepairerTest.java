@@ -133,6 +133,55 @@ class BaseLinksRepairerTest {
         assertTrue(issues.isEmpty());
     }
 
+    @Test
+    void testScanLinksInHtmlBrokenCrossReferenceLink() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getId()).thenReturn("WI-1");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("otherProject", "EL-1", null)).thenReturn(false);
+
+        // crossReference links have the same shape as workItem links (data-item-id + data-scope)
+        String html = "<span class=\"polarion-rte-link\" data-type=\"crossReference\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
+
+        assertEquals(1, issues.size());
+        assertTrue(issues.getFirst().getDescription().contains("EL-1"));
+        assertTrue(issues.getFirst().getDescription().contains("otherProject"));
+    }
+
+    @Test
+    void testScanLinksInHtmlBrokenPolarionLink() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getId()).thenReturn("WI-1");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("docx_exporter_elibrary_st_st_103c721ee242", "EL-266", null)).thenReturn(false);
+
+        // polarion (wiki/document) links have no data-item-id - the id is the 'selection' parameter of data-url
+        String html = "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>";
+        List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
+
+        assertEquals(1, issues.size());
+        assertTrue(issues.getFirst().getDescription().contains("EL-266"));
+    }
+
+    @Test
+    void testScanLinksInHtmlValidPolarionLink() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+        IWorkItem entity = mock(IWorkItem.class);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("docx_exporter_elibrary_st_st_103c721ee242", "EL-266", null)).thenReturn(true);
+
+        String html = "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>";
+        List<Issue> issues = repairer.scanLinksInHtml(html, entity, "content", polarionService);
+
+        assertTrue(issues.isEmpty());
+    }
+
     // ---- repairLinksInHtml tests ----
 
     @Test
@@ -488,6 +537,36 @@ class BaseLinksRepairerTest {
         // The other link should be preserved unchanged
         verify(entity).setValue(eq("content"), argThat(t ->
                 t instanceof Text && ((Text) t).getContent().contains("data-scope=\"validProject\"")));
+    }
+
+    @Test
+    void testRepairPolarionLinkConvertToPlainText() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        String link = "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("docx_exporter_elibrary_st_st_103c721ee242", "EL-266", null)).thenReturn(false);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(CONVERT_TO_PLAIN_TEXT, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        // the custom label is used as the plain-text replacement; no scope/url rewriting is attempted
+        verify(entity).setValue(eq("content"), argThat(t ->
+                t instanceof Text && ((Text) t).getContent().equals("<span class=\"xml-repair-replaced-link\">EL-266</span>")));
     }
 
     // ---- adjustWorkItemPrefix config tests ----
