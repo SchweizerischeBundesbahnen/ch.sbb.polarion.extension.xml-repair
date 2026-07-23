@@ -22,6 +22,11 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
     public static final String CONVERT_TO_PLAIN_TEXT = "convertToPlainText";
     public static final String ADJUST_WORK_ITEM_PREFIX = "adjustWorkItemPrefix";
     private static final String LINK = "link";
+    // named capture groups of LINK_REGEX
+    private static final String GROUP_WORK_ITEM_ID = "workItemId";
+    private static final String GROUP_SELECTION_ID = "selectionId";
+    private static final String GROUP_PROJECT_ID = "workItemProjectId";
+    private static final String GROUP_REVISION = "workItemRevision";
     private static final String DATA_CUSTOM_LABEL_TEMPLATE = "data-custom-label=\"%s\"";
     private static final String DATA_ITEM_ID_TEMPLATE = "data-item-id=\"%s\"";
     private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
@@ -48,10 +53,10 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
         List<Issue> issues = new ArrayList<>();
         RegexMatcher.get(LINK_REGEX).useJavaUtil().processEntry(html, regexEngine -> {
             String link = regexEngine.group();
-            String providedProjectId = regexEngine.group("workItemProjectId");
-            String workItemRevision = regexEngine.group("workItemRevision");
+            String providedProjectId = regexEngine.group(GROUP_PROJECT_ID);
+            String workItemRevision = regexEngine.group(GROUP_REVISION);
             // 'polarion' links have no 'data-item-id'; their id lives in the 'data-url' 'selection' parameter
-            String workItemId = regexEngine.group("workItemId") != null ? regexEngine.group("workItemId") : regexEngine.group("selectionId");
+            String workItemId = regexEngine.group(GROUP_WORK_ITEM_ID) != null ? regexEngine.group(GROUP_WORK_ITEM_ID) : regexEngine.group(GROUP_SELECTION_ID);
             if (workItemId == null) {
                 return; // a 'polarion-rte-link' span without an identifiable work item id - nothing to check
             }
@@ -80,11 +85,11 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             if (!Objects.equals(link, linkToFix)) {
                 return link;
             }
-            String providedProjectId = regexEngine.group("workItemProjectId");
-            String workItemRevision = regexEngine.group("workItemRevision");
-            String dataItemId = regexEngine.group("workItemId");
+            String providedProjectId = regexEngine.group(GROUP_PROJECT_ID);
+            String workItemRevision = regexEngine.group(GROUP_REVISION);
+            String dataItemId = regexEngine.group(GROUP_WORK_ITEM_ID);
             // 'polarion' links have no 'data-item-id'; their id lives in the 'data-url' 'selection' parameter
-            String workItemId = dataItemId != null ? dataItemId : regexEngine.group("selectionId");
+            String workItemId = dataItemId != null ? dataItemId : regexEngine.group(GROUP_SELECTION_ID);
             String customLabel = regexEngine.group("customLabel");
 
             String effectiveProjectId = StringUtils.isEmpty(providedProjectId) ? entity.getProjectId() : providedProjectId;
