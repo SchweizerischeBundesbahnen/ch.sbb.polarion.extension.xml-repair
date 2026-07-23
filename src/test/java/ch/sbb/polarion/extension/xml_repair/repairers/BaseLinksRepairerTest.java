@@ -564,9 +564,82 @@ class BaseLinksRepairerTest {
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
 
         assertTrue(result.isSuccess());
-        // the custom label is used as the plain-text replacement; no scope/url rewriting is attempted
+        // the item is found nowhere, so the link is converted to plain text using the custom label
         verify(entity).setValue(eq("content"), argThat(t ->
                 t instanceof Text && ((Text) t).getContent().equals("<span class=\"xml-repair-replaced-link\">EL-266</span>")));
+    }
+
+    @Test
+    void testRepairPolarionLinkAdjustPrefixRewritesSelection() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        String link = "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"OLD-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Test?selection=OLD-266\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        when(entity.getProject().getTrackerPrefix()).thenReturn("NEW");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("docx_exporter_elibrary_st_st_103c721ee242", "OLD-266", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "OLD-266", null)).thenReturn(false);
+        // the adjusted id exists in the current project
+        when(polarionService.isWorkItemExists("elibrary", "NEW-266", null)).thenReturn(true);
+
+        UserConfigs configs = new UserConfigs();
+        configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, configs);
+
+        assertTrue(result.isSuccess());
+        // the id is rewritten inside data-url's 'selection' parameter (not data-item-id, which polarion links lack),
+        // the custom label is adjusted, and the (document) scope is removed - mirroring the work-item repair
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("selection=NEW-266")
+                && !((Text) t).getContent().contains("selection=OLD-266")
+                && ((Text) t).getContent().contains("data-custom-label=\"NEW-266\"")
+                && !((Text) t).getContent().contains("data-scope=")));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void testRepairPolarionLinkGlobalSearchInsertsScopeBeforeDataUrl() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // no data-scope present -> the found project id must be inserted before the id-bearing attribute (data-url)
+        String link = "<span class=\"polarion-rte-link\" data-type=\"polarion\" data-custom-label=\"EL-266\" data-url=\"/wiki/Testing/Test?selection=EL-266\"></span>";
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(link);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("elibrary", "EL-266", null)).thenReturn(false);
+
+        IWorkItem foundItem = mock(IWorkItem.class);
+        when(foundItem.getProjectId()).thenReturn("otherProject");
+        IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
+        when(searchResults.size()).thenReturn(1);
+        when(searchResults.getFirst()).thenReturn(foundItem);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-266\""), isNull(), eq(2))).thenReturn(searchResults);
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
+
+        assertTrue(result.isSuccess());
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().contains("data-scope=\"otherProject\" data-url=")));
     }
 
     // ---- adjustWorkItemPrefix config tests ----

@@ -25,6 +25,10 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
     private static final String DATA_CUSTOM_LABEL_TEMPLATE = "data-custom-label=\"%s\"";
     private static final String DATA_ITEM_ID_TEMPLATE = "data-item-id=\"%s\"";
     private static final String DATA_SCOPE_TEMPLATE = "data-scope=\"%s\"";
+    private static final String DATA_ITEM_ID_ANCHOR = "data-item-id=";
+    // 'polarion' links carry the id in 'data-url' instead of 'data-item-id'; these anchor/rewrite the 'selection' param
+    private static final String DATA_URL_ANCHOR = "data-url=";
+    private static final String SELECTION_PARAM_TEMPLATE = "selection=%s";
 
     // Matches all three kinds of 'polarion-rte-link' spans: 'workItem' and 'crossReference' carry the id in
     // 'data-item-id', while 'polarion' (wiki/document) links carry it inside 'data-url' as the 'selection' query
@@ -88,6 +92,10 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
                 return link;
             }
 
+            // 'polarion' (wiki/document) links have no 'data-item-id' - the id lives in the 'data-url' 'selection' param.
+            // The repair flow below mirrors work-item links but rewrites 'selection'/anchors on 'data-url' for them.
+            boolean urlBasedId = dataItemId == null;
+
             // first, attempt to find work item in the current project
             if (providedProjectId != null && polarionService.isWorkItemExists(entity.getProjectId(), workItemId, workItemRevision)) {
                 result.setSuccess(true);
@@ -97,9 +105,11 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
                 if (!Objects.equals(workItemId, adjustedWorkItemId) && polarionService.isWorkItemExists(entity.getProjectId(), adjustedWorkItemId, workItemRevision)) {
                     result.setSuccess(true);
                     String adjustedCustomLabel = customLabel == null ? "" : customLabel.replace(workItemId, adjustedWorkItemId);
-                    return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "")
-                            .replace(DATA_CUSTOM_LABEL_TEMPLATE.formatted(customLabel), DATA_CUSTOM_LABEL_TEMPLATE.formatted(adjustedCustomLabel))
-                            .replace(DATA_ITEM_ID_TEMPLATE.formatted(workItemId), DATA_ITEM_ID_TEMPLATE.formatted(adjustedWorkItemId));
+                    String adjusted = link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), "")
+                            .replace(DATA_CUSTOM_LABEL_TEMPLATE.formatted(customLabel), DATA_CUSTOM_LABEL_TEMPLATE.formatted(adjustedCustomLabel));
+                    return urlBasedId
+                            ? adjusted.replace(SELECTION_PARAM_TEMPLATE.formatted(workItemId), SELECTION_PARAM_TEMPLATE.formatted(adjustedWorkItemId))
+                            : adjusted.replace(DATA_ITEM_ID_TEMPLATE.formatted(workItemId), DATA_ITEM_ID_TEMPLATE.formatted(adjustedWorkItemId));
                 }
             }
 
@@ -112,8 +122,9 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             } else if (itemsFound.size() == 1) {
                 result.setSuccess(true);
                 if (providedProjectId == null) {
-                    // there was no project ID provided - we must insert it
-                    return link.replace("data-item-id=", "data-scope=\"%s\" data-item-id=".formatted(itemsFound.getFirst().getProjectId()));
+                    // there was no project ID provided - we must insert it before the id-bearing attribute
+                    String anchor = urlBasedId ? DATA_URL_ANCHOR : DATA_ITEM_ID_ANCHOR;
+                    return link.replace(anchor, "data-scope=\"%s\" %s".formatted(itemsFound.getFirst().getProjectId(), anchor));
                 } else {
                     return link.replace(DATA_SCOPE_TEMPLATE.formatted(providedProjectId), DATA_SCOPE_TEMPLATE.formatted(itemsFound.getFirst().getProjectId()));
                 }
