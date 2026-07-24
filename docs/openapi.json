@@ -801,9 +801,87 @@
         "type": "object"
       },
       "RepairParams": {
+        "properties": {
+          "configs": {
+            "additionalProperties": {
+              "default": {},
+              "description": "User custom repair configurations",
+              "example": {
+                "ModuleContentLinksRepairer": {
+                  "convertToPlainText": true
+                }
+              },
+              "type": "object"
+            },
+            "default": {},
+            "description": "User custom repair configurations",
+            "example": {
+              "ModuleContentLinksRepairer": {
+                "convertToPlainText": true
+              }
+            },
+            "properties": {
+              "empty": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "issueMetaInfos": {
+            "description": "List of issues meta infos to fix",
+            "items": {
+              "description": "List of issues meta infos to fix",
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "issueMetaInfos"
+        ],
+        "type": "object"
+      },
+      "RepairerConfigMeta": {
+        "properties": {
+          "defaultValue": {
+            "type": "object"
+          },
+          "description": {
+            "type": "string"
+          },
+          "hint": {
+            "type": "string"
+          },
+          "key": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "BOOLEAN"
+            ],
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "RepairerMeta": {
+        "properties": {
+          "configs": {
+            "items": {
+              "$ref": "#/components/schemas/RepairerConfigMeta"
+            },
+            "type": "array"
+          },
+          "description": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "Revision": {
@@ -859,6 +937,99 @@
         "type": "object"
       },
       "ScanParams": {
+        "properties": {
+          "configs": {
+            "additionalProperties": {
+              "default": {},
+              "description": "User custom repair configurations",
+              "example": {
+                "ModuleContentLinksRepairer": {
+                  "convertToPlainText": true
+                }
+              },
+              "type": "object"
+            },
+            "default": {},
+            "description": "User custom repair configurations",
+            "example": {
+              "ModuleContentLinksRepairer": {
+                "convertToPlainText": true
+              }
+            },
+            "properties": {
+              "empty": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "entitySubtype": {
+            "description": "Entity subtype to scan, e.g. 'requirement' for work items or 'specification' for documents (if not provided, all subtypes will be scanned)",
+            "nullable": true,
+            "type": "string"
+          },
+          "entityType": {
+            "description": "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT and COLLECTION",
+            "enum": [
+              "COLLECTION",
+              "DOCUMENT",
+              "WORKITEM"
+            ],
+            "example": "WORKITEM",
+            "type": "string"
+          },
+          "hideValid": {
+            "default": false,
+            "description": "Hide entities without issues from the resulting list",
+            "nullable": true,
+            "type": "boolean"
+          },
+          "limit": {
+            "default": 100,
+            "description": "Maximum number of entities to scan",
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "projectId": {
+            "description": "The unique identifier for the project",
+            "example": "elibrary",
+            "type": "string"
+          },
+          "repairers": {
+            "description": "List of repairers to use (if no data provided the default repairers will be applied)",
+            "items": {
+              "description": "List of repairers to use (if no data provided the default repairers will be applied)",
+              "nullable": true,
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
+          "revision": {
+            "description": "SVN revision to scan against. If null, scans current HEAD; otherwise the entire query runs as of that revision.",
+            "example": "12345",
+            "nullable": true,
+            "type": "string"
+          },
+          "sort": {
+            "default": "created",
+            "description": "Sorting criteria in the format 'created' or '~id'",
+            "nullable": true,
+            "type": "string"
+          },
+          "timeout": {
+            "default": 60000,
+            "description": "Operation timeout, milliseconds",
+            "format": "int64",
+            "type": "integer"
+          },
+          "userQuery": {
+            "description": "Additional query to select entities for scanning, e.g. 'id:TEST-12345'",
+            "nullable": true,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "SettingName": {
@@ -905,6 +1076,31 @@
           "id",
           "name"
         ],
+        "type": "object"
+      },
+      "UserConfigs": {
+        "additionalProperties": {
+          "default": {},
+          "description": "User custom repair configurations",
+          "example": {
+            "ModuleContentLinksRepairer": {
+              "convertToPlainText": true
+            }
+          },
+          "type": "object"
+        },
+        "default": {},
+        "description": "User custom repair configurations",
+        "example": {
+          "ModuleContentLinksRepairer": {
+            "convertToPlainText": true
+          }
+        },
+        "properties": {
+          "empty": {
+            "type": "boolean"
+          }
+        },
         "type": "object"
       },
       "Version": {

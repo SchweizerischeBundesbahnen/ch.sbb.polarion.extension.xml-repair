@@ -5,6 +5,7 @@ import type { NumericInputHint } from '../components/NumericInput';
 import RepairersPanel from '../components/RepairersPanel';
 import ResultsTable from '../components/ResultsTable';
 import ScanParamsPanel from '../components/ScanParamsPanel';
+import { getCookie as getRawCookie, setCookie as setRawCookie } from '../services/cookies';
 import useRemote from '../services/useRemote';
 import type {
   BaselineInfo,
@@ -27,17 +28,14 @@ const COOKIE_PREFIX = 'xmlRepair_';
 // Existing users with a saved cookie are unaffected - their cookie won't list these IDs anyway.
 const OPT_OUT_BY_DEFAULT_REPAIRERS = new Set<string>(['ModuleStandardStructureLinkRoleRepairer']);
 
+// Thin wrappers over the shared cookie helpers that pin every key to this app's prefix, so the raw
+// read/write logic lives in one place (services/cookies) and the prefix relationship stays explicit.
 function getCookie(key: string): string | null {
-  const name = COOKIE_PREFIX + key + '=';
-  const parts = document.cookie.split('; ');
-  for (const part of parts) {
-    if (part.startsWith(name)) return decodeURIComponent(part.substring(name.length));
-  }
-  return null;
+  return getRawCookie(COOKIE_PREFIX + key);
 }
 
 function setCookie(key: string, value: string): void {
-  document.cookie = `${COOKIE_PREFIX}${key}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`;
+  setRawCookie(COOKIE_PREFIX + key, value);
 }
 
 const ENTITY_TYPE_OPTIONS: IconSelectOption[] = [
