@@ -14,3 +14,11 @@
 # misc
 .DS_Store
 npm-debug.log*
+
+# vitest browser mode: transient visual-regression artifacts (committed refs live in test/expected/)
+test/__diff__/
+test/__screenshots__/
+.vitest-attachments/
+
+# coverage reports
+coverage/

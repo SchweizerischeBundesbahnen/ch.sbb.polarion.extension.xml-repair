@@ -1,6 +1,13 @@
 # XML Repair App (React UI)
 
-This submodule contains a React frontend for the XML Repair Polarion extension. It provides a side-panel UI where users can scan and repair XML issues in Polarion entities (Work Items, Documents, Baseline Collections) without relying on the traditional Rich Page widget.
+This submodule contains the React frontend for the XML Repair Polarion extension, built on the shared
+`@grigoriev/react-sbb-polarion` (RSP) component library. It is a single Vite bundle
+with feature routing by `?feature=<id>`, hosting three surfaces:
+
+- **Scan & Repair** (no `?feature=`, the default): scan and repair XML issues in Polarion entities
+  (Work Items, Documents, Baseline Collections). Opened by `XmlRepairNavigationExtender`.
+- **About** (`?feature=about`): the shared RSP About page.
+- **Repair Authorization** (`?feature=authorization`): configure which global/project roles may repair.
 
 The app is built with Vite and React, producing a static bundle that gets embedded into the extension JAR during the Maven build.
 
@@ -93,3 +100,28 @@ npm run build
 # Preview the production build locally
 npm run preview
 ```
+
+### Testing & quality
+
+Tests use Vitest in browser mode (real Chromium via Playwright); REST is mocked at the `fetch`
+boundary, so no Polarion is needed. Visual-regression pixels only match inside the pinned Playwright
+Docker image, so references are generated and checked there (Windows is a dev environment only).
+
+```bash
+# Behavior suite + the 80% istanbul coverage gate (runs anywhere; excludes visual tests)
+npm run test:coverage
+
+# Full suite (behavior + visual regression) inside the pinned Playwright Docker image (authoritative)
+npm run test:docker
+
+# Regenerate the committed visual reference PNGs (Docker only) after an intentional UI change
+npm run test:update:docker
+
+# Lint
+npm run lint          # eslint .
+npm run lint:fix
+```
+
+The repo-root pre-commit hooks run `format:check`, `lint`, and the dockerized coverage suite on `ui/`
+changes; `mvn install` runs `test:docker` in the `test` phase (skip with `-DskipJsTests` on a
+Docker-less host).

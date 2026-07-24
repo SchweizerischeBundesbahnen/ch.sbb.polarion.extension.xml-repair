@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { type SearchableDropdownInstance, createEditableSelect } from '@grigoriev/react-sbb-polarion';
 import type { NumericInputHint } from './NumericInput';
-
-// Derived from the app's own location so there is no hardcoded /<ext>-app/ segment.
-const GENERIC_MODULES = '/ui/generic/js/modules/';
 
 interface SearchableInputProps {
   value: number;
@@ -14,42 +12,33 @@ interface SearchableInputProps {
 }
 
 // Editable (free-text) generic SearchableDropdown wrapping a numeric <input>: the user can type any
-// revision number OR pick one from the hint list, both filtered as they type. Replaces the bespoke
-// NumericInput-with-hints. The <input> stays React-controlled; SearchableDropdown mirrors the
-// committed value onto it and fires `change`, which drives React's onChange.
-export default function SearchableInput({
-  value,
-  defaultValue,
-  onChange,
-  hints,
-  placeholder,
-}: SearchableInputProps) {
+// revision number OR pick one from the hint list, both filtered as they type. The factory is
+// react-sbb-polarion's bundled createEditableSelect (no runtime fetch), so it works in `vite dev` and
+// in tests. The <input> stays React-controlled; SearchableDropdown mirrors the committed value onto it
+// and fires `change`, which drives React's onChange.
+export default function SearchableInput({ value, defaultValue, onChange, hints, placeholder }: SearchableInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const sdRef = useRef<any>(null);
-  // Latest hints, so the mount effect (which runs after an async module import) seeds the dropdown
-  // with whatever loaded by then — not the possibly-empty value captured in its [] closure.
+  const sdRef = useRef<SearchableDropdownInstance | null>(null);
+  // Latest hints, so the mount effect seeds the dropdown with whatever loaded by then - not the
+  // possibly-empty value captured in its [] closure.
   const hintsRef = useRef(hints);
   hintsRef.current = hints;
 
   const toItems = (hs?: NumericInputHint[]) => (hs || []).map((h) => ({ value: String(h.value), label: h.label }));
 
   useEffect(() => {
-    let cancelled = false;
     const element = inputRef.current;
-    const base = window.location.pathname.replace(/\/ui\/.*$/, GENERIC_MODULES);
-    import(/* @vite-ignore */ base + 'searchableSelect.js')
-      .then((module) => {
-        if (cancelled || !element) return;
-        sdRef.current = module.createEditableSelect(element, {
-          inputFilter: (v: string) => v.replace(/\D/g, ''),
-          placeholder,
-          items: toItems(hintsRef.current),
-        });
-      })
-      .catch(() => { /* keep the native <input> */ });
+    if (!element) return;
+    try {
+      sdRef.current = createEditableSelect(element, {
+        inputFilter: (v: string) => v.replace(/\D/g, ''),
+        placeholder,
+        items: toItems(hintsRef.current),
+      });
+    } catch {
+      /* keep the native <input> */
+    }
     return () => {
-      cancelled = true;
       if (sdRef.current) {
         sdRef.current.destroy();
         sdRef.current = null;
@@ -64,7 +53,7 @@ export default function SearchableInput({
     const sd = sdRef.current;
     if (!sd) return;
     sd.items = toItems(hints);
-    // If the popup is open when hints arrive, re-filter it live so they appear immediately —
+    // If the popup is open when hints arrive, re-filter it live so they appear immediately -
     // dispatching 'input' re-renders the open list without closing it (unlike refresh()).
     if (sd.isOpen && sd.trigger) {
       sd.trigger.dispatchEvent(new Event('input'));

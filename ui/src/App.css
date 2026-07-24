@@ -1,67 +1,12 @@
-.xml-repair-app {
-  margin: 0 auto;
-  padding: 16px 20px;
+/* App root (App.tsx: <div class="app standard-admin-page">). `.app` supplies the base font/padding
+   for every feature page; `standard-admin-page` (from react-sbb-polarion's bundled style.css) supplies
+   the --sbb-* control tokens and the Polarion-styled checkboxes, so no per-app checkbox rules here. */
+/* Outer page padding is provided by RSP (PageLayout.css `.app { padding: 10px }`), shared across all
+   extensions; `.app` here supplies only this app's typography. */
+.app {
   font-family: 'Segoe UI', 'Selawik', 'Open Sans', Arial, sans-serif;
   font-size: 13px;
   color: #1a1a1a;
-}
-
-/* Polarion 2606 checkboxes — render with Polarion's own images instead of the browser's native
-   blue, matching every other admin surface (generic checkboxes.css). */
-.xml-repair-app input[type='checkbox'] {
-  -webkit-appearance: none;
-  appearance: none;
-  width: var(--sbb-toggle-size);
-  height: var(--sbb-toggle-size);
-  flex-shrink: 0;
-  box-sizing: border-box;
-  margin: 0 4px 0 0;
-  vertical-align: middle;
-  cursor: pointer;
-  background: var(--sbb-checkbox-unchecked) no-repeat center;
-  background-size: var(--sbb-toggle-size) var(--sbb-toggle-size);
-}
-
-.xml-repair-app input[type='checkbox']:checked {
-  background-image: var(--sbb-checkbox-checked);
-}
-
-/* Polarion has no indeterminate checkbox image; generic provides it. The --sbb-checkbox-indeterminate
-   token is a self-contained data-URI (inlined from images/checkbox/indeterminate.svg at build, #528),
-   so it resolves from this bundled stylesheet with no relative-path 404 — and being SVG it stays crisp
-   at any zoom. Same token diff-tool uses. */
-.xml-repair-app input[type='checkbox']:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate);
-}
-
-/* Disabled (e.g. items with no fixable issue, or already-revisioned): use Polarion's greyed
-   read-only images so the checkbox visibly reads as non-selectable. */
-.xml-repair-app input[type='checkbox']:disabled {
-  cursor: default;
-  background-image: var(--sbb-checkbox-unchecked-readonly);
-}
-
-.xml-repair-app input[type='checkbox']:disabled:checked {
-  background-image: var(--sbb-checkbox-checked-readonly);
-}
-
-.xml-repair-app input[type='checkbox']:disabled:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate-readonly);
-}
-
-/* Keyboard focus: Polarion's focus-ring images via :focus-visible (keyboard nav, not a mouse click);
-   the image is the focus indicator, so the default outline is suppressed. */
-.xml-repair-app input[type='checkbox']:focus-visible {
-  outline: none;
-  background-image: var(--sbb-checkbox-unchecked-focus);
-}
-
-.xml-repair-app input[type='checkbox']:focus-visible:checked {
-  background-image: var(--sbb-checkbox-checked-focus);
-}
-
-.xml-repair-app input[type='checkbox']:focus-visible:indeterminate {
-  background-image: var(--sbb-checkbox-indeterminate-focus);
 }
 
 .layout-columns {
@@ -239,7 +184,13 @@
   margin-top: 1px;
 }
 
+/* Column layout so every setting sits on its own row. Needed because the shared standard-admin-page
+   checkbox rule (`label:has(input[type=checkbox]) { display: inline-flex }`) outranks .repairer-setting
+   and turns each label inline-level, which would otherwise flow them side by side and wrap. */
 .repairer-settings {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
   margin: 6px 0 2px 22px;
   padding: 4px 8px;
   border-left: 2px solid #a9d6dd;
@@ -247,11 +198,17 @@
 
 .repairer-setting {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 6px;
   font-size: 12px;
   cursor: pointer;
   padding: 2px 0;
+}
+
+/* Keep the box fixed and let a long label wrap beside it instead of squeezing the checkbox. */
+.repairer-setting input[type='checkbox'] {
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .actions {
@@ -680,7 +637,9 @@
   box-sizing: border-box;
   border-radius: var(--sbb-control-radius);
   font-weight: var(--sbb-control-font-weight);
-  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  transition:
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .xml-repair-app .form-row input:not([type='checkbox']):hover,
@@ -700,4 +659,82 @@
 
 .sd-portal .option.indented {
   padding-left: 30px;
+}
+
+/* ---- Repair Authorization page ---- */
+.authorization-page .roles-group {
+  margin-bottom: 16px;
+}
+
+.authorization-page .roles-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.authorization-page .roles-list li {
+  padding: 2px 0;
+}
+
+.authorization-page .roles-list label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  width: fit-content;
+}
+
+/* Shared help/heading helpers used by the ported admin pages (Authorization). */
+.align-left {
+  text-align: left;
+}
+
+.quick-help {
+  margin-top: 20px;
+}
+
+.quick-help-text h3 {
+  margin: 12px 0 4px;
+}
+
+.quick-help-text p {
+  margin: 4px 0;
+}
+
+/* ---- Dev-only Landing page (?feature=landing) ---- */
+.landing-intro {
+  color: #666;
+}
+
+.landing-scope {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.landing-scope .searchable-dropdown {
+  min-width: 280px;
+}
+
+.feature-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+}
+
+.feature-list li {
+  padding: 6px 0;
+  border-top: 1px solid #eee;
+}
+
+.feature-list a {
+  font-weight: 600;
+  color: var(--sbb-accent);
+}
+
+.feature-list .feature-desc {
+  display: block;
+  color: #666;
+  font-size: 12px;
 }

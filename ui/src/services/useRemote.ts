@@ -5,7 +5,8 @@ const REST_PATH = '/polarion/xml-repair/rest';
 interface RequestParams {
   method: string;
   url: string;
-  body?: string;
+  // BodyInit (not just string) so this hook satisfies react-sbb-polarion's SendRequest type structurally.
+  body?: BodyInit;
   contentType?: string;
 }
 

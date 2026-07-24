@@ -7,7 +7,7 @@
                   parentNodeName="XML Repair"
                   parentNodeIconUrl="/polarion/xml-repair-admin/ui/images/menu/30x30/_parent.svg"
                   iconUrl="/polarion/xml-repair-admin/ui/images/menu/16x16/about.svg"
-                  pageUrl="/polarion/xml-repair-admin/pages/about.jsp?scope=$scope$"
+                  pageUrl="/polarion/xml-repair-app/ui/app/index.html?feature=about&amp;scope=$scope$&amp;embedded=true"
                   projectScope="true"
                   projectGroupScope="false"
                   repositoryScope="true"/>
@@ -25,7 +25,7 @@
                   name="Repair Authorization"
                   parentNodeId="xml-repair"
                   iconUrl="/polarion/xml-repair-admin/ui/images/menu/16x16/authorization.svg"
-                  pageUrl="/polarion/xml-repair-admin/pages/authorization.jsp?scope=$scope$"
+                  pageUrl="/polarion/xml-repair-app/ui/app/index.html?feature=authorization&amp;scope=$scope$&amp;embedded=true"
                   projectScope="true"
                   projectGroupScope="false"
                   repositoryScope="false"/>

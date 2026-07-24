@@ -44,4 +44,9 @@ public class ApiController extends InternalController {
         return polarionService.callPrivileged(() -> super.repair(repairParams));
     }
 
+    @Override
+    public Response listRoles(String scope) {
+        return polarionService.callPrivileged(() -> super.listRoles(scope));
+    }
+
 }

@@ -35,7 +35,7 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     @Nullable
     @Override
     public String getPageUrl(@NotNull IContextId contextId) {
-        return "/polarion/xml-repair-app/ui/app/index.html?projectId=" + contextId.getContextName();
+        return "/polarion/xml-repair-app/ui/app/index.html?feature=repair&embedded=true&projectId=" + contextId.getContextName();
     }
 
     @Override
