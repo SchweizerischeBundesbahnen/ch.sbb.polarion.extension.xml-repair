@@ -32,7 +32,7 @@ class XmlRepairNavigationExtenderTest {
         IContextId contextId = mock(IContextId.class);
         when(contextId.getContextName()).thenReturn("myProject");
 
-        assertEquals("/polarion/xml-repair-app/ui/app/index.html?projectId=myProject", extender.getPageUrl(contextId));
+        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=repair&embedded=true&projectId=myProject", extender.getPageUrl(contextId));
     }
 
     @Test

@@ -117,11 +117,7 @@ export default function ResultsTable({
             {' '}
             (
             {totalIssues > 0 ? (
-              <button
-                type="button"
-                className="breakdown-toggle"
-                onClick={() => setBreakdownOpen((open) => !open)}
-              >
+              <button type="button" className="breakdown-toggle" onClick={() => setBreakdownOpen((open) => !open)}>
                 {summaryText}
               </button>
             ) : (
@@ -140,7 +136,9 @@ export default function ResultsTable({
       )}
 
       {result.items.length > 0 ? (
-        <table className={`sbb-table sbb-table--grid sbb-table--compact issues-table${batchRepairing ? ' disabled' : ''}`}>
+        <table
+          className={`sbb-table sbb-table--grid sbb-table--compact issues-table${batchRepairing ? ' disabled' : ''}`}
+        >
           <thead>
             <tr>
               <th className="col-checkbox">

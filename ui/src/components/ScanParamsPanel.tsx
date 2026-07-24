@@ -1,9 +1,9 @@
 import type { KeyboardEvent } from 'react';
 import type { EntityType, IconSelectOption } from '../types';
-import SearchableSelect from './SearchableSelect';
 import NumericInput from './NumericInput';
-import SearchableInput from './SearchableInput';
 import type { NumericInputHint } from './NumericInput';
+import SearchableInput from './SearchableInput';
+import SearchableSelect from './SearchableSelect';
 
 const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   WORKITEM: 'e.g. id:PRJID-123',
@@ -66,7 +66,12 @@ export default function ScanParamsPanel({
     >
       <div className="form-row">
         <label>Entity Type</label>
-        <SearchableSelect value={entityValue} onChange={onEntityChange} options={combinedEntityOptions} allowEmpty={false} />
+        <SearchableSelect
+          value={entityValue}
+          onChange={onEntityChange}
+          options={combinedEntityOptions}
+          allowEmpty={false}
+        />
       </div>
 
       <div className="form-row">
@@ -122,7 +127,12 @@ export default function ScanParamsPanel({
           </div>
           <div className="form-row">
             <label htmlFor="hide-valid">Show items with issues only</label>
-            <input id="hide-valid" type="checkbox" checked={hideValid} onChange={(e) => onHideValidChange(e.target.checked)} />
+            <input
+              id="hide-valid"
+              type="checkbox"
+              checked={hideValid}
+              onChange={(e) => onHideValidChange(e.target.checked)}
+            />
           </div>
         </div>
       </details>
