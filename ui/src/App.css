@@ -4,7 +4,8 @@
 /* Outer page padding is provided by RSP (PageLayout.css `.app { padding: 10px }`), shared across all
    extensions; `.app` here supplies only this app's typography. */
 .app {
-  font-family: 'Segoe UI', 'Selawik', 'Open Sans', Arial, sans-serif;
+  /* font-family comes from RSP (control-tokens.css applies --sbb-control-font-family to
+     .standard-admin-page) so every extension shares one typeface — don't override it here. */
   font-size: 13px;
   color: #1a1a1a;
 }
