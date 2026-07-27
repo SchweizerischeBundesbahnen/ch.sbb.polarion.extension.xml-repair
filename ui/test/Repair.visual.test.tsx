@@ -76,7 +76,7 @@ async function mount(repairers: Repairer[] = REPAIRERS) {
   await stubEntityIcons();
 }
 
-describe('Scan & Repair page visual', () => {
+describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
   it('initial (parameters + repairers panel)', async () => {
     await mount();
     const app = document.querySelector('.app') as HTMLElement;

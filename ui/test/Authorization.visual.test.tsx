@@ -17,7 +17,7 @@ afterEach(() => {
   window.top?.document.querySelectorAll('script[id$="-breadcrumb-bridge"]').forEach((s) => s.remove());
 });
 
-describe('Repair Authorization page visual', () => {
+describe.skipIf(!__PIXEL_REFERENCES__)('Repair Authorization page visual', () => {
   it('loaded (global + project roles, toolbar, quick help)', async () => {
     installFetchMock([
       {
