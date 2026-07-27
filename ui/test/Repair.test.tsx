@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import { userEvent } from 'vitest/browser';
 import App from '../src/App';
-import { BASELINES, DOCUMENT_TYPES, REPAIRERS, SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
+import { BASELINES, DOCUMENT_TYPES, SCAN_RESULT, WORK_ITEM_TYPES, repairersFor } from './fixtures';
 import { type FetchMock, type Route, installFetchMock, jsonResponse } from './mockFetch';
 
 // Full behavior test of the Scan & Repair page, driven through the real App (feature router). The
@@ -12,7 +12,8 @@ const origUrl = window.location.pathname + window.location.search;
 const setUrl = (search: string) => window.history.replaceState({}, '', search);
 
 const defaultRoutes = (): Route[] => [
-  { method: 'GET', match: /\/repairers/, json: REPAIRERS },
+  // Answers per entityType exactly like the backend, so switching the dropdown reloads a different list.
+  { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
@@ -42,7 +43,7 @@ async function mountRepair(routes = defaultRoutes(), query = '?feature=repair&pr
   fetchMock = installFetchMock(routes);
   setUrl(query);
   render(<App />);
-  await vi.waitFor(() => expect(document.body.textContent).toContain('Invalid enumeration value'));
+  await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'));
 }
 
 async function runScan() {
@@ -77,12 +78,13 @@ describe('Scan & Repair page', () => {
     expect(hasOverviewLink()).toBe(false);
   });
 
-  it('loads the repairers with the opt-out one deselected by default', async () => {
+  it('loads the repairers of the current entity type', async () => {
     await mountRepair();
-    // Both repairers listed; the opt-out repairer is off by default -> 1 of 2 selected.
-    expect(document.body.textContent).toContain('Invalid enumeration value');
-    expect(document.body.textContent).toContain('Module structure link role');
-    expect(document.body.textContent).toContain('(1/2 selected)');
+    // Work Items is the default entity type: its six repairers are listed and, since none of them is an
+    // opt-out one, all six are selected (the opt-out case is covered by the entity-type switch test).
+    expect(document.body.textContent).toContain('Broken Work Item Links');
+    expect(document.body.textContent).toContain('Enumeration fields: Invalid value');
+    expect(document.body.textContent).toContain('(6/6 selected)');
   });
 
   it('scans and shows the results with a repairer breakdown', async () => {
@@ -181,7 +183,7 @@ describe('Scan & Repair page', () => {
     expect(document.querySelector('.error-message')!.textContent).toContain('Project ID is missing');
   });
 
-  it('reloads repairers when the entity type changes', async () => {
+  it('reloads repairers when the entity type changes, keeping the opt-out one deselected', async () => {
     await mountRepair();
     const select = document.querySelector<HTMLSelectElement>('.form-row select');
     expect(select).not.toBeNull();
@@ -191,16 +193,20 @@ describe('Scan & Repair page', () => {
       const calls = fetchMock.mock.calls.filter((c) => String(c[0]).includes('entityType=DOCUMENT'));
       expect(calls.length).toBeGreaterThan(0);
     });
+    // Documents come with the larger repairer set which includes the opt-out repairer -> 12 of 13 on.
+    await vi.waitFor(() => expect(document.body.textContent).toContain('(12/13 selected)'));
+    expect(document.body.textContent).toContain('Standard structure link role');
   });
 
-  it('toggles all repairers on and off from the Select All checkbox', async () => {
+  it('toggles all repairers off and on from the Select All checkbox', async () => {
     await mountRepair();
     const selectAll = Array.from(document.querySelectorAll<HTMLInputElement>('.repairer-item.select-all input'))[0];
     expect(selectAll).toBeTruthy();
+    // Work item repairers are all on by default, so the first click clears the selection.
     selectAll.click();
-    await vi.waitFor(() => expect(document.body.textContent).toContain('(2/2 selected)'));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('(0/6 selected)'));
     selectAll.click();
-    await vi.waitFor(() => expect(document.body.textContent).toContain('(0/2 selected)'));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('(6/6 selected)'));
   });
 
   it('toggles the option checkbox of a selected repairer', async () => {

@@ -6,11 +6,11 @@ import ch.sbb.polarion.extension.generic.fields.model.Option;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
 import ch.sbb.polarion.extension.xml_repair.service.model.*;
-import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import com.polarion.alm.projects.IProjectService;
+import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.IPriorityOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
@@ -31,15 +31,17 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unchecked")
 public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
 
-    public static final String REMOVE_INVALID_ENUM_VALUES = "removeInvalidEnumValues";
+    public static final String REMOVE_INVALID_VALUES = "removeInvalidValues";
     public static final String NAME = "Enumeration fields: Invalid value";
-    private static final String USER_ENUM_ID = "@user";
+    public static final String USER_ENUM_ID = "@user";
     private static final String WORK_ITEM_TYPE_ENUM_ID = "work-item-type";
+    private static final String CACHE_ALL_USER_IDS_KEY = "ALL_USER_IDS";
     private final Logger logger = Logger.getLogger(FieldsInvalidEnumerationValueRepairer.class);
     private final IProjectService projectService = PlatformContext.getPlatform().lookupService(IProjectService.class);
 
@@ -51,7 +53,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), true,
                 FieldType.LIST.getType(), FieldType.ENUM.getType())) {
-            scanOrRepair(entity, meta, context.configs(), issues, null);
+            scanOrRepair(entity, meta, context, issues, null);
         }
         return issues;
     }
@@ -69,30 +71,30 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 .filter(m -> Objects.equals(m.getId(), fieldId))
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("Field with id '%s' not found on entity '%s'".formatted(fieldId, entity.getId())));
 
-        scanOrRepair(entity, meta, context.configs(), null, result);
+        scanOrRepair(entity, meta, context, null, result);
 
         return result;
     }
 
     @SuppressWarnings({"java:S3776", "java:S1166"}) // ignore cognitive complexity and "log or rethrow this exception" complaints
-    private void scanOrRepair(IWorkflowObject entity, FieldMetadata meta, UserConfigs configs, List<Issue> issues, RepairResult repairResult) {
+    private void scanOrRepair(IWorkflowObject entity, FieldMetadata meta, IContext context, List<Issue> issues, RepairResult repairResult) {
         Object value = null;
         try {
             value = entity.getValue(meta.getId());
         } catch (UnresolvableObjectException e) {
             logger.debug("Failed to resolve enumeration value(s) in field '%s' of entity '%s'".formatted(meta.getLabel(), entity.getId()));
-            handleUnresolvableObjectException(entity, meta, issues, configs, repairResult, null);
+            handleUnresolvableObjectException(entity, meta, issues, context, repairResult, null);
         }
 
         // skip 'priority' enum, as it has special handling in Polarion
-        if (value instanceof IEnumOption option && !(option instanceof IPriorityOpt) && isInvalidEnumOption(option, meta)) {
-            Issue issue = createIssue(entity, meta, "Invalid enumeration id '%s' for the field '%s'".formatted(option.getId(), meta.getLabel()));
+        if (value instanceof IEnumOption option && !(option instanceof IPriorityOpt) && isInvalidEnumOption(option, meta, context)) {
+            Issue issue = createIssue(entity, meta, "Invalid enumeration id '%s' for the field '%s'.".formatted(option.getId(), meta.getLabel()));
             if (repairResult != null && issue.getDescription().equals(repairResult.getRawIssueMetaInfo().getString(ISSUE_DESCRIPTION))) {
                 IEnumOption similarValue = findSimilarOption(entity, option, meta);
                 if (similarValue != null) {
                     entity.setValue(meta.getId(), similarValue);
                     repairResult.setSuccess(true);
-                } else if (!configs.getBoolean(getClass(), REMOVE_INVALID_ENUM_VALUES)) {
+                } else if (!context.configs().getBoolean(getClass(), REMOVE_INVALID_VALUES)) {
                     warnRepairTurnedOff(repairResult, false);
                 } else {
                     clearFieldValue(entity, meta, repairResult);
@@ -103,11 +105,11 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         } else if (value instanceof CustomTypedList list && meta.getType() instanceof ListType listType
                 && listType.getItemType() instanceof EnumType enumType && !(Objects.equals(enumType.getEnumerationId(), IWorkItem.ENUM_ID_PRIORITY))) {
             try {
-                List<IEnumOption> invalidOptions = list.stream().filter(v -> v instanceof IEnumOption e && isInvalidEnumOption(e, meta)).toList();
-                handleInvalidOptions(entity, meta, issues, configs, repairResult, list, invalidOptions);
+                List<IEnumOption> invalidOptions = list.stream().filter(v -> v instanceof IEnumOption e && isInvalidEnumOption(e, meta, context)).toList();
+                handleInvalidOptions(entity, meta, issues, context, repairResult, list, invalidOptions);
             } catch (UnresolvableObjectException e) {
                 logger.debug("Failed to resolve enumeration value(s) in field '%s' of entity '%s'".formatted(meta.getLabel(), entity.getId()));
-                handleUnresolvableObjectException(entity, meta, issues, configs, repairResult, listType);
+                handleUnresolvableObjectException(entity, meta, issues, context, repairResult, listType);
             }
         }
     }
@@ -117,7 +119,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     }
 
 
-    private void handleInvalidOptions(IWorkflowObject entity, FieldMetadata meta, List<Issue> issues, UserConfigs configs, RepairResult repairResult, CustomTypedList list, List<IEnumOption> invalidOptions) {
+    private void handleInvalidOptions(IWorkflowObject entity, FieldMetadata meta, List<Issue> issues, IContext context, RepairResult repairResult, CustomTypedList list, List<IEnumOption> invalidOptions) {
         if (!invalidOptions.isEmpty()) {
             String invalidIds = invalidOptions.stream().map(IEnumOption::getId).collect(Collectors.joining("', '", "'", "'"));
             Issue issue = createIssue(entity, meta, "Invalid enumeration id(s) %s for the field '%s'.".formatted(invalidIds, meta.getLabel()));
@@ -126,13 +128,13 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 // Fix automatically only when similar item found for every invalid.
                 // Otherwise, we can end up in a situation that only some of the invalid values are repaired, and the rest are still invalid,
                 // so user will need to run repair multiple times and it can be confusing. So even if one of N items may be fixed
-                // by deletion we require REMOVE_INVALID_ENUM_VALUES option is turned on.
+                // by deletion we require REMOVE_INVALID_VALUES option is turned on.
                 if (meta.isRequired() && invalidOptions.size() == list.size() && similarOptions.isEmpty()) {
                     repairResult.getWarnings().add("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
-                } else if (!configs.getBoolean(getClass(), REMOVE_INVALID_ENUM_VALUES) && similarOptions.size() != invalidOptions.size()) {
+                } else if (!context.configs().getBoolean(getClass(), REMOVE_INVALID_VALUES) && similarOptions.size() != invalidOptions.size()) {
                     warnRepairTurnedOff(repairResult, invalidOptions.size() > 1);
                 } else {
-                    // We fix either case when we found all similar items or when REMOVE_INVALID_ENUM_VALUES option is turned on.
+                    // We fix either case when we found all similar items or when REMOVE_INVALID_VALUES option is turned on.
                     // We want to prevent situation that only some of the invalid values are repaired, and the rest are still invalid,
                     // so user will need to run repair multiple times which is confusing.
                     list.removeAll(invalidOptions);
@@ -150,7 +152,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
      * Handle the case when the value of enumeration field can't be resolved at all (e.g. because of the type was changed from 'string' to 'enum/document').
      */
     @SuppressWarnings({"rawtypes", "java:S3776", "java:S1166"}) // ignore cognitive complexity and "log or rethrow this exception" complaints
-    private void handleUnresolvableObjectException(IWorkflowObject entity, FieldMetadata meta, List<Issue> issues, UserConfigs configs, RepairResult repairResult, ListType listType) {
+    private void handleUnresolvableObjectException(IWorkflowObject entity, FieldMetadata meta, List<Issue> issues, IContext context, RepairResult repairResult, ListType listType) {
         List<Object> badItems = new ArrayList<>();
         Object customValue = Objects.requireNonNull(((PObject) entity).getData()).getCustomValue(meta.getId());
         if (listType != null && customValue instanceof List<?> customList) {
@@ -168,7 +170,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         if (!badItems.isEmpty()) {
             Issue issue = createIssue(entity, meta, "Invalid enumeration id(s) %s for the field '%s'.".formatted(badItems.stream().map(String::valueOf).toList(), meta.getLabel()));
             if (repairResult != null && issue.getDescription().equals(repairResult.getRawIssueMetaInfo().getString(ISSUE_DESCRIPTION))) {
-                if (!configs.getBoolean(getClass(), REMOVE_INVALID_ENUM_VALUES)) {
+                if (!context.configs().getBoolean(getClass(), REMOVE_INVALID_VALUES)) {
                     warnRepairTurnedOff(repairResult, badItems.size() > 1);
                 } else if (!meta.isMulti()) {
                     clearFieldValue(entity, meta, repairResult);
@@ -200,18 +202,34 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     }
 
     void warnRepairTurnedOff(RepairResult repairResult, boolean multipleEntries) {
-        repairResult.getWarnings().add("Cannot repair %s automatically. Enable option 'Remove invalid enumeration values' to remove invalid value".formatted(multipleEntries ? "all values" : "value"));
+        repairResult.getWarnings().add("Cannot repair %s automatically. Enable option 'Remove invalid values' to remove invalid value".formatted(multipleEntries ? "all values" : "value"));
     }
 
     @VisibleForTesting
-    boolean isInvalidEnumOption(IEnumOption option, FieldMetadata meta) {
+    boolean isInvalidEnumOption(IEnumOption option, FieldMetadata meta, @NotNull IContext context) {
         String enumId = option.getEnumId();
-        if (enumId.equals(USER_ENUM_ID)) {// some users may be not presented in the user enumeration (e.g. disabled users) so we need to check them separately
-            return projectService.getUsers().stream().noneMatch(u -> u.getId().equals(option.getId()));
-        } else if (enumId.equals(WORK_ITEM_TYPE_ENUM_ID) && TYPE_HEADING.equals(option.getId())) {
+        if (enumId.equals(WORK_ITEM_TYPE_ENUM_ID) && TYPE_HEADING.equals(option.getId())) {
             return false; // heading type isn't presented in the options list but is still valid
+        } else if (shouldFixSpecificEnum(enumId)) {
+            if (enumId.equals(USER_ENUM_ID)) {
+                // some users may be not presented in the user enumeration (e.g. disabled users) so we need to check them separately
+                Set<String> userIds = getUserIdsUsingCache(context);
+                return userIds != null && !userIds.contains(option.getId());
+            } else {
+                return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
+            }
+        } else {
+            return false;
         }
-        return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
+    }
+
+    private Set<String> getUserIdsUsingCache(@NotNull IContext context) {
+        return context.getAndCache(CACHE_ALL_USER_IDS_KEY, () -> projectService.getUsers().stream().map(IUser::getId).collect(Collectors.toSet()));
+    }
+
+    @VisibleForTesting
+    boolean shouldFixSpecificEnum(String enumId) {
+        return !enumId.equals(USER_ENUM_ID); //fix users in the separate repairer
     }
 
     private IEnumOption findSimilarOption(IWorkflowObject entity, IEnumOption option, FieldMetadata meta) {
@@ -248,13 +266,14 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     }
 
     public String getDescription() {
-        return "Finds fields with invalid enumeration values. Repair should removed invalid value, if an empty value is possible (or it is only one value from multiple).";
+        return "Finds fields with invalid enumeration values. " +
+                "Repair removes the invalid value if an empty value is allowed, or if it is just one of several values.";
     }
 
     @Override
     public List<RepairerConfigMeta> getConfigs() {
         return List.of(
-                new RepairerConfigMeta(REMOVE_INVALID_ENUM_VALUES, "Remove invalid enumeration values",
+                new RepairerConfigMeta(REMOVE_INVALID_VALUES, "Remove invalid values",
                         "Clear/remove value if it is not defined in the specified enumeration", RepairerConfigType.BOOLEAN, false)
         );
     }

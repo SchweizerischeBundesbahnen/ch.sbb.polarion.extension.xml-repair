@@ -3,18 +3,28 @@ import { cleanup, render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import App from '../src/App';
 import appIcon from '../src/assets/app-icon.svg';
-import type { Repairer } from '../src/types';
-import { BASELINES, DOCUMENT_TYPES, REPAIRERS, REPAIRERS_MANY, SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
+import type { EntityType } from '../src/types';
+import {
+  BASELINES,
+  DOCUMENT_TYPES,
+  REPAIRERS_BY_ENTITY_TYPE,
+  SCAN_RESULT,
+  WORK_ITEM_TYPES,
+  repairersFor,
+} from './fixtures';
 import { type Route, installFetchMock, jsonResponse } from './mockFetch';
 
-// Docker-only snapshots of the Scan & Repair page: the initial parameter/repairers panel, the same
-// panel with the Advanced block expanded, the Repairers block expanded (repairer cards + per-repairer
-// settings), and the results table after a scan (items, issue counts, repairer breakdown link).
+// Docker-only snapshots of the Scan & Repair page: the initial parameter/repairers panel for the default
+// Work Items entity type, the same panel with Documents selected (document query hint + the larger
+// document repairer set behind the collapsed summary), the Advanced block expanded, the Repairers block
+// expanded (repairer cards + per-repairer settings), and the results table after a scan (items, issue
+// counts, repairer breakdown link).
 
 const origUrl = window.location.pathname + window.location.search;
 
-const routes = (repairers: Repairer[] = REPAIRERS): Route[] => [
-  { method: 'GET', match: /\/repairers/, json: repairers },
+const routes = (): Route[] => [
+  // Answers per entityType exactly like the backend, so switching the dropdown reloads a different list.
+  { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
@@ -66,43 +76,72 @@ async function stubEntityIcons() {
   );
 }
 
-async function mount(repairers: Repairer[] = REPAIRERS) {
-  installFetchMock(routes(repairers));
+async function mount() {
+  installFetchMock(routes());
   // embedded=true mirrors how the navigation extender opens the page in Polarion: the PageLayout title
   // shows but the dev-only "Overview" back link is hidden, so the snapshot captures the production look.
   window.history.replaceState({}, '', '?feature=repair&projectId=elibrary&embedded=true');
   render(<App />);
-  await vi.waitFor(() => expect(document.body.textContent).toContain('Invalid enumeration value'));
+  await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'));
   await stubEntityIcons();
+}
+
+// Switches the entity type through the native <select> the SearchableDropdown is built on (what a click
+// on a dropdown option ends up doing) and waits for the reloaded repairer list of that type. The trigger
+// icon is re-rendered by the dropdown, so it has to be stubbed again.
+async function selectEntityType(entityType: EntityType) {
+  const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+  select.value = entityType;
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  const total = REPAIRERS_BY_ENTITY_TYPE[entityType].length;
+  await vi.waitFor(() =>
+    expect(document.querySelector('.repairers-count')?.textContent).toContain(`/${total} selected`),
+  );
+  await stubEntityIcons();
+}
+
+async function captureApp(name: string) {
+  const app = document.querySelector('.app') as HTMLElement;
+  await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
+  await expect(page.elementLocator(app)).toMatchScreenshot(name);
 }
 
 describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
   it('initial (parameters + repairers panel)', async () => {
     await mount();
-    const app = document.querySelector('.app') as HTMLElement;
-    await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
-    await expect(page.elementLocator(app)).toMatchScreenshot('repair-initial');
+    await captureApp('repair-initial');
+  });
+
+  it('documents selected (document query hint + document repairers)', async () => {
+    // Same view as repair-initial but for the Documents entity type: the dropdown trigger and the query
+    // placeholder follow the selection, and the collapsed Repairers summary counts the document repairer
+    // set (13 of them, one deselected by default) instead of the six work item ones.
+    await mount();
+    await selectEntityType('DOCUMENT');
+    await captureApp('repair-documents');
   });
 
   it('advanced expanded (all scan parameters)', async () => {
     await mount();
     const details = document.querySelector<HTMLDetailsElement>('.advanced-section')!;
     details.open = true;
-    const app = document.querySelector('.app') as HTMLElement;
-    await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
-    await expect(page.elementLocator(app)).toMatchScreenshot('repair-advanced');
+    await captureApp('repair-advanced');
   });
 
   it('repairers expanded (cards + per-repairer settings)', async () => {
-    // Default selection checks every repairer except the opt-out ModuleStandardStructureLinkRoleRepairer,
-    // so of the five we get four checked (each showing its settings) and one unchecked card with only its
-    // name/description. Each setting's tick follows its config defaultValue, giving a mix of on/off boxes.
-    await mount(REPAIRERS_MANY);
+    // Documents carry the largest repairer set, so this shot covers every card variant: the opt-out
+    // ModuleStandardStructureLinkRoleRepairer as an unchecked card with only its name/description
+    // (settings render only under a checked repairer), checked cards without settings, and checked cards
+    // with one or two settings. Every real config defaults to off, so the first one is ticked here to
+    // capture both the checked and the unchecked setting box.
+    await mount();
+    await selectEntityType('DOCUMENT');
     const details = document.querySelector<HTMLDetailsElement>('.repairers-section')!;
     details.open = true;
-    const app = document.querySelector('.app') as HTMLElement;
-    await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
-    await expect(page.elementLocator(app)).toMatchScreenshot('repair-repairers');
+    const firstSetting = document.querySelector<HTMLInputElement>('.repairer-setting input[type="checkbox"]')!;
+    firstSetting.click();
+    await vi.waitFor(() => expect(firstSetting.checked).toBe(true));
+    await captureApp('repair-repairers');
   });
 
   it('results (issues table + breakdown)', async () => {
@@ -113,8 +152,6 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
     await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull());
     document.querySelector<HTMLButtonElement>('.breakdown-toggle')!.click();
     await vi.waitFor(() => expect(document.querySelector('.breakdown-table')).not.toBeNull());
-    const app = document.querySelector('.app') as HTMLElement;
-    await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
-    await expect(page.elementLocator(app)).toMatchScreenshot('repair-results');
+    await captureApp('repair-results');
   });
 });

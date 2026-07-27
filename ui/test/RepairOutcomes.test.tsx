@@ -41,7 +41,9 @@ async function mountRepair(routes: Route[], query = '?feature=repair&projectId=e
   installFetchMock(routes);
   setUrl(query);
   render(<App />);
-  await vi.waitFor(() => expect(document.body.textContent).toContain('Invalid enumeration value'), { timeout: 5000 });
+  await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'), {
+    timeout: 5000,
+  });
 }
 
 async function scanAndSelectAll() {
@@ -185,9 +187,12 @@ describe('Repair scan parameters', () => {
         match: /\/baselines/,
         json: [
           ...BASELINES,
-          { revision: 'not-a-number', name: 'Broken' },
-          { revision: '0', name: 'Zero' },
-          { revision: '-5', name: 'Negative' },
+          // The names are asserted as absent from the whole page below, so they must not collide with any
+          // copy the page legitimately renders ("Broken" would now match the repairer "Broken Work Item
+          // Links" and "Rich text fields: Broken Links").
+          { revision: 'not-a-number', name: 'NotANumberBaseline' },
+          { revision: '0', name: 'ZeroBaseline' },
+          { revision: '-5', name: 'NegativeBaseline' },
         ],
       },
       ...baseRoutes(repairRoute((m) => ({ issueMetaInfo: m, success: true, warnings: [] }))).filter(
@@ -196,9 +201,9 @@ describe('Repair scan parameters', () => {
     ]);
     // A baseline whose revision is not a positive number cannot be scanned at, so it is dropped from
     // the hint list rather than offered and failing later.
-    expect(document.body.textContent).not.toContain('Broken');
-    expect(document.body.textContent).not.toContain('Zero');
-    expect(document.body.textContent).not.toContain('Negative');
+    expect(document.body.textContent).not.toContain('NotANumberBaseline');
+    expect(document.body.textContent).not.toContain('ZeroBaseline');
+    expect(document.body.textContent).not.toContain('NegativeBaseline');
   });
 
   it('sends the chosen subtype alongside the entity type', async () => {

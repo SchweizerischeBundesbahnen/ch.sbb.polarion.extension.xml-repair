@@ -86,6 +86,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new ModuleStandardStructureLinkRoleRepairer(),
                     new FieldsFormattingSymbolsRepairer(),
                     new FieldsInvalidEnumerationValueRepairer(),
+                    new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             ),
@@ -100,6 +101,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new ModuleStandardStructureLinkRoleRepairer(),
                     new FieldsFormattingSymbolsRepairer(),
                     new FieldsInvalidEnumerationValueRepairer(),
+                    new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             ),
@@ -107,6 +109,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new BrokenLinkedWorkItemsRepairer(),
                     new FieldsFormattingSymbolsRepairer(),
                     new FieldsInvalidEnumerationValueRepairer(),
+                    new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             )

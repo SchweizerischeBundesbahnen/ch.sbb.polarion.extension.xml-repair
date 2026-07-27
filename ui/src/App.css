@@ -159,7 +159,12 @@
   cursor: pointer;
 }
 
+/* Keep the box at its natural size: the shared standard-admin-page rule
+   (`label:has(input[type=checkbox]) { display: inline-flex }`) makes this label a flex container, and a
+   long repairer description would otherwise shrink the checkbox itself (down to a ~4px sliver for the
+   longest ones) instead of wrapping beside it. Same guard as .repairer-setting below. */
 .repairer-header input[type='checkbox'] {
+  flex-shrink: 0;
   margin-top: 2px;
 }
 
