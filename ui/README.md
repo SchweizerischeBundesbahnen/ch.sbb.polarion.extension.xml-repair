@@ -111,8 +111,8 @@ Docker image, so references are generated and checked there (Windows is a dev en
 # Behavior suite + the 80% istanbul coverage gate (runs anywhere; excludes visual tests)
 npm run test:coverage
 
-# Full suite (behavior + visual regression) inside the pinned Playwright Docker image (authoritative)
-npm run test:docker
+# Full suite (behavior + visual regression) + the coverage gate, inside the pinned image (canonical)
+npm run test:coverage:docker
 
 # Regenerate the committed visual reference PNGs (Docker only) after an intentional UI change
 npm run test:update:docker
@@ -123,5 +123,22 @@ npm run lint:fix
 ```
 
 The repo-root pre-commit hooks run `format:check`, `lint`, and the dockerized coverage suite on `ui/`
-changes; `mvn install` runs `test:docker` in the `test` phase (skip with `-DskipJsTests` on a
+changes; `mvn install` runs `test:coverage:docker` in the `test` phase (skip with `-DskipJsTests` on a
 Docker-less host).
+
+### Running the tests
+
+**One command, locally and in CI: `npm run test:coverage:docker`.** It runs the full suite (behavior +
+visual regression) plus the 80% istanbul coverage gate inside the pinned Playwright Docker image, which
+is what the Maven `test` phase and the pre-commit hook execute. Docker must be running.
+
+```bash
+npm run test:coverage:docker   # the canonical run: full suite + coverage gate, in the pinned image
+npm run test:coverage          # fast local loop: behavior only + the gate, no Docker, no pixels
+npm run test:update:docker     # regenerate the committed reference PNGs after an intentional UI change
+```
+
+> Do **not** run `npm run test:coverage:full` directly outside a container. It is the inner command the
+> Docker wrapper invokes; on macOS/Windows its visual tests always fail - the references are pixel-locked
+> to the pinned image, and different font metrics change both antialiasing and the rendered element
+> height. A red run there means "wrong environment", not "broken code".
