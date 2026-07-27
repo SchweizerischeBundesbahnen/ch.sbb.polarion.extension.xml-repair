@@ -8,10 +8,10 @@ class RepairerConfigMetaTest {
 
     @Test
     void testGetters() {
-        RepairerConfigMeta meta = new RepairerConfigMeta("removeInvalidEnumValues", "Remove invalid enumeration values", "Clear/remove value if it is not defined in the specified enumeration", RepairerConfigType.BOOLEAN, false);
+        RepairerConfigMeta meta = new RepairerConfigMeta("removeInvalidValues", "Remove invalid values", "Clear/remove value if it is not defined in the specified enumeration", RepairerConfigType.BOOLEAN, false);
 
-        assertEquals("removeInvalidEnumValues", meta.getKey());
-        assertEquals("Remove invalid enumeration values", meta.getDescription());
+        assertEquals("removeInvalidValues", meta.getKey());
+        assertEquals("Remove invalid values", meta.getDescription());
         assertEquals("Clear/remove value if it is not defined in the specified enumeration", meta.getHint());
         assertEquals(RepairerConfigType.BOOLEAN, meta.getType());
         assertEquals(false, meta.getDefaultValue());

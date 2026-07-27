@@ -16,9 +16,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import com.polarion.alm.projects.IProjectService;
-import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.IPriorityOpt;
-import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.platform.persistence.IEnumOption;
@@ -102,7 +100,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         FieldMetadata meta = FieldMetadata.builder()
                 .id("status").options(Set.of(new Option("open", "Open"), new Option("closed", "Closed"))).build();
 
-        assertFalse(repairer.isInvalidEnumOption(option, meta));
+        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
     @Test
@@ -112,7 +110,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         FieldMetadata meta = FieldMetadata.builder()
                 .id("status").options(Set.of(new Option("open", "Open"), new Option("closed", "Closed"))).build();
 
-        assertTrue(repairer.isInvalidEnumOption(option, meta));
+        assertTrue(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
     @Test
@@ -121,7 +119,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         FieldMetadata meta = FieldMetadata.builder().id("status").options(Set.of()).build();
 
-        assertTrue(repairer.isInvalidEnumOption(option, meta));
+        assertTrue(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
     // --- isInvalidEnumOption tests for work-item-type enums ---
@@ -134,7 +132,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         FieldMetadata meta = FieldMetadata.builder().id("type").options(Set.of()).build();
 
-        assertFalse(repairer.isInvalidEnumOption(option, meta));
+        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
     @Test
@@ -146,7 +144,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         FieldMetadata meta = FieldMetadata.builder()
                 .id("type").options(Set.of(new Option("task", "Task"))).build();
 
-        assertFalse(repairer.isInvalidEnumOption(option, meta));
+        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
     @Test
@@ -158,54 +156,21 @@ class FieldsInvalidEnumerationValueRepairerTest {
         FieldMetadata meta = FieldMetadata.builder()
                 .id("type").options(Set.of(new Option("task", "Task"))).build();
 
-        assertTrue(repairer.isInvalidEnumOption(option, meta));
+        assertTrue(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
-    // --- isInvalidEnumOption tests for user enums ---
+    // user enums are handled by FieldsInvalidUserValueRepairer, see FieldsInvalidUserValueRepairerTest
 
     @Test
-    void testIsInvalidEnumOptionUserEnumValidUser() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-        when(option.getId()).thenReturn("john");
-
-        IUser user = mock(IUser.class);
-        when(user.getId()).thenReturn("john");
-        IPObjectList<IUser> userList = mockUserList(user);
-        when(projectService.getUsers()).thenReturn(userList);
-
-        FieldMetadata meta = FieldMetadata.builder().id("assignee").options(Set.of()).build();
-
-        assertFalse(repairer.isInvalidEnumOption(option, meta));
-    }
-
-    @Test
-    void testIsInvalidEnumOptionUserEnumInvalidUser() {
+    void testIsInvalidEnumOptionUserEnumIsSkipped() {
         IEnumOption option = mock(IEnumOption.class);
         when(option.getEnumId()).thenReturn("@user");
         when(option.getId()).thenReturn("disabled_user");
 
-        IUser user = mock(IUser.class);
-        when(user.getId()).thenReturn("john");
-        IPObjectList<IUser> userList = mockUserList(user);
-        when(projectService.getUsers()).thenReturn(userList);
+        FieldMetadata meta = FieldMetadata.builder().id("userField").options(Set.of()).build();
 
-        FieldMetadata meta = FieldMetadata.builder().id("assignee").options(Set.of()).build();
-
-        assertTrue(repairer.isInvalidEnumOption(option, meta));
-    }
-
-    @Test
-    void testIsInvalidEnumOptionUserEnumNoUsers() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-
-        IPObjectList<IUser> userList = mockUserList();
-        when(projectService.getUsers()).thenReturn(userList);
-
-        FieldMetadata meta = FieldMetadata.builder().id("assignee").options(Set.of()).build();
-
-        assertTrue(repairer.isInvalidEnumOption(option, meta));
+        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
+        verify(projectService, never()).getUsers();
     }
 
     // --- scan() with single IEnumOption values ---
@@ -265,12 +230,12 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
@@ -291,12 +256,12 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
@@ -338,81 +303,6 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         assertTrue(issues.isEmpty());
         verify(entity, never()).setValue(any(), any());
-    }
-
-    // --- scan() with user enum ---
-
-    @Test
-    void testScanUserEnumValidUserNoIssue() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-        when(option.getId()).thenReturn("john");
-
-        IUser user = mock(IUser.class);
-        when(user.getId()).thenReturn("john");
-        IPObjectList<IUser> userList = mockUserList(user);
-        when(projectService.getUsers()).thenReturn(userList);
-
-        FieldMetadata meta = buildEnumField("assignee", "Assignee", false, true, Set.of());
-
-        setupScanFields(meta);
-        when(entity.getValue("assignee")).thenReturn(option);
-
-        List<Issue> issues = repairer.scan(entity, contextNoFix);
-
-        assertTrue(issues.isEmpty());
-    }
-
-    @Test
-    void testScanUserEnumInvalidUserDetectsIssue() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-        when(option.getId()).thenReturn("disabled_user");
-
-        IUser user = mock(IUser.class);
-        when(user.getId()).thenReturn("john");
-        IPObjectList<IUser> userList = mockUserList(user);
-        when(projectService.getUsers()).thenReturn(userList);
-
-        FieldMetadata meta = buildEnumField("assignee", "Assignee", false, true, Set.of());
-
-        setupScanFields(meta);
-        when(entity.getValue("assignee")).thenReturn(option);
-
-        List<Issue> issues = repairer.scan(entity, contextNoFix);
-
-        assertEquals(1, issues.size());
-        assertTrue(issues.getFirst().getDescription().contains("disabled_user"));
-    }
-
-    @Test
-    void testRepairUserEnumInvalidUserWithRemoval() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-        when(option.getId()).thenReturn("disabled_user");
-
-        IPObjectList<IUser> userList = mockUserList();
-        when(projectService.getUsers()).thenReturn(userList);
-
-        FieldMetadata meta = buildEnumField("assignee", "Assignee", false, false, Set.of());
-
-        setupRepairFields(meta);
-        when(entity.getValue("assignee")).thenReturn(option);
-
-        UserConfigs removalEnabledConfigs = new UserConfigs();
-        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
-
-        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
-        when(metaInfo.serialize()).thenReturn("serialized");
-        when(metaInfo.getString("fieldId")).thenReturn("assignee");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'disabled_user' for the field 'Assignee'");
-        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
-
-        RepairResult result = repairer.repair(entity, repairContext);
-
-        assertTrue(result.isSuccess());
-        verify(entity).setValue("assignee", null);
     }
 
     // --- scan() with CustomTypedList (multi-value enum) ---
@@ -488,7 +378,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -526,7 +416,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -563,7 +453,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -745,7 +635,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -775,7 +665,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -818,7 +708,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IEnumOption wrappedGood = mock(IEnumOption.class);
         try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
@@ -865,7 +755,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
             valueHelperMock.when(() -> ValueHelper.wrapCustomField(eq(pEntity), isNull(), eq(enumType), any())).thenThrow(new UnresolvableObjectException("bad"));
@@ -933,7 +823,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -964,7 +854,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1004,7 +894,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
             valueHelperMock.when(() -> ValueHelper.wrapCustomField(eq(pEntity), isNull(), eq(enumType), any())).thenThrow(new UnresolvableObjectException("bad"));
@@ -1040,14 +930,14 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
 
         assertFalse(result.isSuccess());
         assertEquals(1, result.getWarnings().size());
-        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid enumeration values'"));
+        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid values'"));
         verify(entity, never()).setValue(any(), any());
     }
 
@@ -1080,7 +970,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         assertFalse(result.isSuccess());
         assertEquals(1, result.getWarnings().size());
-        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid enumeration values'"));
+        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid values'"));
         verify(list, never()).removeAll(any());
         verify(entity, never()).setValue(any(), any());
     }
@@ -1109,7 +999,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         assertFalse(result.isSuccess());
         assertEquals(1, result.getWarnings().size());
-        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid enumeration values'"));
+        assertTrue(result.getWarnings().iterator().next().contains("Enable option 'Remove invalid values'"));
         verify(pEntity, never()).setValue(eq("status"), any());
     }
 
@@ -1176,7 +1066,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         assertEquals(1, result.getWarnings().size());
         String warning = result.getWarnings().iterator().next();
-        assertTrue(warning.contains("Enable option 'Remove invalid enumeration values' to remove invalid value"));
+        assertTrue(warning.contains("Enable option 'Remove invalid values' to remove invalid value"));
         assertTrue(warning.contains("Cannot repair value automatically"));
     }
 
@@ -1209,7 +1099,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'.");
         // config is OFF, but we still expect a fix because similar option is found
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
@@ -1237,7 +1127,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
@@ -1263,7 +1153,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'OPEN' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
@@ -1289,7 +1179,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
-        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'Open' for the field 'Status'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         RepairResult result = repairer.repair(entity, repairContext);
@@ -1364,7 +1254,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1440,7 +1330,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         UserConfigs removalEnabledConfigs = new UserConfigs();
         removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
-                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, true));
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
 
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
@@ -1559,7 +1449,266 @@ class FieldsInvalidEnumerationValueRepairerTest {
         List<Issue> issues = repairer.scan(entity, contextNoFix);
 
         assertEquals(1, issues.size());
-        assertEquals("Invalid enumeration id 'deleted' for the field 'Status'", issues.getFirst().getDescription());
+        assertEquals("Invalid enumeration id 'deleted' for the field 'Status'.", issues.getFirst().getDescription());
+    }
+
+    // --- repair() when the issue description doesn't match the reported issue ---
+
+    @Test
+    void testRepairSingleEnumDescriptionMismatchDoesNothing() {
+        IEnumOption option = mockEnumOption("deleted");
+
+        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+                Set.of(new Option("open", "Open")));
+
+        setupRepairFields(meta);
+        when(entity.getValue("status")).thenReturn(option);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("status");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'someOtherValue' for the field 'Status'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair(entity, repairContext);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).setValue(any(), any());
+    }
+
+    @Test
+    void testRepairListDescriptionMismatchDoesNothing() {
+        IEnumOption validOption = mockEnumOption("open");
+        IEnumOption invalidOption = mockEnumOption("deleted");
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenReturn(Stream.of(validOption, invalidOption));
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        FieldMetadata meta = buildListField("categories", "Categories", false, listType,
+                Set.of(new Option("open", "Open")));
+
+        setupRepairFields(meta);
+        when(entity.getValue("categories")).thenReturn(list);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("categories");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'someOtherValue' for the field 'Categories'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair(entity, repairContext);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(list, never()).removeAll(any());
+        verify(entity, never()).setValue(any(), any());
+    }
+
+    @Test
+    void testRepairUnresolvableDescriptionMismatchDoesNothing() {
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        when(pEntity.getData()).thenReturn(dataObject);
+        when(dataObject.getCustomValue("status")).thenReturn("badValue");
+
+        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+                Set.of(new Option("open", "Open")));
+
+        when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
+        setupFieldsForEntity(meta);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("status");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [someOtherValue] for the field 'Status'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(pEntity, never()).setValue(any(), any());
+    }
+
+    // --- scan() with values whose type doesn't match the field type ---
+
+    @Test
+    void testScanListValueOnNonListFieldTypeIsIgnored() {
+        IEnumOption invalidOption = mockEnumOption("deleted");
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        lenient().when(list.stream()).thenReturn(Stream.of(invalidOption));
+
+        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+                Set.of(new Option("open", "Open")));
+
+        setupScanFields(meta);
+        when(entity.getValue("status")).thenReturn(list);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+    }
+
+    @Test
+    void testScanListWithNonEnumOptionItems() {
+        IEnumOption invalidOption = mockEnumOption("deleted");
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenReturn(Stream.of("plainString", invalidOption));
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        FieldMetadata meta = buildListField("categories", "Categories", false, listType,
+                Set.of(new Option("open", "Open")));
+
+        setupScanFields(meta);
+        when(entity.getValue("categories")).thenReturn(list);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertEquals(1, issues.size());
+        assertEquals("Invalid enumeration id(s) 'deleted' for the field 'Categories'.", issues.getFirst().getDescription());
+    }
+
+    // --- unresolvable values with a list type but a non-list custom value ---
+
+    @Test
+    void testRepairListTypeWithNonListCustomValueClearsField() {
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        when(pEntity.getData()).thenReturn(dataObject);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        when(dataObject.getCustomValue("categories")).thenReturn("badValue");
+
+        FieldMetadata meta = FieldMetadata.builder()
+                .id("categories").label("Categories").type(listType).required(false).multi(true).options(Set.of(new Option("open", "Open"))).build();
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenThrow(new UnresolvableObjectException("test"));
+        when(pEntity.getValue("categories")).thenReturn(list);
+        setupFieldsForEntity(meta);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("categories");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badValue] for the field 'Categories'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
+
+        assertTrue(result.isSuccess());
+        verify(pEntity).setValue("categories", null);
+    }
+
+    @Test
+    void testScanListStreamThrowsUnresolvableButAllItemsResolve() {
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        when(pEntity.getData()).thenReturn(dataObject);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        Object goodItem = "goodItem";
+        List<Object> customList = new ArrayList<>(List.of(goodItem));
+        when(dataObject.getCustomValue("categories")).thenReturn(customList);
+
+        FieldMetadata meta = FieldMetadata.builder()
+                .id("categories").label("Categories").type(listType).required(false).multi(true).options(Set.of(new Option("open", "Open"))).build();
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenThrow(new UnresolvableObjectException("test"));
+        when(pEntity.getValue("categories")).thenReturn(list);
+        setupFieldsForEntity(meta);
+
+        try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(eq(pEntity), isNull(), eq(enumType), any())).thenReturn(mock(IEnumOption.class));
+
+            List<Issue> issues = repairer.scan((IWorkflowObject) pEntity, contextNoFix);
+
+            assertTrue(issues.isEmpty());
+            verify(pEntity, never()).setValue(eq("categories"), any());
+        }
+    }
+
+    @Test
+    void testRepairListStreamThrowsUnresolvableRequiredWithSomeBadItems() {
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        when(pEntity.getData()).thenReturn(dataObject);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn("status-enum");
+
+        Object goodItem = "goodItem";
+        Object badItem = "badItem";
+        List<Object> customList = new ArrayList<>(List.of(goodItem, badItem));
+        when(dataObject.getCustomValue("categories")).thenReturn(customList);
+
+        FieldMetadata meta = FieldMetadata.builder()
+                .id("categories").label("Categories").type(listType).required(true).multi(true).options(Set.of(new Option("open", "Open"))).build();
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenThrow(new UnresolvableObjectException("test"));
+        when(pEntity.getValue("categories")).thenReturn(list);
+        setupFieldsForEntity(meta);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IEnumOption wrappedGood = mock(IEnumOption.class);
+        try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(pEntity, null, enumType, goodItem)).thenReturn(wrappedGood);
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(pEntity, null, enumType, badItem)).thenThrow(new UnresolvableObjectException("bad"));
+
+            IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+            when(metaInfo.serialize()).thenReturn("serialized");
+            when(metaInfo.getString("fieldId")).thenReturn("categories");
+            when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badItem] for the field 'Categories'.");
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+            RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
+
+            assertTrue(result.isSuccess());
+            assertTrue(result.getWarnings().isEmpty());
+            verify(pEntity).setValue(eq("categories"), any());
+        }
     }
 
     // --- Helper methods ---
@@ -1598,13 +1747,6 @@ class FieldsInvalidEnumerationValueRepairerTest {
                 .id(id).label(label).type(listType).required(required).options(options).build();
     }
 
-    @SuppressWarnings("unchecked")
-    private IPObjectList<IUser> mockUserList(IUser... users) {
-        IPObjectList<IUser> list = mock(IPObjectList.class);
-        when(list.stream()).thenReturn(Stream.of(users));
-        return list;
-    }
-
     private void setupScanFields(FieldMetadata... fields) {
         when(polarionService.getAllFields("WorkItem", contextId, "task", true,
                 FieldType.LIST.getType(), FieldType.ENUM.getType())).thenReturn(Set.of(fields));
@@ -1640,8 +1782,8 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
         assertEquals(1, configs.size());
         RepairerConfigMeta config = configs.getFirst();
-        assertEquals(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_ENUM_VALUES, config.getKey());
-        assertEquals("Remove invalid enumeration values", config.getDescription());
+        assertEquals(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, config.getKey());
+        assertEquals("Remove invalid values", config.getDescription());
         assertEquals("Clear/remove value if it is not defined in the specified enumeration", config.getHint());
         assertEquals(RepairerConfigType.BOOLEAN, config.getType());
         assertEquals(false, config.getDefaultValue());

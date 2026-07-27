@@ -23,7 +23,7 @@ describe('feature router', () => {
     installFetchMock([{ method: 'GET', match: /\/repairers/, json: REPAIRERS }]);
     setUrl('?feature=repair&projectId=elibrary');
     render(<App />);
-    await vi.waitFor(() => expect(document.body.textContent).toContain('Invalid enumeration value'));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'));
     expect(Array.from(document.querySelectorAll('button')).some((b) => b.textContent === 'Scan')).toBe(true);
   });
 

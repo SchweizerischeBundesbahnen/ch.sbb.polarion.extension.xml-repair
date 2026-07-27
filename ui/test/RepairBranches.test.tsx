@@ -43,7 +43,9 @@ async function mountRepair(routes = defaultRoutes(), query = '?feature=repair&pr
   installFetchMock(routes);
   setUrl(query);
   render(<App />);
-  await vi.waitFor(() => expect(document.body.textContent).toContain('Invalid enumeration value'), { timeout: 5000 });
+  await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'), {
+    timeout: 5000,
+  });
 }
 
 const numericInputs = () => Array.from(document.querySelectorAll<HTMLInputElement>('input[inputmode="numeric"]'));
@@ -120,14 +122,16 @@ describe('Repair repairer selection restored from cookies', () => {
   it('restores a saved repairer setting over its declared default', async () => {
     const repairer = REPAIRERS[0];
     const config = repairer.configs[0];
-    expect(config.defaultValue).toBe(true);
-    setCookie(`rc_${repairer.id}_${config.key}`, 'false');
+    // Every real repairer config ships off (see the fixture comment), so a saved "true" is the case that
+    // proves the cookie wins over the declared default - saving "false" would match the default anyway.
+    expect(config.defaultValue).toBe(false);
+    setCookie(`rc_${repairer.id}_${config.key}`, 'true');
     await mountRepair();
     const card = Array.from(document.querySelectorAll<HTMLElement>('.repairer-card')).find((c) =>
       c.textContent?.includes(repairer.name),
     )!;
     const setting = card.querySelector<HTMLInputElement>('.repairer-setting input[type="checkbox"]');
     await vi.waitFor(() => expect(setting).not.toBeNull());
-    expect(setting!.checked).toBe(false);
+    expect(setting!.checked).toBe(true);
   });
 });
