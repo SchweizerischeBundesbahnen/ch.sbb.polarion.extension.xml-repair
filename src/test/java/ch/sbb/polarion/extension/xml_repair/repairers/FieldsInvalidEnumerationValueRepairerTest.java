@@ -914,7 +914,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         }
     }
 
-    // --- Tests for warnRepairTurnedOff (REMOVE_INVALID_ENUM_VALUES config disabled) ---
+    // --- Tests for warnRepairTurnedOff (REMOVE_INVALID_VALUES config disabled) ---
 
     @Test
     void testRepairSingleEnumWarnRepairTurnedOff() {
@@ -926,7 +926,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         setupRepairFields(meta);
         when(entity.getValue("status")).thenReturn(option);
 
-        // empty UserConfigs -> REMOVE_INVALID_ENUM_VALUES defaults to false
+        // empty UserConfigs -> REMOVE_INVALID_VALUES defaults to false
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");
@@ -959,7 +959,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         setupRepairFields(meta);
         when(entity.getValue("categories")).thenReturn(list);
 
-        // empty UserConfigs -> REMOVE_INVALID_ENUM_VALUES defaults to false
+        // empty UserConfigs -> REMOVE_INVALID_VALUES defaults to false
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("categories");
@@ -988,7 +988,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
         setupFieldsForEntity(meta);
 
-        // empty UserConfigs -> REMOVE_INVALID_ENUM_VALUES defaults to false
+        // empty UserConfigs -> REMOVE_INVALID_VALUES defaults to false
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         when(metaInfo.serialize()).thenReturn("serialized");
         when(metaInfo.getString("fieldId")).thenReturn("status");

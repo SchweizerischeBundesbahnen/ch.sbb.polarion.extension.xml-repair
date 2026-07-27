@@ -20,10 +20,12 @@ public class FieldsInvalidUserValueRepairer extends FieldsInvalidEnumerationValu
         return enumId.equals(USER_ENUM_ID);
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds user fields with invalid values. Repair removes the invalid value if possible.";
     }

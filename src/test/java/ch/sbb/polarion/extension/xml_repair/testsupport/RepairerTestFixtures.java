@@ -42,12 +42,21 @@ public final class RepairerTestFixtures {
         return createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
     }
 
+    /** For tests that need control over what the cache hands back (e.g. a cached null). */
+    public static ScanContext createScanContext(XmlRepairPolarionService polarionService, Cache cache) {
+        return createScanContext(polarionService, List.of(), new UserConfigs(), new Report(), cache);
+    }
+
     public static ScanContext createScanContext(XmlRepairPolarionService polarionService, List<String> repairers, UserConfigs configs, Report report) {
+        return createScanContext(polarionService, repairers, configs, report, new Cache());
+    }
+
+    public static ScanContext createScanContext(XmlRepairPolarionService polarionService, List<String> repairers, UserConfigs configs, Report report, Cache cache) {
         lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
              MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
-            return new ScanContext(polarionService, repairers, configs, report, new Cache());
+            return new ScanContext(polarionService, repairers, configs, report, cache);
         }
     }
 }

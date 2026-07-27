@@ -116,6 +116,23 @@ class FieldsInvalidUserValueRepairerTest {
     }
 
     @Test
+    void testIsInvalidEnumOptionUserEnumReportsNothingWhenUserListUnavailable() {
+        IEnumOption option = mock(IEnumOption.class);
+        when(option.getEnumId()).thenReturn("@user");
+
+        // The cache may hand back a cached null (see Cache#getOrCompute): with no user list at hand a
+        // disabled user cannot be told apart from a valid one, so nothing must be reported - flagging every
+        // user value instead would mean a flood of false issues.
+        Cache emptyCache = mock(Cache.class);
+        doReturn(null).when(emptyCache).getOrCompute(anyString(), any());
+        ScanContext contextWithoutUserList = createScanContext(polarionService, emptyCache);
+
+        FieldMetadata meta = FieldMetadata.builder().id("userField").options(Set.of()).build();
+
+        assertFalse(repairer.isInvalidEnumOption(option, meta, contextWithoutUserList));
+    }
+
+    @Test
     void testIsInvalidEnumOptionNonUserEnumIsSkipped() {
         // non-user enumerations are handled by FieldsInvalidEnumerationValueRepairer
         IEnumOption option = mock(IEnumOption.class);

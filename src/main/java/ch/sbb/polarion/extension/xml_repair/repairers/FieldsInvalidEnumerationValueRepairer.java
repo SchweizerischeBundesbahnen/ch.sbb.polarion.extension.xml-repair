@@ -128,13 +128,13 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 // Fix automatically only when similar item found for every invalid.
                 // Otherwise, we can end up in a situation that only some of the invalid values are repaired, and the rest are still invalid,
                 // so user will need to run repair multiple times and it can be confusing. So even if one of N items may be fixed
-                // by deletion we require REMOVE_INVALID_ENUM_VALUES option is turned on.
+                // by deletion we require REMOVE_INVALID_VALUES option is turned on.
                 if (meta.isRequired() && invalidOptions.size() == list.size() && similarOptions.isEmpty()) {
                     repairResult.getWarnings().add("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
                 } else if (!context.configs().getBoolean(getClass(), REMOVE_INVALID_VALUES) && similarOptions.size() != invalidOptions.size()) {
                     warnRepairTurnedOff(repairResult, invalidOptions.size() > 1);
                 } else {
-                    // We fix either case when we found all similar items or when REMOVE_INVALID_ENUM_VALUES option is turned on.
+                    // We fix either case when we found all similar items or when REMOVE_INVALID_VALUES option is turned on.
                     // We want to prevent situation that only some of the invalid values are repaired, and the rest are still invalid,
                     // so user will need to run repair multiple times which is confusing.
                     list.removeAll(invalidOptions);
@@ -211,9 +211,10 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         if (enumId.equals(WORK_ITEM_TYPE_ENUM_ID) && TYPE_HEADING.equals(option.getId())) {
             return false; // heading type isn't presented in the options list but is still valid
         } else if (shouldFixSpecificEnum(enumId)) {
-            if(enumId.equals(USER_ENUM_ID)) {
+            if (enumId.equals(USER_ENUM_ID)) {
                 // some users may be not presented in the user enumeration (e.g. disabled users) so we need to check them separately
-                return !getUserIdsUsingCache(context).contains(option.getId());
+                Set<String> userIds = getUserIdsUsingCache(context);
+                return userIds != null && !userIds.contains(option.getId());
             } else {
                 return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
             }
