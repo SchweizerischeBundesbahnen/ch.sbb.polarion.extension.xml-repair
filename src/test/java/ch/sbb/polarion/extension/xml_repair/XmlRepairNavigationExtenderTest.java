@@ -23,7 +23,7 @@ class XmlRepairNavigationExtenderTest {
     @Test
     void testGetIconUrl() {
         XmlRepairNavigationExtender extender = new XmlRepairNavigationExtender();
-        assertEquals("/polarion/xml-repair-admin/ui/images/menu/30x30/_parent.svg", extender.getIconUrl());
+        assertEquals("/polarion/xml-repair-app/ui/images/menu/30x30/_parent.svg", extender.getIconUrl());
     }
 
     @Test

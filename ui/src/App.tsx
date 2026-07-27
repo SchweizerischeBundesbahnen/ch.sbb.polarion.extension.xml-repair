@@ -23,7 +23,7 @@ export default function App() {
       <BreadcrumbInjector
         marker="xml-repair"
         title="XML-Repair"
-        icon="/polarion/xml-repair-admin/ui/images/menu/30x30/_parent.svg"
+        icon="/polarion/xml-repair-app/ui/images/menu/30x30/_parent.svg"
       />
       {/* App-wide toast host: the shared react-sbb-polarion Toaster (top-center + richColors, so
           success toasts are green, errors red). Toasts are fired with `toast()` from sonner. */}

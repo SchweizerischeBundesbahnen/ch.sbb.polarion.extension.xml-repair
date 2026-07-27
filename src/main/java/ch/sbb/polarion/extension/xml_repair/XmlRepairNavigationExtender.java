@@ -29,7 +29,7 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     @Nullable
     @Override
     public String getIconUrl() {
-        return "/polarion/xml-repair-admin/ui/images/menu/30x30/_parent.svg";
+        return "/polarion/xml-repair-app/ui/images/menu/30x30/_parent.svg";
     }
 
     @Nullable
