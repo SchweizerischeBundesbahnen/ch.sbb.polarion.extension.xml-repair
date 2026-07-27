@@ -1,14 +1,8 @@
-/* App root (App.tsx: <div class="app standard-admin-page">). `.app` supplies the base font/padding
-   for every feature page; `standard-admin-page` (from react-sbb-polarion's bundled style.css) supplies
-   the --sbb-* control tokens and the Polarion-styled checkboxes, so no per-app checkbox rules here. */
-/* Outer page padding is provided by RSP (PageLayout.css `.app { padding: 10px }`), shared across all
-   extensions; `.app` here supplies only this app's typography. */
-.app {
-  /* font-family comes from RSP (control-tokens.css applies --sbb-control-font-family to
-     .standard-admin-page) so every extension shares one typeface — don't override it here. */
-  font-size: 13px;
-  color: #1a1a1a;
-}
+/* App root (App.tsx: <div class="app standard-admin-page">). Nothing is declared for `.app` here on
+   purpose: react-sbb-polarion's PageLayout.css owns the whole page shell — the body-margin reset, the
+   outer padding, the font family, the 13px admin base size and the text color — so every extension
+   shares one look. `standard-admin-page` (also from RSP's bundled style.css) supplies the --sbb-*
+   control tokens and the Polarion-styled checkboxes, so no per-app checkbox rules here either. */
 
 .layout-columns {
   display: flex;
