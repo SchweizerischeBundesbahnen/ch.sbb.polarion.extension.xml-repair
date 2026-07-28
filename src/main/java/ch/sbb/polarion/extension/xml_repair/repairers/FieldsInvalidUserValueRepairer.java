@@ -2,6 +2,7 @@ package ch.sbb.polarion.extension.xml_repair.repairers;
 
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -16,8 +17,8 @@ public class FieldsInvalidUserValueRepairer extends FieldsInvalidEnumerationValu
     public static final String NAME = "User fields: Invalid value";
 
     @Override
-    boolean shouldFixSpecificEnum(String enumId) {
-        return enumId.equals(USER_ENUM_ID);
+    boolean shouldFixSpecificEnum(@NotNull String enumId) {
+        return USER_ENUM_ID.equals(enumId);
     }
 
     @Override

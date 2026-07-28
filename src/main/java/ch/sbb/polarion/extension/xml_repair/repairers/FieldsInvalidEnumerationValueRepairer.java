@@ -5,13 +5,14 @@ import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.generic.fields.model.Option;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
-import ch.sbb.polarion.extension.xml_repair.service.model.*;
+import ch.sbb.polarion.extension.xml_repair.service.model.IContext;
+import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
+import ch.sbb.polarion.extension.xml_repair.service.model.IssueMetaInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import com.polarion.alm.projects.IProjectService;
 import com.polarion.alm.projects.model.IUser;
-import com.polarion.alm.tracker.model.IPriorityOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.logging.Logger;
@@ -22,6 +23,7 @@ import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.spi.CustomTypedList;
 import com.polarion.platform.persistence.spi.PObject;
 import com.polarion.platform.persistence.spi.ValueHelper;
+import com.polarion.subterra.base.data.model.IType;
 import com.polarion.subterra.base.data.model.internal.EnumType;
 import com.polarion.subterra.base.data.model.internal.ListType;
 import org.apache.commons.lang3.Strings;
@@ -53,7 +55,9 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), true,
                 FieldType.LIST.getType(), FieldType.ENUM.getType())) {
-            scanOrRepair(entity, meta, context, issues, null);
+            if (isProperEnumField(meta)) {
+                scanOrRepair(entity, meta, context, issues, null);
+            }
         }
         return issues;
     }
@@ -71,7 +75,9 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 .filter(m -> Objects.equals(m.getId(), fieldId))
                 .findFirst().orElseThrow(() -> new IllegalArgumentException("Field with id '%s' not found on entity '%s'".formatted(fieldId, entity.getId())));
 
-        scanOrRepair(entity, meta, context, null, result);
+        if (isProperEnumField(meta)) {
+            scanOrRepair(entity, meta, context, null, result);
+        }
 
         return result;
     }
@@ -86,8 +92,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
             handleUnresolvableObjectException(entity, meta, issues, context, repairResult, null);
         }
 
-        // skip 'priority' enum, as it has special handling in Polarion
-        if (value instanceof IEnumOption option && !(option instanceof IPriorityOpt) && isInvalidEnumOption(option, meta, context)) {
+        if (value instanceof IEnumOption option && isInvalidEnumOption(option, meta, context)) {
             Issue issue = createIssue(entity, meta, "Invalid enumeration id '%s' for the field '%s'.".formatted(option.getId(), meta.getLabel()));
             if (repairResult != null && issue.getDescription().equals(repairResult.getRawIssueMetaInfo().getString(ISSUE_DESCRIPTION))) {
                 IEnumOption similarValue = findSimilarOption(entity, option, meta);
@@ -102,8 +107,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
             } else if (issues != null) {
                 issues.add(issue);
             }
-        } else if (value instanceof CustomTypedList list && meta.getType() instanceof ListType listType
-                && listType.getItemType() instanceof EnumType enumType && !(Objects.equals(enumType.getEnumerationId(), IWorkItem.ENUM_ID_PRIORITY))) {
+        } else if (value instanceof CustomTypedList list && meta.getType() instanceof ListType listType) { // isProperEnumField() guarantees the item type is an enumeration here
             try {
                 List<IEnumOption> invalidOptions = list.stream().filter(v -> v instanceof IEnumOption e && isInvalidEnumOption(e, meta, context)).toList();
                 handleInvalidOptions(entity, meta, issues, context, repairResult, list, invalidOptions);
@@ -210,26 +214,33 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         String enumId = option.getEnumId();
         if (enumId.equals(WORK_ITEM_TYPE_ENUM_ID) && TYPE_HEADING.equals(option.getId())) {
             return false; // heading type isn't presented in the options list but is still valid
-        } else if (shouldFixSpecificEnum(enumId)) {
-            if (enumId.equals(USER_ENUM_ID)) {
-                // some users may be not presented in the user enumeration (e.g. disabled users) so we need to check them separately
-                Set<String> userIds = getUserIdsUsingCache(context);
-                return userIds != null && !userIds.contains(option.getId());
-            } else {
-                return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
-            }
+        } else if (enumId.equals(USER_ENUM_ID)) {
+            // some users may be not presented in the user enumeration (e.g. disabled users) so we need to check them separately
+            Set<String> userIds = getUserIdsUsingCache(context);
+            return userIds != null && !userIds.contains(option.getId());
         } else {
-            return false;
+            return meta.getOptions().stream().noneMatch(o -> o.getKey().equals(option.getId()));
         }
+    }
+
+    boolean shouldFixSpecificEnum(@NotNull String enumId) {
+        return !USER_ENUM_ID.equals(enumId); //fix users in the separate repairer
     }
 
     private Set<String> getUserIdsUsingCache(@NotNull IContext context) {
         return context.getAndCache(CACHE_ALL_USER_IDS_KEY, () -> projectService.getUsers().stream().map(IUser::getId).collect(Collectors.toSet()));
     }
 
-    @VisibleForTesting
-    boolean shouldFixSpecificEnum(String enumId) {
-        return !enumId.equals(USER_ENUM_ID); //fix users in the separate repairer
+    private boolean isProperEnumField(FieldMetadata meta) {
+        // for a multi-value field the enumeration sits on the type of its items
+        IType fieldType = meta.getType() instanceof ListType listType ? listType.getItemType() : meta.getType();
+        if (!(fieldType instanceof EnumType enumType)) {
+            return false;
+        }
+        String enumId = enumType.getEnumerationId();
+        return enumId != null
+                && !IWorkItem.ENUM_ID_PRIORITY.equals(enumId) // skip 'priority' enum, as it has special handling in Polarion
+                && shouldFixSpecificEnum(enumId);
     }
 
     private IEnumOption findSimilarOption(IWorkflowObject entity, IEnumOption option, FieldMetadata meta) {
