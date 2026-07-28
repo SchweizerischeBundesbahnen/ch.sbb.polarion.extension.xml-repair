@@ -23,6 +23,7 @@ import com.polarion.platform.persistence.UnresolvableObjectException;
 import com.polarion.platform.persistence.spi.CustomTypedList;
 import com.polarion.platform.persistence.spi.PObject;
 import com.polarion.platform.persistence.spi.ValueHelper;
+import com.polarion.subterra.base.data.model.IType;
 import com.polarion.subterra.base.data.model.internal.EnumType;
 import com.polarion.subterra.base.data.model.internal.ListType;
 import org.apache.commons.lang3.Strings;
@@ -231,8 +232,12 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     }
 
     private boolean isProperEnumField(FieldMetadata meta) {
-        String enumId = meta.getType() instanceof EnumType enumType ? enumType.getEnumerationId() :
-                (meta.getType() instanceof ListType listType && listType.getItemType() instanceof EnumType multiEnumType ? multiEnumType.getEnumerationId() : null);
+        // for a multi-value field the enumeration sits on the type of its items
+        IType fieldType = meta.getType() instanceof ListType listType ? listType.getItemType() : meta.getType();
+        if (!(fieldType instanceof EnumType enumType)) {
+            return false;
+        }
+        String enumId = enumType.getEnumerationId();
         return enumId != null
                 && !IWorkItem.ENUM_ID_PRIORITY.equals(enumId) // skip 'priority' enum, as it has special handling in Polarion
                 && shouldFixSpecificEnum(enumId);
