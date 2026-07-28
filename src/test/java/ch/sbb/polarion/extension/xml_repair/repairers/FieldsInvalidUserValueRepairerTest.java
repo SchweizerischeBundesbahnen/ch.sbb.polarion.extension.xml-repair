@@ -5,6 +5,8 @@ import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.generic.fields.model.Option;
 import ch.sbb.polarion.extension.generic.test_extensions.CustomExtensionMock;
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
+import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigMeta;
+import ch.sbb.polarion.extension.xml_repair.repairers.config.RepairerConfigType;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
@@ -19,8 +21,10 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.model.IPObjectList;
+import com.polarion.platform.persistence.spi.CustomTypedList;
 import com.polarion.subterra.base.data.identification.IContextId;
-import com.polarion.subterra.base.data.model.IType;
+import com.polarion.subterra.base.data.model.internal.EnumType;
+import com.polarion.subterra.base.data.model.internal.ListType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +70,31 @@ class FieldsInvalidUserValueRepairerTest {
 
         polarionService = mock(XmlRepairPolarionService.class);
         contextNoFix = createScanContext(polarionService);
+    }
+
+    @Test
+    void testDisplayNameAndDescription() {
+        assertEquals("User fields: Invalid value", repairer.getDisplayName());
+        assertNotNull(repairer.getDescription());
+        assertTrue(repairer.getDescription().contains("user fields"));
+    }
+
+    @Test
+    void testRepairerId() {
+        assertEquals("FieldsInvalidUserValueRepairer", repairer.getRepairerId());
+    }
+
+    @Test
+    void testGetConfigs() {
+        List<RepairerConfigMeta> configs = repairer.getConfigs();
+
+        assertEquals(1, configs.size());
+        RepairerConfigMeta config = configs.getFirst();
+        assertEquals(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, config.getKey());
+        assertEquals("Remove invalid values", config.getDescription());
+        assertEquals("Clear/remove value if the user isn't found", config.getHint());
+        assertEquals(RepairerConfigType.BOOLEAN, config.getType());
+        assertEquals(false, config.getDefaultValue());
     }
 
     // --- isInvalidEnumOption tests for user enums ---
@@ -133,8 +162,10 @@ class FieldsInvalidUserValueRepairerTest {
     }
 
     @Test
-    void testIsInvalidEnumOptionNonUserEnumIsSkipped() {
-        // non-user enumerations are handled by FieldsInvalidEnumerationValueRepairer
+    void testIsInvalidEnumOptionNonUserEnumIsValidatedAgainstFieldOptions() {
+        // Non-user enumerations are excluded per field (see shouldFixSpecificEnum), not per option, so on option
+        // level a non-user value is validated against the field options here too - fields of other enumerations
+        // just never reach this point in this repairer, see testScanNonUserEnumFieldIsSkippedWithoutReadingValue.
         IEnumOption option = mock(IEnumOption.class);
         when(option.getEnumId()).thenReturn("status-enum");
         when(option.getId()).thenReturn("deleted");
@@ -142,7 +173,50 @@ class FieldsInvalidUserValueRepairerTest {
         FieldMetadata meta = FieldMetadata.builder()
                 .id("status").options(Set.of(new Option("open", "Open"))).build();
 
-        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
+        assertTrue(repairer.isInvalidEnumOption(option, meta, contextNoFix));
+        verify(projectService, never()).getUsers();
+    }
+
+    // --- shouldFixSpecificEnum: which fields this repairer looks at in the first place ---
+
+    @Test
+    void testShouldFixSpecificEnumHandlesOnlyUserEnumeration() {
+        // other enumerations are handled by FieldsInvalidEnumerationValueRepairer
+        assertTrue(repairer.shouldFixSpecificEnum(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID));
+        assertFalse(repairer.shouldFixSpecificEnum("status-enum"));
+        assertFalse(repairer.shouldFixSpecificEnum("work-item-type"));
+    }
+
+    @Test
+    void testScanNonUserEnumFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mock(IEnumOption.class);
+        lenient().when(option.getEnumId()).thenReturn("status-enum");
+        lenient().when(option.getId()).thenReturn("deleted");
+
+        FieldMetadata meta = FieldMetadata.builder().id("status").label("Status")
+                .type(new EnumType("status-enum")).required(false).options(Set.of(new Option("open", "Open"))).build();
+
+        setupScanFields(meta);
+        lenient().when(entity.getValue("status")).thenReturn(option);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("status");
+        verify(projectService, never()).getUsers();
+    }
+
+    @Test
+    void testScanNonEnumFieldIsSkippedWithoutReadingValue() {
+        FieldMetadata meta = FieldMetadata.builder().id("title").label("Title")
+                .type(FieldType.STRING.getType()).required(false).options(Set.of()).build();
+
+        setupScanFields(meta);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("title");
         verify(projectService, never()).getUsers();
     }
 
@@ -184,7 +258,7 @@ class FieldsInvalidUserValueRepairerTest {
         IPObjectList<IUser> userList = mockUserList(user);
         when(projectService.getUsers()).thenReturn(userList);
 
-        FieldMetadata meta = buildUserFieldField(true);
+        FieldMetadata meta = buildUserField();
 
         setupScanFields(meta);
         when(entity.getValue("userField")).thenReturn(option);
@@ -205,7 +279,7 @@ class FieldsInvalidUserValueRepairerTest {
         IPObjectList<IUser> userList = mockUserList(user);
         when(projectService.getUsers()).thenReturn(userList);
 
-        FieldMetadata meta = buildUserFieldField(true);
+        FieldMetadata meta = buildUserField();
 
         setupScanFields(meta);
         when(entity.getValue("userField")).thenReturn(option);
@@ -214,6 +288,35 @@ class FieldsInvalidUserValueRepairerTest {
 
         assertEquals(1, issues.size());
         assertTrue(issues.getFirst().getDescription().contains("disabled_user"));
+    }
+
+    @Test
+    void testScanMultiUserFieldDetectsInvalidUser() {
+        IEnumOption validOption = mock(IEnumOption.class);
+        when(validOption.getEnumId()).thenReturn("@user");
+        when(validOption.getId()).thenReturn("john");
+
+        IEnumOption invalidOption = mock(IEnumOption.class);
+        when(invalidOption.getEnumId()).thenReturn("@user");
+        when(invalidOption.getId()).thenReturn("disabled_user");
+
+        IUser user = mock(IUser.class);
+        when(user.getId()).thenReturn("john");
+        IPObjectList<IUser> userList = mockUserList(user);
+        when(projectService.getUsers()).thenReturn(userList);
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenReturn(Stream.of(validOption, invalidOption));
+
+        FieldMetadata meta = buildMultiUserField();
+
+        setupScanFields(meta);
+        when(entity.getValue("userField")).thenReturn(list);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertEquals(1, issues.size());
+        assertEquals("Invalid enumeration id(s) 'disabled_user' for the field 'UserField'.", issues.getFirst().getDescription());
     }
 
     // --- repair() with user enum ---
@@ -227,7 +330,7 @@ class FieldsInvalidUserValueRepairerTest {
         IPObjectList<IUser> userList = mockUserList();
         when(projectService.getUsers()).thenReturn(userList);
 
-        FieldMetadata meta = buildUserFieldField(false);
+        FieldMetadata meta = buildUserField();
 
         setupRepairFields(meta);
         when(entity.getValue("userField")).thenReturn(option);
@@ -248,6 +351,36 @@ class FieldsInvalidUserValueRepairerTest {
         verify(entity).setValue("userField", null);
     }
 
+    @Test
+    void testRepairNonUserEnumFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mock(IEnumOption.class);
+        lenient().when(option.getEnumId()).thenReturn("status-enum");
+        lenient().when(option.getId()).thenReturn("deleted");
+
+        FieldMetadata meta = FieldMetadata.builder().id("status").label("Status")
+                .type(new EnumType("status-enum")).required(false).options(Set.of(new Option("open", "Open"))).build();
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("status")).thenReturn(option);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidUserValueRepairer",
+                Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("status");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id 'deleted' for the field 'Status'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair(entity, repairContext);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("status");
+        verify(entity, never()).setValue(any(), any());
+    }
+
     @SuppressWarnings("unchecked")
     private IPObjectList<IUser> mockUserList(IUser... users) {
         IPObjectList<IUser> list = mock(IPObjectList.class);
@@ -257,14 +390,19 @@ class FieldsInvalidUserValueRepairerTest {
     }
 
     /**
-     * The optional 'userField' user field every scan/repair test here works on - only the type varies:
-     * for compareTypeClass=true matching, the type's class must match FieldType.ENUM or FieldType.LIST,
-     * so a real ENUM type makes the field discoverable and a mocked subclass makes it invisible.
+     * The optional 'userField' user field every scan/repair test here works on. Its type must carry the
+     * {@code @user} enumeration id, that's what makes this repairer consider the field at all.
      */
-    private FieldMetadata buildUserFieldField(boolean useRealEnumType) {
-        IType type = useRealEnumType ? FieldType.ENUM.getType() : mock(FieldType.ENUM.getType().getClass());
-        return FieldMetadata.builder()
-                .id("userField").label("UserField").type(type).required(false).options(Set.of()).build();
+    private FieldMetadata buildUserField() {
+        return FieldMetadata.builder().id("userField").label("UserField")
+                .type(new EnumType(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID)).required(false).options(Set.of()).build();
+    }
+
+    /** Multi-value counterpart of {@link #buildUserField()}, e.g. a custom 'list of users' field. */
+    private FieldMetadata buildMultiUserField() {
+        return FieldMetadata.builder().id("userField").label("UserField")
+                .type(new ListType("user-list", new EnumType(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID)))
+                .required(false).multi(true).options(Set.of()).build();
     }
 
     private void setupScanFields(FieldMetadata... fields) {

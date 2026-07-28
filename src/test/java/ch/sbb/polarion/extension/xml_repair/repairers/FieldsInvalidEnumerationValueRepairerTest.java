@@ -16,11 +16,13 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import com.polarion.alm.projects.IProjectService;
+import com.polarion.alm.projects.model.IUser;
 import com.polarion.alm.tracker.model.IPriorityOpt;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.UnresolvableObjectException;
+import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.persistence.spi.CustomTypedList;
 import com.polarion.platform.persistence.spi.PObject;
 import com.polarion.platform.persistence.spi.ValueHelper;
@@ -52,6 +54,9 @@ import static org.mockito.Mockito.*;
 @MockitoSettings(strictness = Strictness.LENIENT)
 @SuppressWarnings({"unchecked", "unused", "java:S125"}) // suppress false-positive commented-out lines of code
 class FieldsInvalidEnumerationValueRepairerTest {
+
+    /** Enumeration id of the fields and options under test - any id but {@code @user} makes this repairer handle them. */
+    private static final String ENUM_ID = "generic-enum";
 
     @CustomExtensionMock
     private IProjectService projectService;
@@ -159,18 +164,125 @@ class FieldsInvalidEnumerationValueRepairerTest {
         assertTrue(repairer.isInvalidEnumOption(option, meta, contextNoFix));
     }
 
-    // user enums are handled by FieldsInvalidUserValueRepairer, see FieldsInvalidUserValueRepairerTest
-
     @Test
-    void testIsInvalidEnumOptionUserEnumIsSkipped() {
-        IEnumOption option = mock(IEnumOption.class);
-        when(option.getEnumId()).thenReturn("@user");
-        when(option.getId()).thenReturn("disabled_user");
+    void testIsInvalidEnumOptionUserEnumChecksUserList() {
+        // The user enumeration is excluded per field (see shouldFixSpecificEnum), not per option, so on option
+        // level a user value is validated against the user list here too - fields of the user enumeration just
+        // never reach this point in this repairer, see testScanUserFieldIsSkippedWithoutReadingValue.
+        IEnumOption validUser = mock(IEnumOption.class);
+        when(validUser.getEnumId()).thenReturn("@user");
+        when(validUser.getId()).thenReturn("john");
+
+        IEnumOption invalidUser = mock(IEnumOption.class);
+        when(invalidUser.getEnumId()).thenReturn("@user");
+        when(invalidUser.getId()).thenReturn("disabled_user");
+
+        IUser user = mock(IUser.class);
+        when(user.getId()).thenReturn("john");
+        IPObjectList<IUser> userList = mockUserList(user);
+        when(projectService.getUsers()).thenReturn(userList);
 
         FieldMetadata meta = FieldMetadata.builder().id("userField").options(Set.of()).build();
 
-        assertFalse(repairer.isInvalidEnumOption(option, meta, contextNoFix));
+        assertFalse(repairer.isInvalidEnumOption(validUser, meta, contextNoFix));
+        assertTrue(repairer.isInvalidEnumOption(invalidUser, meta, contextNoFix));
+    }
+
+    // --- isProperEnumField: which fields this repairer looks at in the first place ---
+
+    @Test
+    void testShouldFixSpecificEnumSkipsOnlyUserEnumeration() {
+        // user fields are handled by FieldsInvalidUserValueRepairer, see FieldsInvalidUserValueRepairerTest
+        assertTrue(repairer.shouldFixSpecificEnum(ENUM_ID));
+        assertTrue(repairer.shouldFixSpecificEnum("work-item-type"));
+        assertFalse(repairer.shouldFixSpecificEnum(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID));
+    }
+
+    @Test
+    void testScanUserFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mock(IEnumOption.class);
+        lenient().when(option.getEnumId()).thenReturn("@user");
+        lenient().when(option.getId()).thenReturn("disabled_user");
+
+        FieldMetadata meta = FieldMetadata.builder().id("assignee").label("Assignee")
+                .type(new EnumType(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID)).required(false).options(Set.of()).build();
+
+        setupScanFields(meta);
+        lenient().when(entity.getValue("assignee")).thenReturn(option);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("assignee");
         verify(projectService, never()).getUsers();
+    }
+
+    @Test
+    void testScanMultiUserFieldIsSkippedWithoutReadingValue() {
+        FieldMetadata meta = FieldMetadata.builder().id("assignees").label("Assignees")
+                .type(new ListType("user-list", new EnumType(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID)))
+                .required(false).multi(true).options(Set.of()).build();
+
+        setupScanFields(meta);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("assignees");
+        verify(projectService, never()).getUsers();
+    }
+
+    @Test
+    void testScanEnumFieldWithoutEnumerationIdIsSkippedWithoutReadingValue() {
+        IEnumOption option = mockEnumOption("deleted");
+
+        // an enum type without an enumeration id can't be attributed to any enumeration, so it isn't touched
+        FieldMetadata meta = buildFieldWithoutEnumerationId();
+
+        setupScanFields(meta);
+        lenient().when(entity.getValue("status")).thenReturn(option);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("status");
+    }
+
+    @Test
+    void testScanNonEnumFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mockEnumOption("deleted");
+
+        FieldMetadata meta = FieldMetadata.builder().id("title").label("Title")
+                .type(FieldType.STRING.getType()).required(false).options(Set.of(new Option("open", "Open"))).build();
+
+        setupScanFields(meta);
+        lenient().when(entity.getValue("title")).thenReturn(option);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("title");
+    }
+
+    @Test
+    void testScanNonEnumFieldWithUnresolvableValueReportsNothing() {
+        // Guards against false positives: without the enumeration check upfront, every field whose value fails
+        // to resolve was reported as an invalid enumeration value, even when the field is no enumeration at all.
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        lenient().when(pEntity.getData()).thenReturn(dataObject);
+        lenient().when(dataObject.getCustomValue("customField")).thenReturn("badValue");
+
+        FieldMetadata meta = FieldMetadata.builder().id("customField").label("Custom Field")
+                .type(FieldType.STRING.getType()).required(false).options(Set.of()).build();
+
+        lenient().when(pEntity.getValue("customField")).thenThrow(new UnresolvableObjectException("test"));
+        setupFieldsForEntity(meta);
+
+        List<Issue> issues = repairer.scan((IWorkflowObject) pEntity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(pEntity, never()).getValue("customField");
     }
 
     // --- scan() with single IEnumOption values ---
@@ -189,7 +301,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     void testScanValidEnumValueNoIssue() {
         IEnumOption option = mockEnumOption("open");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open"), new Option("closed", "Closed")));
 
         setupScanFields(meta);
@@ -204,7 +316,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     void testScanInvalidEnumValueDetectsIssue() {
         IEnumOption option = mockEnumOption("deleted");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -222,7 +334,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     void testRepairInvalidEnumValueNotRequiredWithRemoval() {
         IEnumOption option = mockEnumOption("deleted");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -248,7 +360,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     void testRepairInvalidEnumValueRequiredWithRemoval() {
         IEnumOption option = mockEnumOption("deleted");
 
-        FieldMetadata meta = buildEnumField("status", "Status", true, false,
+        FieldMetadata meta = buildEnumField("status", "Status", true,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -273,19 +385,37 @@ class FieldsInvalidEnumerationValueRepairerTest {
     }
 
     @Test
-    void testScanSkipsPriorityEnum() {
-        // IPriorityOpt is a special subtype that should be skipped
+    void testScanPriorityFieldIsSkippedWithoutReadingValue() {
+        // the 'priority' enumeration has special handling in Polarion, so its fields are excluded upfront
         IPriorityOpt priorityOption = mock(IPriorityOpt.class);
 
-        FieldMetadata meta = buildEnumField("priority", "Priority", false, true,
-                Set.of(new Option("high", "High")));
+        FieldMetadata meta = buildPriorityField();
 
         setupScanFields(meta);
-        when(entity.getValue("priority")).thenReturn(priorityOption);
+        lenient().when(entity.getValue("priority")).thenReturn(priorityOption);
 
         List<Issue> issues = repairer.scan(entity, contextNoFix);
 
         assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("priority");
+    }
+
+    @Test
+    void testRepairPriorityFieldIsSkippedWithoutReadingValue() {
+        IPriorityOpt priorityOption = mock(IPriorityOpt.class);
+
+        FieldMetadata meta = buildPriorityField();
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("priority")).thenReturn(priorityOption);
+
+        RepairResult result = repairer.repair(entity, repairContextRemovingInvalidValues("priority",
+                "Invalid enumeration id 'obsolete' for the field 'Priority'."));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("priority");
+        verify(entity, never()).setValue(any(), any());
     }
 
     @Test
@@ -293,7 +423,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // Valid value in no-fix mode: no issue, no setValue
         IEnumOption option = mockEnumOption("open");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -471,7 +601,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     }
 
     @Test
-    void testScanListSkipsPriorityEnumeration() {
+    void testScanMultiPriorityFieldIsSkippedWithoutReadingValue() {
         CustomTypedList list = mock(CustomTypedList.class);
 
         ListType listType = mock(ListType.class);
@@ -483,11 +613,12 @@ class FieldsInvalidEnumerationValueRepairerTest {
                 Set.of(new Option("high", "High")));
 
         setupScanFields(meta);
-        when(entity.getValue("priorities")).thenReturn(list);
+        lenient().when(entity.getValue("priorities")).thenReturn(list);
 
         List<Issue> issues = repairer.scan(entity, contextNoFix);
 
         assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("priorities");
     }
 
     @Test
@@ -541,7 +672,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
     @Test
     void testScanListItemTypeNotEnumType() {
-        // ListType but itemType is not EnumType -> should not enter the list branch
+        // ListType but itemType is not EnumType -> the field isn't an enumeration one, so it isn't even read
         CustomTypedList list = mock(CustomTypedList.class);
 
         ListType listType = mock(ListType.class);
@@ -552,17 +683,102 @@ class FieldsInvalidEnumerationValueRepairerTest {
                 Set.of(new Option("tag1", "Tag 1")));
 
         setupScanFields(meta);
-        when(entity.getValue("tags")).thenReturn(list);
+        lenient().when(entity.getValue("tags")).thenReturn(list);
 
         List<Issue> issues = repairer.scan(entity, contextNoFix);
 
         assertTrue(issues.isEmpty());
+        verify(entity, never()).getValue("tags");
+    }
+
+    @Test
+    void testRepairListItemTypeNotEnumTypeIsSkippedWithoutReadingValue() {
+        // repair() applies the same enumeration check as scan(), so an issue pointing at a list field of
+        // non-enumeration items (e.g. reported before the field type was changed) is not acted upon
+        CustomTypedList list = mock(CustomTypedList.class);
+
+        ListType listType = mock(ListType.class);
+        IType nonEnumType = mock(IType.class);
+        when(listType.getItemType()).thenReturn(nonEnumType);
+
+        FieldMetadata meta = buildListField("tags", "Tags", false, listType,
+                Set.of(new Option("tag1", "Tag 1")));
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("tags")).thenReturn(list);
+
+        RepairResult result = repairer.repair(entity, repairContextRemovingInvalidValues("tags",
+                "Invalid enumeration id(s) 'deleted' for the field 'Tags'."));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("tags");
+        verify(entity, never()).setValue(any(), any());
+    }
+
+    @Test
+    void testRepairUserFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mock(IEnumOption.class);
+        lenient().when(option.getEnumId()).thenReturn("@user");
+        lenient().when(option.getId()).thenReturn("disabled_user");
+
+        FieldMetadata meta = FieldMetadata.builder().id("assignee").label("Assignee")
+                .type(new EnumType(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID)).required(false).options(Set.of()).build();
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("assignee")).thenReturn(option);
+
+        RepairResult result = repairer.repair(entity, repairContextRemovingInvalidValues("assignee",
+                "Invalid enumeration id 'disabled_user' for the field 'Assignee'."));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("assignee");
+        verify(entity, never()).setValue(any(), any());
+        verify(projectService, never()).getUsers();
+    }
+
+    @Test
+    void testRepairEnumFieldWithoutEnumerationIdIsSkippedWithoutReadingValue() {
+        IEnumOption option = mockEnumOption("deleted");
+
+        FieldMetadata meta = buildFieldWithoutEnumerationId();
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("status")).thenReturn(option);
+
+        RepairResult result = repairer.repair(entity, repairContextRemovingInvalidValues("status",
+                "Invalid enumeration id 'deleted' for the field 'Status'."));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("status");
+        verify(entity, never()).setValue(any(), any());
+    }
+
+    @Test
+    void testRepairNonEnumFieldIsSkippedWithoutReadingValue() {
+        IEnumOption option = mockEnumOption("deleted");
+
+        FieldMetadata meta = FieldMetadata.builder().id("title").label("Title")
+                .type(FieldType.STRING.getType()).required(false).options(Set.of(new Option("open", "Open"))).build();
+
+        setupRepairFields(meta);
+        lenient().when(entity.getValue("title")).thenReturn(option);
+
+        RepairResult result = repairer.repair(entity, repairContextRemovingInvalidValues("title",
+                "Invalid enumeration id 'deleted' for the field 'Title'."));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(entity, never()).getValue("title");
+        verify(entity, never()).setValue(any(), any());
     }
 
     @Test
     void testScanFieldValueNotEnumOrList() {
         // Value is neither IEnumOption nor CustomTypedList -> skip
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -578,13 +794,13 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // Field 1: valid enum
         IEnumOption validOption = mockEnumOption("open");
 
-        FieldMetadata meta1 = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta1 = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         // Field 2: invalid enum
         IEnumOption invalidOption = mockEnumOption("deleted");
 
-        FieldMetadata meta2 = buildEnumField("severity", "Severity", false, true,
+        FieldMetadata meta2 = buildEnumField("severity", "Severity", false,
                 Set.of(new Option("high", "High")));
 
         when(polarionService.getAllFields("WorkItem", contextId, "task", true,
@@ -608,7 +824,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn("badValue");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -627,7 +843,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn("badValue");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -657,7 +873,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn("badValue");
 
-        FieldMetadata meta = buildEnumField("status", "Status", true, false,
+        FieldMetadata meta = buildEnumField("status", "Status", true,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -914,13 +1130,64 @@ class FieldsInvalidEnumerationValueRepairerTest {
         }
     }
 
+    @Test
+    void testRepairListStreamThrowsUnresolvableAndRewrappingFailsToo() {
+        // The good items are wrapped twice: once to tell them apart from the bad ones, once to build the new list.
+        // Should the second attempt fail after all, the item is dropped with a log entry instead of blowing up.
+        PObject pEntity = createPObjectEntity();
+        IDataObject dataObject = mock(IDataObject.class);
+        when(pEntity.getData()).thenReturn(dataObject);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn(ENUM_ID);
+
+        Object goodItem = "goodItem";
+        Object badItem = "badItem";
+        when(dataObject.getCustomValue("categories")).thenReturn(new ArrayList<>(List.of(goodItem, badItem)));
+
+        FieldMetadata meta = FieldMetadata.builder()
+                .id("categories").label("Categories").type(listType).required(false).multi(true)
+                .options(Set.of(new Option("open", "Open"))).build();
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenThrow(new UnresolvableObjectException("test"));
+        when(pEntity.getValue("categories")).thenReturn(list);
+        setupFieldsForEntity(meta);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IEnumOption wrappedGood = mock(IEnumOption.class);
+        try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(pEntity, null, enumType, goodItem))
+                    .thenReturn(wrappedGood) // detection pass: the item looks resolvable
+                    .thenThrow(new UnresolvableObjectException("good item went bad")); // rebuild pass: it isn't
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(pEntity, null, enumType, badItem)).thenThrow(new UnresolvableObjectException("bad"));
+
+            IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+            when(metaInfo.serialize()).thenReturn("serialized");
+            when(metaInfo.getString("fieldId")).thenReturn("categories");
+            when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) [badItem] for the field 'Categories'.");
+            RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+            RepairResult result = repairer.repair((IWorkflowObject) pEntity, repairContext);
+
+            assertTrue(result.isSuccess());
+            assertTrue(result.getWarnings().isEmpty());
+            verify(pEntity).setValue(eq("categories"), any());
+        }
+    }
+
     // --- Tests for warnRepairTurnedOff (REMOVE_INVALID_VALUES config disabled) ---
 
     @Test
     void testRepairSingleEnumWarnRepairTurnedOff() {
         IEnumOption option = mockEnumOption("deleted");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -982,7 +1249,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn("badValue");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -1022,7 +1289,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
 
     @Test
     void testScanNullValueNoIssue() {
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -1042,7 +1309,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn(null);
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -1089,7 +1356,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // bad option id "Open" matches valid option's name "Open" (attempt 1)
         IEnumOption option = mockEnumOption("Open");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -1117,7 +1384,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // bad option id "OPEN" matches valid option's key "open" case-insensitively (attempt 2)
         IEnumOption option = mockEnumOption("OPEN");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Different")));
 
         setupRepairFields(meta);
@@ -1143,7 +1410,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // bad option id "OPEN" matches valid option's name "Open" case-insensitively (attempt 3)
         IEnumOption option = mockEnumOption("OPEN");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("st1", "Open")));
 
         setupRepairFields(meta);
@@ -1169,7 +1436,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         // similar found path bypasses the "removal disabled" / required-field guards
         IEnumOption option = mockEnumOption("Open");
 
-        FieldMetadata meta = buildEnumField("status", "Status", true, false,
+        FieldMetadata meta = buildEnumField("status", "Status", true,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -1440,7 +1707,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     @Test
     void testScanIssueDescriptionUsesEnumerationIdWording() {
         IEnumOption option = mockEnumOption("deleted");
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -1458,7 +1725,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
     void testRepairSingleEnumDescriptionMismatchDoesNothing() {
         IEnumOption option = mockEnumOption("deleted");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupRepairFields(meta);
@@ -1525,7 +1792,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(pEntity.getData()).thenReturn(dataObject);
         when(dataObject.getCustomValue("status")).thenReturn("badValue");
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, false,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         when(pEntity.getValue("status")).thenThrow(new UnresolvableObjectException("test"));
@@ -1557,7 +1824,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         CustomTypedList list = mock(CustomTypedList.class);
         lenient().when(list.stream()).thenReturn(Stream.of(invalidOption));
 
-        FieldMetadata meta = buildEnumField("status", "Status", false, true,
+        FieldMetadata meta = buildEnumField("status", "Status", false,
                 Set.of(new Option("open", "Open")));
 
         setupScanFields(meta);
@@ -1716,8 +1983,15 @@ class FieldsInvalidEnumerationValueRepairerTest {
     private IEnumOption mockEnumOption(String id) {
         IEnumOption option = mock(IEnumOption.class);
         when(option.getId()).thenReturn(id);
-        when(option.getEnumId()).thenReturn("generic-enum");
+        when(option.getEnumId()).thenReturn(ENUM_ID);
         return option;
+    }
+
+    private IPObjectList<IUser> mockUserList(IUser... users) {
+        IPObjectList<IUser> list = mock(IPObjectList.class);
+        // answer instead of a fixed return value, so each call gets a fresh (non-consumed) stream
+        when(list.stream()).thenAnswer(invocation -> Stream.of(users));
+        return list;
     }
 
     // Stubs the IEnumeration#wrapOption(key) chain so findSimilarOption returns a known mock.
@@ -1731,15 +2005,35 @@ class FieldsInvalidEnumerationValueRepairerTest {
         return wrapped;
     }
 
-    private FieldMetadata buildEnumField(String id, String label, boolean required, boolean useRealEnumType, Set<Option> options) {
-        IType type = useRealEnumType ? FieldType.ENUM.getType() : mock(IType.class);
-        // For compareTypeClass=true matching, the type's class must match FieldType.ENUM or FieldType.LIST
-        if (!useRealEnumType) {
-            // Make it match by class with ENUM type
-            type = mock(FieldType.ENUM.getType().getClass());
-        }
+    /** Repair context for the given field/issue with the 'remove invalid values' option turned on. */
+    private RepairContext repairContextRemovingInvalidValues(String fieldId, String issueDescription) {
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn(fieldId);
+        when(metaInfo.getString("issueDescription")).thenReturn(issueDescription);
+        return new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+    }
+
+    /** The enumeration field under test: its type carries a concrete enumeration id, so scan() and repair() handle it. */
+    private FieldMetadata buildEnumField(String id, String label, boolean required, Set<Option> options) {
         return FieldMetadata.builder()
-                .id(id).label(label).type(type).required(required).options(options).build();
+                .id(id).label(label).type(new EnumType(ENUM_ID)).required(required).options(options).build();
+    }
+
+    /** A field of the 'priority' enumeration, which neither scan() nor repair() touches. */
+    private FieldMetadata buildPriorityField() {
+        return FieldMetadata.builder().id("priority").label("Priority")
+                .type(new EnumType(IWorkItem.ENUM_ID_PRIORITY)).required(false).options(Set.of(new Option("high", "High"))).build();
+    }
+
+    /** Counterpart of {@link #buildEnumField}: an enum type with no enumeration id, which neither scan() nor repair() touches. */
+    private FieldMetadata buildFieldWithoutEnumerationId() {
+        return FieldMetadata.builder()
+                .id("status").label("Status").type(mock(EnumType.class)).required(false).options(Set.of(new Option("open", "Open"))).build();
     }
 
     private FieldMetadata buildListField(String id, String label, boolean required, ListType listType, Set<Option> options) {
