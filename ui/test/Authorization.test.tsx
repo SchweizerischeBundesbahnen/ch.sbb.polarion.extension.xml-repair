@@ -39,6 +39,16 @@ const roleCheckbox = (role: string): HTMLInputElement => {
 };
 
 let fetchMock: FetchMock;
+/** Answer the confirmation dialog the page renders in place of the former window.confirm. */
+async function answerDialog(label: 'OK' | 'Cancel') {
+  await vi.waitFor(() => expect(document.querySelector('.rsp-modal')).not.toBeNull());
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>('.rsp-modal-footer .sbb-btn')).find(
+    (b) => (b.textContent ?? '').trim() === label,
+  );
+  if (!button) throw new Error(`dialog button "${label}" not found`);
+  button.click();
+}
+
 async function mountLoaded(routes = authRoutes()) {
   fetchMock = installFetchMock(routes);
   setUrl(`?feature=authorization&embedded=true&scope=${encodeURIComponent(SCOPE)}`);
@@ -83,19 +93,19 @@ describe('Repair Authorization page', () => {
   });
 
   it('reverts to the default values via the Default button', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await mountLoaded();
     expect(roleCheckbox('admin').checked).toBe(true);
     sbbButton('Default').click();
+    await answerDialog('OK');
     await vi.waitFor(() => expect(roleCheckbox('admin').checked).toBe(false));
   });
 
   it('restores the persisted state on Cancel', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await mountLoaded();
     roleCheckbox('user').click();
     expect(roleCheckbox('user').checked).toBe(true);
     sbbButton('Cancel').click();
+    await answerDialog('OK');
     await vi.waitFor(() => expect(roleCheckbox('user').checked).toBe(false));
   });
 
