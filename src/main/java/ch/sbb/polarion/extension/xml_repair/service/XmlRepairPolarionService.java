@@ -4,6 +4,7 @@ import ch.sbb.polarion.extension.generic.exception.ObjectNotFoundException;
 import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.generic.rest.exception.UnauthorizedException;
 import ch.sbb.polarion.extension.generic.service.PolarionService;
+import ch.sbb.polarion.extension.generic.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.generic.settings.NamedSettings;
 import ch.sbb.polarion.extension.generic.settings.NamedSettingsRegistry;
 import ch.sbb.polarion.extension.generic.settings.SettingId;
@@ -18,7 +19,6 @@ import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanEntity;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanResult;
-import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.xml_repair.settings.AuthorizationSettings;
 import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
@@ -62,11 +62,13 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NOT_AUTHORIZED_BY_ADMIN;
-import static ch.sbb.polarion.extension.xml_repair.util.RolesUtils.MSG_NO_PERMISSIONS;
-
 @SuppressWarnings("java:S1200") // This service class necessarily couples many domain types
 public class XmlRepairPolarionService extends PolarionService {
+
+    // The two refusals checkAccess can raise: the administrator's role setting, then Polarion's own
+    // permissions. They lived in RolesUtils, which the shared role code replaced.
+    public static final String MSG_NOT_AUTHORIZED_BY_ADMIN = "Repair operation is restricted for current user by the Administrator.";
+    public static final String MSG_NO_PERMISSIONS = "Current user is not allowed to modify the entity.";
 
     public static final String SCAN_TIME_LIMIT_REACHED_WARNING = "Scan time limit was reached during processing, some items may remain unchecked. Please consider increasing the time limit or narrow the query.";
 
@@ -302,10 +304,10 @@ public class XmlRepairPolarionService extends PolarionService {
     }
 
     public boolean userAuthorizedForRepair(@NotNull String projectId) {
-        AuthorizationModel projectCustomFieldsSettingsModel = (AuthorizationModel)
+        AuthorizationModel authorizationModel = (AuthorizationModel)
                 NamedSettingsRegistry.INSTANCE.getByFeatureName(AuthorizationSettings.FEATURE_NAME).read(
                         ScopeUtils.getScopeFromProject(projectId), SettingId.fromName(NamedSettings.DEFAULT_NAME), null);
-        List<String> allowedRoles = projectCustomFieldsSettingsModel.getAllRoles();
+        List<String> allowedRoles = authorizationModel.getAllRoles();
 
         String currentUser = securityService.getCurrentUser();
         Collection<String> globalRoles = securityService.getRolesForUser(currentUser);

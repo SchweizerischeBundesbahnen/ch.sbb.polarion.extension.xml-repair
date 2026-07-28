@@ -5,7 +5,7 @@
     <parent>
         <groupId>ch.sbb.polarion.extensions</groupId>
         <artifactId>ch.sbb.polarion.extension.generic</artifactId>
-        <version>15.9.0</version>
+        <version>15.10.0</version>
     </parent>
 
     <artifactId>ch.sbb.polarion.extension.xml-repair</artifactId>
@@ -155,6 +155,7 @@
                     <outputFormat>JSON</outputFormat>
                     <resourcePackages>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.info</package>
+                        <package>ch.sbb.polarion.extension.generic.rest.controller.roles</package>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.settings</package>
                         <package>ch.sbb.polarion.extension.generic.rest.model</package>
                         <package>ch.sbb.polarion.extension.xml_repair.rest.controller</package>

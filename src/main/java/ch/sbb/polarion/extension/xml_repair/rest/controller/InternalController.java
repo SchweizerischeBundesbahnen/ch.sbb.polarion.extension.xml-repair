@@ -6,10 +6,8 @@ import ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
 import ch.sbb.polarion.extension.xml_repair.service.model.TypeInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
-import ch.sbb.polarion.extension.xml_repair.service.model.RolesInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
-import ch.sbb.polarion.extension.xml_repair.util.RolesUtils;
 import com.polarion.alm.shared.api.transaction.TransactionalExecutor;
 import com.polarion.core.util.StringUtils;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -32,7 +30,6 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
-import java.util.ArrayList;
 
 @Singleton
 @Hidden
@@ -142,23 +139,6 @@ public class InternalController {
         return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
                 transaction -> PolarionBaselineExecutor.executeInBaseline(
                         StringUtils.getNullIfEmpty(scanParams.getRevision()), transaction, () -> polarionService.scan(scanParams)))).build();
-    }
-
-    @GET
-    @Path("/roles")
-    @Produces(MediaType.APPLICATION_JSON)
-    @Operation(summary = "Get the global and project roles available for repair authorization in the specified scope",
-            responses = {
-                    @ApiResponse(responseCode = "200",
-                            description = "Successfully retrieved the available roles",
-                            content = @Content(schema = @Schema(implementation = RolesInfo.class))
-                    )
-            })
-    public Response listRoles(@Parameter(description = "Scope, e.g. project/<projectId>/ (empty for global scope)") @QueryParam("scope") String scope) {
-        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
-                transaction -> new RolesInfo(
-                        new ArrayList<>(RolesUtils.getGlobalRoles()),
-                        new ArrayList<>(RolesUtils.getProjectRoles(scope))))).build();
     }
 
 }

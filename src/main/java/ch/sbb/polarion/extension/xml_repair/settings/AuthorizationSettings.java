@@ -1,5 +1,6 @@
 package ch.sbb.polarion.extension.xml_repair.settings;
 
+import ch.sbb.polarion.extension.generic.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.generic.settings.GenericNamedSettings;
 import ch.sbb.polarion.extension.generic.settings.SettingsService;
 import org.jetbrains.annotations.NotNull;
