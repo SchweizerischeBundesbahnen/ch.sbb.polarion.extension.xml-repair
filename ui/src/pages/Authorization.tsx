@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ConfigurationButtons, PageLayout, RevisionsTable } from '@grigoriev/react-sbb-polarion';
+import { ConfigurationButtons, PageLayout, RevisionsTable, useConfirm } from '@grigoriev/react-sbb-polarion';
 import type { Revision } from '@grigoriev/react-sbb-polarion';
 import { toast } from 'sonner';
 import useAuthorization from '../services/authorization';
@@ -15,6 +15,7 @@ import { getScope } from '../services/scope';
 export default function Authorization() {
   const auth = useAuthorization();
   const scope = getScope();
+  const { confirm, confirmDialog } = useConfirm();
 
   const [roles, setRoles] = useState<RolesInfo>({ globalRoles: [], projectRoles: [] });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -73,7 +74,7 @@ export default function Authorization() {
   };
 
   const handleCancel = async () => {
-    if (!window.confirm('Are you sure you want to cancel editing and revert all changes made?')) return;
+    if (!(await confirm('Are you sure you want to cancel editing and revert all changes made?'))) return;
     try {
       applyContent(await auth.loadContent(scope));
       toast.dismiss();
@@ -83,7 +84,7 @@ export default function Authorization() {
   };
 
   const handleRevertToDefault = async () => {
-    if (!window.confirm('Are you sure you want to return the default values?')) return;
+    if (!(await confirm('Are you sure you want to return the default values?'))) return;
     toast.dismiss();
     try {
       applyContent(await auth.loadDefaultContent());
@@ -162,6 +163,8 @@ export default function Authorization() {
           />
         )}
       </div>
+
+      {confirmDialog}
 
       <div className="quick-help">
         <h2 className="align-left">Quick Help</h2>

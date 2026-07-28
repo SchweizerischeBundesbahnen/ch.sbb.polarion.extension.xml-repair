@@ -36,6 +36,16 @@ const roleCheckbox = (role: string): HTMLInputElement => {
   return cb;
 };
 
+/** Answer the confirmation dialog the page renders in place of the former window.confirm. */
+async function answerDialog(label: 'OK' | 'Cancel') {
+  await vi.waitFor(() => expect(document.querySelector('.rsp-modal')).not.toBeNull());
+  const button = Array.from(document.querySelectorAll<HTMLButtonElement>('.rsp-modal-footer .sbb-btn')).find(
+    (b) => (b.textContent ?? '').trim() === label,
+  );
+  if (!button) throw new Error(`dialog button "${label}" not found`);
+  button.click();
+}
+
 async function mountLoaded(routes = authRoutes()) {
   installFetchMock(routes);
   setUrl(`?feature=authorization&embedded=true&scope=${encodeURIComponent(SCOPE)}`);
@@ -52,24 +62,22 @@ afterEach(() => {
 
 describe('Repair Authorization confirm dialogs', () => {
   it('keeps the edits when Cancel is not confirmed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     await mountLoaded();
     roleCheckbox('user').click();
     await vi.waitFor(() => expect(roleCheckbox('user').checked).toBe(true));
 
     sbbButton('Cancel').click();
-    // The confirm was declined, so nothing is reloaded and the pending tick survives.
-    await vi.waitFor(() => expect(window.confirm).toHaveBeenCalled());
+    // The dialog was dismissed, so nothing is reloaded and the pending tick survives.
+    await answerDialog('Cancel');
     expect(roleCheckbox('user').checked).toBe(true);
   });
 
   it('keeps the edits when Revert to default is not confirmed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     await mountLoaded();
     expect(roleCheckbox('admin').checked).toBe(true);
 
     sbbButton('Default').click();
-    await vi.waitFor(() => expect(window.confirm).toHaveBeenCalled());
+    await answerDialog('Cancel');
     expect(roleCheckbox('admin').checked).toBe(true);
   });
 });
@@ -107,7 +115,6 @@ describe('Repair Authorization selection', () => {
 
 describe('Repair Authorization error reporting', () => {
   it('shows the load error when reloading on Cancel fails', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     let calls = 0;
     await mountLoaded([
       {
@@ -124,11 +131,11 @@ describe('Repair Authorization error reporting', () => {
       ...authRoutes(),
     ]);
     sbbButton('Cancel').click();
+    await answerDialog('OK');
     await vi.waitFor(() => expect(document.querySelector('.alert-error')).not.toBeNull(), { timeout: 5000 });
   });
 
   it('shows the load error when the default content cannot be read', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     await mountLoaded([
       {
         method: 'GET',
@@ -138,6 +145,7 @@ describe('Repair Authorization error reporting', () => {
       ...authRoutes(),
     ]);
     sbbButton('Default').click();
+    await answerDialog('OK');
     await vi.waitFor(() => expect(document.querySelector('.alert-error')).not.toBeNull(), { timeout: 5000 });
   });
 
