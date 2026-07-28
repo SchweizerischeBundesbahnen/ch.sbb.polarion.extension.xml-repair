@@ -2,6 +2,7 @@ package ch.sbb.polarion.extension.xml_repair.settings;
 
 import ch.sbb.polarion.extension.generic.context.CurrentContextConfig;
 import ch.sbb.polarion.extension.generic.context.CurrentContextExtension;
+import ch.sbb.polarion.extension.generic.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.generic.settings.GenericNamedSettings;
 import ch.sbb.polarion.extension.generic.settings.SettingId;
 import ch.sbb.polarion.extension.generic.settings.SettingsService;

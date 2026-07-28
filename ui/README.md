@@ -8,6 +8,7 @@ with feature routing by `?feature=<id>`, hosting three surfaces:
   (Work Items, Documents, Baseline Collections). Opened by `XmlRepairNavigationExtender`.
 - **About** (`?feature=about`): the shared RSP About page.
 - **Repair Authorization** (`?feature=authorization`): configure which global/project roles may repair.
+  The shared RSP `AuthorizationSettings` page over this extension's `authorization` setting.
 
 The app is built with Vite and React, producing a static bundle that gets embedded into the extension JAR during the Maven build.
 
@@ -17,7 +18,7 @@ The app is built with Vite and React, producing a static bundle that gets embedd
 
 2. **Webapp registration** — `plugin.xml` declares a `xml-repair-app` webapp. Polarion's Tomcat serves the static files through `XmlRepairAppServlet` (mapped to `/ui/*`).
 
-3. **REST communication** — The React app calls the existing REST API at `/polarion/xml-repair/rest/internal/*` (or `/api/*` with a bearer token) to list repairers, run scans, and execute repairs.
+3. **REST communication** — The React app calls the existing REST API at `/polarion/xml-repair/rest/internal/*` (or `/api/*` with a bearer token) to list repairers, run scans, and execute repairs. The authorization page additionally uses the settings endpoints and `/roles`; both come from the generic parent, and the role endpoints are opt-in, registered in `XmlRepairRestApplication`.
 
 4. **Build pipeline** — During `mvn package`, the `frontend-maven-plugin` runs `npm ci` and `npm run build` inside this folder. The `maven-resources-plugin` then copies `ui/dist/app/` into `src/main/resources/webapp/xml-repair-app/app/`, so it ends up in the final JAR. `ci`, not `install`: the packaged bundle must come from the committed `package-lock.json`, the same graph the tests run against — so a `package.json` edit that is not reflected in the lock fails the build instead of being silently repaired. Locally you still use `npm install` (below), which is what updates the lock.
 
