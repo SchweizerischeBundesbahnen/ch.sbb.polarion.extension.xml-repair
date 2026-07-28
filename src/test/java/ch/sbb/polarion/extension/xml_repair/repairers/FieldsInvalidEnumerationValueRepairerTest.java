@@ -173,6 +173,25 @@ class FieldsInvalidEnumerationValueRepairerTest {
         verify(projectService, never()).getUsers();
     }
 
+    // --- shouldFixSpecificEnum tests ---
+
+    @Test
+    void testShouldFixSpecificEnumRegularEnum() {
+        assertTrue(repairer.shouldFixSpecificEnum("status-enum"));
+    }
+
+    @Test
+    void testShouldFixSpecificEnumUserEnum() {
+        // user enums are repaired by FieldsInvalidUserValueRepairer
+        assertFalse(repairer.shouldFixSpecificEnum(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID));
+    }
+
+    @Test
+    void testShouldFixSpecificEnumNullEnumId() {
+        // EnumType#getEnumerationId() may return null, this must not throw
+        assertTrue(repairer.shouldFixSpecificEnum(null));
+    }
+
     // --- scan() with single IEnumOption values ---
 
     @Test
@@ -488,6 +507,89 @@ class FieldsInvalidEnumerationValueRepairerTest {
         List<Issue> issues = repairer.scan(entity, contextNoFix);
 
         assertTrue(issues.isEmpty());
+    }
+
+    @Test
+    void testScanListSkipsUserEnumeration() {
+        // multi-value user fields are handled by FieldsInvalidUserValueRepairer,
+        // so the list branch must not be entered at all for the '@user' enumeration
+        CustomTypedList list = mock(CustomTypedList.class);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID);
+
+        FieldMetadata meta = buildListField("assignees", "Assignees", false, listType,
+                Set.of(new Option("user1", "User One")));
+
+        setupScanFields(meta);
+        when(entity.getValue("assignees")).thenReturn(list);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertTrue(issues.isEmpty());
+        verify(list, never()).stream();
+        verify(projectService, never()).getUsers();
+    }
+
+    @Test
+    void testRepairListSkipsUserEnumeration() {
+        CustomTypedList list = mock(CustomTypedList.class);
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn(FieldsInvalidEnumerationValueRepairer.USER_ENUM_ID);
+
+        FieldMetadata meta = buildListField("assignees", "Assignees", false, listType,
+                Set.of(new Option("user1", "User One")));
+
+        setupRepairFields(meta);
+        when(entity.getValue("assignees")).thenReturn(list);
+
+        UserConfigs removalEnabledConfigs = new UserConfigs();
+        removalEnabledConfigs.put("FieldsInvalidEnumerationValueRepairer",
+                java.util.Map.of(FieldsInvalidEnumerationValueRepairer.REMOVE_INVALID_VALUES, true));
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("serialized");
+        when(metaInfo.getString("fieldId")).thenReturn("assignees");
+        when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted_user' for the field 'Assignees'.");
+        RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
+
+        RepairResult result = repairer.repair(entity, repairContext);
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().isEmpty());
+        verify(list, never()).stream();
+        verify(list, never()).removeAll(any());
+        verify(entity, never()).setValue(any(), any());
+    }
+
+    @Test
+    void testScanListWithNullEnumerationIdIsStillChecked() {
+        // getEnumerationId() may return null: the field must still be checked, without an NPE
+        IEnumOption invalidOption = mockEnumOption("deleted");
+
+        CustomTypedList list = mock(CustomTypedList.class);
+        when(list.stream()).thenReturn(Stream.of(invalidOption));
+
+        ListType listType = mock(ListType.class);
+        EnumType enumType = mock(EnumType.class);
+        when(listType.getItemType()).thenReturn(enumType);
+        when(enumType.getEnumerationId()).thenReturn(null);
+
+        FieldMetadata meta = buildListField("categories", "Categories", false, listType,
+                Set.of(new Option("open", "Open")));
+
+        setupScanFields(meta);
+        when(entity.getValue("categories")).thenReturn(list);
+
+        List<Issue> issues = repairer.scan(entity, contextNoFix);
+
+        assertEquals(1, issues.size());
+        assertEquals("Invalid enumeration id(s) 'deleted' for the field 'Categories'.", issues.getFirst().getDescription());
     }
 
     @Test

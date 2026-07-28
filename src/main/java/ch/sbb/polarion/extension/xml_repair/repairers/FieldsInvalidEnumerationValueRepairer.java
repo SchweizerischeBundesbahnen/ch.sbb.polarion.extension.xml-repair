@@ -103,7 +103,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 issues.add(issue);
             }
         } else if (value instanceof CustomTypedList list && meta.getType() instanceof ListType listType
-                && listType.getItemType() instanceof EnumType enumType && !(Objects.equals(enumType.getEnumerationId(), IWorkItem.ENUM_ID_PRIORITY))) {
+                && listType.getItemType() instanceof EnumType enumType && !(Objects.equals(enumType.getEnumerationId(), IWorkItem.ENUM_ID_PRIORITY)) && shouldFixSpecificEnum(enumType.getEnumerationId())) {
             try {
                 List<IEnumOption> invalidOptions = list.stream().filter(v -> v instanceof IEnumOption e && isInvalidEnumOption(e, meta, context)).toList();
                 handleInvalidOptions(entity, meta, issues, context, repairResult, list, invalidOptions);
@@ -229,7 +229,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
 
     @VisibleForTesting
     boolean shouldFixSpecificEnum(String enumId) {
-        return !enumId.equals(USER_ENUM_ID); //fix users in the separate repairer
+        return !USER_ENUM_ID.equals(enumId); //fix users in the separate repairer
     }
 
     private IEnumOption findSimilarOption(IWorkflowObject entity, IEnumOption option, FieldMetadata meta) {
