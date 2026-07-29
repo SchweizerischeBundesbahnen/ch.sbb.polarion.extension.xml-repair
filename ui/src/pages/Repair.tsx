@@ -383,6 +383,13 @@ export default function Repair() {
   // query field.
   const selectionActive = SELECTABLE_ENTITY_TYPES.includes(entityType) && filterMode === 'SELECTION';
 
+  // A selection cannot be scanned while its list is still loading: until the list arrives the remembered
+  // keys have not been checked against the current type and subtype, so a scan started now could submit
+  // entities of the previous one. Blocking the button for that moment is enough - the prune runs as soon
+  // as the list is there. A failed load deliberately does NOT block: nothing then says the remembered
+  // selection is wrong, and the backend resolves each entity directly, so the user can still work.
+  const selectionPending = selectionActive && entitiesLoading;
+
   const entityOptions = useMemo((): IconSelectOption[] => {
     // Each entity carries its type id; the icon comes from the subtype list already loaded for the
     // Entity Type row, with the entity type's own icon as the fallback.
@@ -842,8 +849,14 @@ export default function Repair() {
               <button
                 className="btn btn-scan"
                 onClick={handleScan}
-                disabled={scanning || batchRepairing || selectedRepairers.length === 0}
-                title={selectedRepairers.length === 0 ? 'Please select at least one repairer' : ''}
+                disabled={scanning || batchRepairing || selectedRepairers.length === 0 || selectionPending}
+                title={
+                  selectedRepairers.length === 0
+                    ? 'Please select at least one repairer'
+                    : selectionPending
+                      ? 'Please wait until the entity list is loaded'
+                      : ''
+                }
               >
                 {scanning ? 'Scanning...' : 'Scan'}
               </button>

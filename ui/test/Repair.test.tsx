@@ -480,6 +480,30 @@ describe('Scan & Repair page', () => {
     expect(lastScanBody().entities).toEqual([{ space: '_default', id: 'specification' }]);
   });
 
+  it('blocks the scan while the entity list is still loading', async () => {
+    // Otherwise a scan started right after a subtype switch would submit the previous subtype's keys,
+    // before the prune has had a list to check them against.
+    let release!: () => void;
+    // Held open until the test releases it, so the loading state is observable.
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const routes = defaultRoutes().filter((r) => !String(r.match).includes('entities'));
+    routes.push({
+      method: 'GET',
+      match: /\/entities\?/,
+      respond: () => held.then(() => jsonResponse(DOCUMENTS)),
+    });
+    await mountRepair(routes);
+    await selectEntityType('DOCUMENT', false);
+
+    await vi.waitFor(() => expect(textButton('Scan').disabled).toBe(true));
+    expect(textButton('Scan').title).toContain('entity list is loaded');
+
+    release();
+    await vi.waitFor(() => expect(textButton('Scan').disabled).toBe(false));
+  });
+
   it('drops the remembered selection when the project holds no such entities at all', async () => {
     // A successfully loaded empty list is authoritative: the cookie belongs to another project, and the
     // scan must not submit keys the picker cannot even show.

@@ -1545,6 +1545,23 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testScanRejectsASelectionWithoutAnyUsableReference() {
+        // The refs are dropped when the query is built, so accepting this would silently turn a selection
+        // into "scan the whole project" - and still inflate the batch to the size of the useless list.
+        ScanParams params = new ScanParams();
+        params.setProjectId("proj");
+        params.setEntityType(EntityType.DOCUMENT);
+        params.setLimit(10);
+        params.setTimeout(60000L);
+        params.setRepairers(List.of("TestRepairer"));
+        params.setEntities(Arrays.asList(null, new EntityRef("_default", ""), new EntityRef(null, null)));
+
+        assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params));
+
+        verify(polarionService, never()).queryEntities(anyString(), any(PrototypeEnum.class), any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
     void testScanRejectsASelectionBeyondTheSupportedMaximum() {
         // Every reference becomes a clause of the query and raises the batch size, so an oversized list is
         // refused before any of that is built. IllegalArgumentException maps to 400 (generic's mapper).

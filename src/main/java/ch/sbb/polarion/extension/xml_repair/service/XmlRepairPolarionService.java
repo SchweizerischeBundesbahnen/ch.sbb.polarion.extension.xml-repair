@@ -195,8 +195,14 @@ public class XmlRepairPolarionService extends PolarionService {
         if (selectionSize > ScanParams.MAX_ENTITIES) {
             throw new IllegalArgumentException("Too many entities to scan: %d, at most %d are supported".formatted(selectionSize, ScanParams.MAX_ENTITIES));
         }
+        String entitiesQuery = buildEntitiesQuery(params.getEntityType(), params.getEntities());
+        if (selectionSize > 0 && entitiesQuery == null) {
+            // Every reference was unusable (null, or without an id). Treating that as "no selection" would
+            // silently widen the scan to the whole project, which is the opposite of what the caller asked.
+            throw new IllegalArgumentException("Entity selection contains no usable entity reference");
+        }
         int batchSize = Math.max(params.isHideValid() ? Math.max(params.getLimit(), DEFAULT_LIMIT) : params.getLimit(), selectionSize);
-        String customQuery = combineQueries(params.getUserQuery(), buildEntitiesQuery(params.getEntityType(), params.getEntities()));
+        String customQuery = combineQueries(params.getUserQuery(), entitiesQuery);
 
         do {
             report.info("Query started (offset=%d)...".formatted(queryOffset));
