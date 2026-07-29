@@ -77,6 +77,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.*;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.mockFields;
@@ -1458,6 +1459,16 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testBuildEntitiesQuerySkipsRefsWithoutAnId() {
+        // The REST model accepts any JSON array, so a null element or one without an id is dropped rather
+        // than failing the whole scan or producing a clause that matches everything.
+        String query = polarionService.buildEntitiesQuery(EntityType.COLLECTION,
+                Arrays.asList(null, new EntityRef(null, "1"), new EntityRef(null, "")));
+
+        assertEquals("id:1", query);
+    }
+
+    @Test
     void testBuildEntitiesQueryForDocumentsAddressesSpaceAndModuleName() {
         // Documents are addressed the way Polarion itself does it: space.id + moduleName.
         String query = polarionService.buildEntitiesQuery(EntityType.DOCUMENT,
@@ -1534,6 +1545,40 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testScanRejectsASelectionBeyondTheSupportedMaximum() {
+        // Every reference becomes a clause of the query and raises the batch size, so an oversized list is
+        // refused before any of that is built. IllegalArgumentException maps to 400 (generic's mapper).
+        ScanParams params = new ScanParams();
+        params.setProjectId("proj");
+        params.setEntityType(EntityType.DOCUMENT);
+        params.setLimit(10);
+        params.setTimeout(60000L);
+        params.setRepairers(List.of("TestRepairer"));
+        params.setEntities(IntStream.rangeClosed(0, ScanParams.MAX_ENTITIES)
+                .mapToObj(i -> new EntityRef("_default", "doc-" + i)).toList());
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params));
+
+        assertTrue(thrown.getMessage().contains(String.valueOf(ScanParams.MAX_ENTITIES)));
+        verify(polarionService, never()).queryEntities(anyString(), any(PrototypeEnum.class), any(), any(), any(), any(), anyInt(), anyInt());
+    }
+
+    @Test
+    void testScanAcceptsASelectionAtTheSupportedMaximum() {
+        ScanParams params = new ScanParams();
+        params.setProjectId("proj");
+        params.setEntityType(EntityType.COLLECTION);
+        params.setLimit(10);
+        params.setTimeout(60000L);
+        params.setRepairers(List.of("TestRepairer"));
+        params.setEntities(IntStream.range(0, ScanParams.MAX_ENTITIES).mapToObj(i -> new EntityRef(null, String.valueOf(i))).toList());
+
+        doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
+
+        assertNotNull(polarionService.scan(params));
+    }
+
+    @Test
     void testGetEntitiesReturnsDocumentsSortedBySpaceAndName() {
         ModelObject first = mockDocumentModelObject("Zebra Space", "doc-z", "Zebra doc", "specification");
         ModelObject second = mockDocumentModelObject("Alpha Space", "doc-b", "b doc", null);
@@ -1549,6 +1594,17 @@ class XmlRepairPolarionServiceTest {
                 new EntityInfo("Alpha Space", "doc-b", "b doc", null),
                 new EntityInfo("Zebra Space", "doc-z", "Zebra doc", "specification")
         ), result);
+    }
+
+    @Test
+    void testGetEntitiesWarnsWhenTheListHitsItsLimit() {
+        // The cap truncates rather than fails, so the warning is the only trace that a project holds more
+        // entities than the picker can offer. nCopies keeps this cheap: one mock, ENTITY_LIST_LIMIT slots.
+        ModelObject document = mockDocumentModelObject("_default", "spec", "Specification", null);
+        doReturn(Collections.nCopies(XmlRepairPolarionService.ENTITY_LIST_LIMIT, document)).when(polarionService)
+                .queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+        assertEquals(XmlRepairPolarionService.ENTITY_LIST_LIMIT, polarionService.getEntities("proj", EntityType.DOCUMENT, null).size());
     }
 
     @Test

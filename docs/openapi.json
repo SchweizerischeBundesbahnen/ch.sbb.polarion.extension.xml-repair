@@ -1103,7 +1103,7 @@
             "type": "object"
           },
           "entities": {
-            "description": "Explicit list of entities to scan, an alternative to 'userQuery' (both are combined with AND if provided together). Empty or not provided means all entities of the given type",
+            "description": "Explicit list of entities to scan, an alternative to 'userQuery' (both are combined with AND if provided together). Empty or not provided means all entities of the given type. At most 2000 entries",
             "items": {
               "$ref": "#/components/schemas/EntityRef"
             },

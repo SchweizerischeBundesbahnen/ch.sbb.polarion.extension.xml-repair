@@ -119,9 +119,10 @@ public class XmlRepairPolarionService extends PolarionService {
     );
     private static final int DEFAULT_LIMIT = 100;
     // Upper bound for the selectable entity list of a project. Big enough for any real project, small
-    // enough to keep the response and the client-side dropdown filtering fast.
+    // enough to keep the response and the client-side dropdown filtering fast. Same number as the bound
+    // on a submitted selection, so what the picker offers and what a scan accepts cannot diverge.
     @VisibleForTesting
-    static final int ENTITY_LIST_LIMIT = 2000;
+    static final int ENTITY_LIST_LIMIT = ScanParams.MAX_ENTITIES;
 
     private final Logger logger = Logger.getLogger(XmlRepairPolarionService.class);
 
@@ -187,8 +188,13 @@ public class XmlRepairPolarionService extends PolarionService {
         long processedItemsCount = 0;
         int queryOffset = 0;
         // An explicit selection is what the user asked to scan, so it must not be cut by the "show top
-        // rows" limit: the batch is at least as big as the selection.
+        // rows" limit: the batch is at least as big as the selection. Which is why the selection is
+        // bounded first - it sizes both the query and the batch, and the UI can only ever pick from a
+        // list of at most MAX_ENTITIES.
         int selectionSize = params.getEntities() == null ? 0 : params.getEntities().size();
+        if (selectionSize > ScanParams.MAX_ENTITIES) {
+            throw new IllegalArgumentException("Too many entities to scan: %d, at most %d are supported".formatted(selectionSize, ScanParams.MAX_ENTITIES));
+        }
         int batchSize = Math.max(params.isHideValid() ? Math.max(params.getLimit(), DEFAULT_LIMIT) : params.getLimit(), selectionSize);
         String customQuery = combineQueries(params.getUserQuery(), buildEntitiesQuery(params.getEntityType(), params.getEntities()));
 

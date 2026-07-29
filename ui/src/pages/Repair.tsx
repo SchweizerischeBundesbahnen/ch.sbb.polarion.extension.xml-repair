@@ -80,6 +80,9 @@ export default function Repair() {
   const [userQuery, setUserQuery] = useState(() => String(getCookie('userQuery') || ''));
   const [entities, setEntities] = useState<EntityInfo[]>([]);
   const [entitiesLoading, setEntitiesLoading] = useState(false);
+  // True once a load succeeded for the current entity type and subtype, so `entities` can be trusted as
+  // the complete list - which is what lets an empty list prune a stale selection instead of ignoring it.
+  const [entitiesLoaded, setEntitiesLoaded] = useState(false);
   const [selectedEntities, setSelectedEntities] = useState<string[]>(() =>
     (getCookie('selectedEntities') || '').split(',').filter(Boolean),
   );
@@ -272,11 +275,13 @@ export default function Repair() {
   useEffect(() => {
     if (!projectId || !SELECTABLE_ENTITY_TYPES.includes(entityType)) {
       setEntities([]);
+      setEntitiesLoaded(false);
       return;
     }
     let cancelled = false;
     const loadEntities = async () => {
       setEntitiesLoading(true);
+      setEntitiesLoaded(false);
       try {
         const params = new URLSearchParams({ projectId, entityType });
         if (entitySubtype) {
@@ -286,6 +291,9 @@ export default function Repair() {
         if (cancelled) return;
         if (response.ok) {
           setEntities(await response.json());
+          // Marks the list authoritative for the current type and subtype, including when it came back
+          // empty. A failed load leaves it false, because then we do not know what the project holds.
+          setEntitiesLoaded(true);
         } else {
           setEntities([]);
           toast.error('Failed to load the entity list');
@@ -308,11 +316,13 @@ export default function Repair() {
     };
   }, [projectId, entityType, entitySubtype, sendRequest]);
 
-  // Drop selected entities the loaded list no longer offers - a cookie restored from another project, or
-  // documents of a subtype that is no longer selected. Skipped while the list is unavailable, so a
-  // pending load or a switch to work items doesn't wipe the selection.
+  // Drop selected entities the loaded list does not offer - a cookie restored from another project, or
+  // documents of a subtype that is no longer selected. Runs only once the list is authoritative, so a
+  // pending load, a failed one, or a switch to work items never wipes the selection. An authoritative
+  // empty list does prune: a project or subtype with no entities at all must not keep submitting keys
+  // the picker cannot even show.
   useEffect(() => {
-    if (entitiesLoading || entities.length === 0 || selectedEntities.length === 0) {
+    if (!entitiesLoaded || selectedEntities.length === 0) {
       return;
     }
     const known = new Set(entities.map(entityKey));
@@ -320,7 +330,7 @@ export default function Repair() {
     if (pruned.length !== selectedEntities.length) {
       setSelectedEntities(pruned);
     }
-  }, [entities, entitiesLoading, selectedEntities]);
+  }, [entities, entitiesLoaded, selectedEntities]);
 
   useEffect(() => {
     if (!projectId) {

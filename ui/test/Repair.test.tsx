@@ -480,6 +480,38 @@ describe('Scan & Repair page', () => {
     expect(lastScanBody().entities).toEqual([{ space: '_default', id: 'specification' }]);
   });
 
+  it('drops the remembered selection when the project holds no such entities at all', async () => {
+    // A successfully loaded empty list is authoritative: the cookie belongs to another project, and the
+    // scan must not submit keys the picker cannot even show.
+    document.cookie = 'xmlRepair_entityType=DOCUMENT; path=/';
+    document.cookie = 'xmlRepair_filterMode=SELECTION; path=/';
+    document.cookie = `xmlRepair_selectedEntities=${encodeURIComponent('_default/specification')}; path=/`;
+
+    const routes = defaultRoutes().filter((r) => !String(r.match).includes('entities'));
+    routes.push({ method: 'GET', match: /\/entities\?/, json: [] });
+    await mountRepair(routes);
+
+    await vi.waitFor(() => expect(entitySelect().options.length).toBe(0));
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(0));
+    await runScan();
+    expect(lastScanBody().entities).toBeNull();
+  });
+
+  it('keeps the remembered selection when the entity list fails to load', async () => {
+    // The counterpart: a failed load says nothing about what the project holds, so the selection stands
+    // and the user can retry rather than silently losing it.
+    document.cookie = 'xmlRepair_entityType=DOCUMENT; path=/';
+    document.cookie = 'xmlRepair_filterMode=SELECTION; path=/';
+    document.cookie = `xmlRepair_selectedEntities=${encodeURIComponent('_default/specification')}; path=/`;
+
+    const routes = defaultRoutes().filter((r) => !String(r.match).includes('entities'));
+    routes.push({ method: 'GET', match: /\/entities\?/, status: 500, json: { message: 'boom' } });
+    await mountRepair(routes);
+
+    await runScan();
+    expect(lastScanBody().entities).toEqual([{ space: '_default', id: 'specification' }]);
+  });
+
   it('clears the selection when the entity type changes', async () => {
     await mountRepair();
     await selectEntityType('DOCUMENT');
