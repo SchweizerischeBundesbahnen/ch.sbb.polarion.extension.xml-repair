@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
-import { BASELINES, DOCUMENT_TYPES, REPAIRERS, SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
+import { BASELINES, DOCUMENTS, DOCUMENT_TYPES, REPAIRERS, SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
 import { type Route, installFetchMock } from './mockFetch';
 
 // Secondary branches of the Repair page: the scan form restored from cookies (every field has a
@@ -14,6 +14,8 @@ const setUrl = (search: string) => window.history.replaceState({}, '', search);
 
 const COOKIES = [
   'entityType',
+  'filterMode',
+  'selectedEntities',
   'userQuery',
   'revision',
   'sort',
@@ -35,6 +37,7 @@ const defaultRoutes = (): Route[] => [
   { method: 'GET', match: /\/repairers/, json: REPAIRERS },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
+  { method: 'GET', match: /\/entities\?/, json: DOCUMENTS },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
   { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
 ];
@@ -64,6 +67,9 @@ afterEach(() => {
 describe('Repair form restored from cookies', () => {
   it('restores every saved scan parameter instead of the defaults', async () => {
     setCookie('entityType', 'DOCUMENT');
+    // Documents default to picking entities from a dropdown, so the saved query is only on screen in the
+    // saved QUERY mode - which is itself one of the restored parameters.
+    setCookie('filterMode', 'QUERY');
     setCookie('userQuery', 'type:requirement');
     setCookie('revision', '4321');
     setCookie('sort', 'id');

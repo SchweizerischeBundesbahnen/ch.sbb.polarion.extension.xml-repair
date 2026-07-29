@@ -10,8 +10,8 @@ export interface Route {
   /** Static JSON body (200 unless `status` given). */
   json?: unknown;
   status?: number;
-  /** Full control: build the Response from the request. */
-  respond?: (url: string, init?: RequestInit) => Response;
+  /** Full control: build the Response from the request. May be async, to hold a request open. */
+  respond?: (url: string, init?: RequestInit) => Response | Promise<Response>;
 }
 
 export function jsonResponse(body: unknown, status = 200): Response {

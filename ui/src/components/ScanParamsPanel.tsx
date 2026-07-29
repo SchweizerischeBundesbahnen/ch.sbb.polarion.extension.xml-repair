@@ -1,9 +1,9 @@
 import type { KeyboardEvent } from 'react';
-import type { EntityType, IconSelectOption } from '../types';
+import { SearchableSelect } from '@grigoriev/react-sbb-polarion';
+import type { EntityType, FilterMode, IconSelectOption } from '../types';
 import NumericInput from './NumericInput';
 import type { NumericInputHint } from './NumericInput';
 import SearchableInput from './SearchableInput';
-import SearchableSelect from './SearchableSelect';
 
 const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   WORKITEM: 'e.g. id:PRJID-123',
@@ -11,11 +11,45 @@ const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   COLLECTION: 'e.g. name:specification',
 };
 
+// Label and "nothing picked" placeholder of the selection row. Work items have no selection mode - a
+// project holds far too many of them for a dropdown - so they are absent here.
+const SELECTION_LABELS: Partial<Record<EntityType, { label: string; placeholder: string }>> = {
+  DOCUMENT: { label: 'Documents', placeholder: 'All documents' },
+  COLLECTION: { label: 'Collections', placeholder: 'All collections' },
+};
+
+// Two 12px glyphs for the mode toggle, inlined so the button needs no Polarion-served icon: a list
+// (switch to selection) and a magnifier (switch to query).
+const LIST_ICON = (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+    <path
+      d="M1 2h1.5M1 6h1.5M1 10h1.5M4.5 2H11M4.5 6H11M4.5 10H11"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      fill="none"
+      strokeLinecap="round"
+    />
+  </svg>
+);
+
+const QUERY_ICON = (
+  <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+    <circle cx="5" cy="5" r="3.6" stroke="currentColor" strokeWidth="1.4" fill="none" />
+    <path d="M8 8l3 3" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+  </svg>
+);
+
 interface ScanParamsPanelProps {
   entityType: EntityType;
   entityValue: string;
   combinedEntityOptions: IconSelectOption[];
   onEntityChange: (val: string) => void;
+  filterMode: FilterMode;
+  onFilterModeChange: (mode: FilterMode) => void;
+  entityOptions: IconSelectOption[];
+  entitiesLoading: boolean;
+  selectedEntities: string[];
+  onSelectedEntitiesChange: (values: string[]) => void;
   userQuery: string;
   onUserQueryChange: (val: string) => void;
   revision: number;
@@ -38,6 +72,12 @@ export default function ScanParamsPanel({
   entityValue,
   combinedEntityOptions,
   onEntityChange,
+  filterMode,
+  onFilterModeChange,
+  entityOptions,
+  entitiesLoading,
+  selectedEntities,
+  onSelectedEntitiesChange,
   userQuery,
   onUserQueryChange,
   revision,
@@ -54,6 +94,11 @@ export default function ScanParamsPanel({
   onHideValidChange,
   onEnterKey,
 }: ScanParamsPanelProps) {
+  // `selection` is absent for entity types without a picker (work items): no toggle button, the query
+  // row is all there is.
+  const selection = SELECTION_LABELS[entityType];
+  const selectionActive = !!selection && filterMode === 'SELECTION';
+
   return (
     <div
       className="form-section"
@@ -75,13 +120,44 @@ export default function ScanParamsPanel({
       </div>
 
       <div className="form-row">
-        <label>Query</label>
-        <input
-          type="text"
-          value={userQuery}
-          onChange={(e) => onUserQueryChange(e.target.value)}
-          placeholder={QUERY_PLACEHOLDERS[entityType]}
-        />
+        <label htmlFor={selectionActive ? undefined : 'user-query'}>
+          {selectionActive ? selection.label : 'Query'}
+        </label>
+        <div className="filter-control">
+          {selectionActive ? (
+            <SearchableSelect
+              multiple
+              value={selectedEntities}
+              onChange={onSelectedEntitiesChange}
+              options={entityOptions}
+              placeholder={entitiesLoading ? 'Loading…' : selection.placeholder}
+              loading={entitiesLoading}
+            />
+          ) : (
+            <input
+              id="user-query"
+              type="text"
+              value={userQuery}
+              onChange={(e) => onUserQueryChange(e.target.value)}
+              placeholder={QUERY_PLACEHOLDERS[entityType]}
+            />
+          )}
+          {selection && (
+            <button
+              type="button"
+              className="filter-mode-toggle"
+              onClick={() => onFilterModeChange(selectionActive ? 'QUERY' : 'SELECTION')}
+              title={
+                selectionActive ? 'Switch to Lucene query' : `Switch to ${selection.label.toLowerCase()} selection`
+              }
+              aria-label={
+                selectionActive ? 'Switch to Lucene query' : `Switch to ${selection.label.toLowerCase()} selection`
+              }
+            >
+              {selectionActive ? QUERY_ICON : LIST_ICON}
+            </button>
+          )}
+        </div>
       </div>
 
       <details className="advanced-section">
