@@ -1,3 +1,5 @@
+import type { SelectOption } from '@grigoriev/react-sbb-polarion';
+
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.EntityType
 export type EntityType = 'COLLECTION' | 'DOCUMENT' | 'WORKITEM';
 
@@ -32,12 +34,23 @@ export interface ScanResult {
   report: string;
 }
 
+// Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.scan.EntityRef
+export interface EntityRef {
+  space: string | null;
+  id: string;
+}
+
+// Which of the two mutually exclusive filters the user drives the scan with: a selection of concrete
+// entities (documents, collections) or a raw Lucene query. Work items only support the query.
+export type FilterMode = 'SELECTION' | 'QUERY';
+
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams
 export interface ScanParams {
   projectId: string;
   entityType: EntityType;
   entitySubtype: string | null;
   userQuery: string | null;
+  entities: EntityRef[] | null;
   revision: string | null;
   sort: string | null;
   limit: number;
@@ -89,18 +102,21 @@ export interface Repairer {
   configs: RepairerConfig[];
 }
 
-// Option for IconSelect component
-export interface IconSelectOption {
-  id: string;
-  name: string;
-  iconURL?: string;
-  iconBg?: string;
-  indent?: boolean;
-}
+// Option of the shared SearchableSelect. Re-exported under the name this app already uses, so the
+// option shape cannot drift from the component that renders it.
+export type IconSelectOption = SelectOption;
 
 // Entity subtype from Polarion enumeration API
 export interface EntitySubtype {
   id: string;
   name: string;
   iconURL?: string;
+}
+
+// Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.EntityInfo
+export interface EntityInfo {
+  space: string | null;
+  id: string;
+  name: string;
+  type: string | null;
 }

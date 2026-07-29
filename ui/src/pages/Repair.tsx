@@ -9,8 +9,11 @@ import { getCookie as getRawCookie, setCookie as setRawCookie } from '../service
 import useRemote from '../services/useRemote';
 import type {
   BaselineInfo,
+  EntityInfo,
+  EntityRef,
   EntitySubtype,
   EntityType,
+  FilterMode,
   IconSelectOption,
   Issue,
   RepairIssueResult,
@@ -44,6 +47,20 @@ const ENTITY_TYPE_OPTIONS: IconSelectOption[] = [
   { id: 'COLLECTION', name: 'Collections', iconURL: '/polarion/ria/images/topicIconsSmallDark/collectionsTopic.svg' },
 ];
 
+// Entity types whose entities can be picked from a dropdown. Work items are excluded on purpose: a
+// project holds far too many of them, so they stay query-only.
+const SELECTABLE_ENTITY_TYPES: EntityType[] = ['DOCUMENT', 'COLLECTION'];
+
+// One selected entity as a single dropdown option value. A document is identified by space + module
+// name, a collection by its id alone; module names cannot contain '/', so the last separator splits the
+// key back apart even for a nested space like "Specification/Sub".
+const entityKey = (entity: EntityInfo): string => (entity.space ? `${entity.space}/${entity.id}` : entity.id);
+
+const entityKeyToRef = (key: string): EntityRef => {
+  const separator = key.lastIndexOf('/');
+  return separator < 0 ? { space: null, id: key } : { space: key.slice(0, separator), id: key.slice(separator + 1) };
+};
+
 const hasSubitems = (item: ScanEntity): boolean => item.subitems && item.subitems.length > 0;
 const itemKey = (item: ScanEntity): string => `${item.projectId}-${item.space || ''}-${item.entityId}`;
 const subitemKey = (parentKey: string, sub: ScanEntity): string =>
@@ -57,7 +74,15 @@ export default function Repair() {
     return ENTITY_TYPE_OPTIONS.some((o) => o.id === saved) ? (saved as EntityType) : 'WORKITEM';
   });
   const [projectId] = useState(() => String(new URLSearchParams(window.location.search).get('projectId') || ''));
+  const [filterMode, setFilterMode] = useState<FilterMode>(() =>
+    getCookie('filterMode') === 'QUERY' ? 'QUERY' : 'SELECTION',
+  );
   const [userQuery, setUserQuery] = useState(() => String(getCookie('userQuery') || ''));
+  const [entities, setEntities] = useState<EntityInfo[]>([]);
+  const [entitiesLoading, setEntitiesLoading] = useState(false);
+  const [selectedEntities, setSelectedEntities] = useState<string[]>(() =>
+    (getCookie('selectedEntities') || '').split(',').filter(Boolean),
+  );
   const [revision, setRevision] = useState<number>(() => {
     const saved = parseInt(getCookie('revision') || '', 10);
     return saved > 0 ? saved : 0;
@@ -112,8 +137,14 @@ export default function Repair() {
     setCookie('entitySubtype', entitySubtype);
   }, [entitySubtype]);
   useEffect(() => {
+    setCookie('filterMode', filterMode);
+  }, [filterMode]);
+  useEffect(() => {
     setCookie('userQuery', userQuery);
   }, [userQuery]);
+  useEffect(() => {
+    setCookie('selectedEntities', selectedEntities.join(','));
+  }, [selectedEntities]);
   useEffect(() => {
     setCookie('revision', revision ? String(revision) : '');
   }, [revision]);
@@ -236,6 +267,61 @@ export default function Repair() {
     }
   }, [allSubtypes, entityType, entitySubtype]);
 
+  // The entities the user can pick instead of typing a query. Reloaded per entity type and subtype, so
+  // the list always matches what the Entity Type row selects.
+  useEffect(() => {
+    if (!projectId || !SELECTABLE_ENTITY_TYPES.includes(entityType)) {
+      setEntities([]);
+      return;
+    }
+    let cancelled = false;
+    const loadEntities = async () => {
+      setEntitiesLoading(true);
+      try {
+        const params = new URLSearchParams({ projectId, entityType });
+        if (entitySubtype) {
+          params.set('entitySubtype', entitySubtype);
+        }
+        const response = await sendRequest({ method: 'GET', url: `/entities?${params.toString()}` });
+        if (cancelled) return;
+        if (response.ok) {
+          setEntities(await response.json());
+        } else {
+          setEntities([]);
+          toast.error('Failed to load the entity list');
+        }
+      } catch {
+        if (!cancelled) {
+          setEntities([]);
+          toast.error('Failed to load the entity list');
+        }
+      } finally {
+        if (!cancelled) {
+          setEntitiesLoading(false);
+        }
+      }
+    };
+    void loadEntities();
+    return () => {
+      // A later entity type/subtype switch must win over an in-flight response of the previous one.
+      cancelled = true;
+    };
+  }, [projectId, entityType, entitySubtype, sendRequest]);
+
+  // Drop selected entities the loaded list no longer offers - a cookie restored from another project, or
+  // documents of a subtype that is no longer selected. Skipped while the list is unavailable, so a
+  // pending load or a switch to work items doesn't wipe the selection.
+  useEffect(() => {
+    if (entitiesLoading || entities.length === 0 || selectedEntities.length === 0) {
+      return;
+    }
+    const known = new Set(entities.map(entityKey));
+    const pruned = selectedEntities.filter((key) => known.has(key));
+    if (pruned.length !== selectedEntities.length) {
+      setSelectedEntities(pruned);
+    }
+  }, [entities, entitiesLoading, selectedEntities]);
+
   useEffect(() => {
     if (!projectId) {
       setBaselines([]);
@@ -263,10 +349,11 @@ export default function Repair() {
     void loadBaselines();
   }, [projectId, sendRequest]);
 
+  // Any change of what would be scanned invalidates the displayed result.
   useEffect(() => {
     setResult(null);
     setError(null);
-  }, [selectedRepairers]);
+  }, [selectedRepairers, selectedEntities, filterMode]);
 
   const combinedEntityOptions = useMemo((): IconSelectOption[] => {
     const result: IconSelectOption[] = [];
@@ -282,6 +369,23 @@ export default function Repair() {
 
   const entityValue = entitySubtype ? `${entityType}::${entitySubtype}` : entityType;
 
+  // Selection is offered for documents and collections only; work items ignore the mode and stay on the
+  // query field.
+  const selectionActive = SELECTABLE_ENTITY_TYPES.includes(entityType) && filterMode === 'SELECTION';
+
+  const entityOptions = useMemo((): IconSelectOption[] => {
+    // Each entity carries its type id; the icon comes from the subtype list already loaded for the
+    // Entity Type row, with the entity type's own icon as the fallback.
+    const iconByType = new Map((allSubtypes[entityType] || []).map((subtype) => [subtype.id, subtype.iconURL]));
+    const fallbackIcon = ENTITY_TYPE_OPTIONS.find((option) => option.id === entityType)?.iconURL;
+    return entities.map((entity) => ({
+      id: entityKey(entity),
+      // Document names repeat across spaces, so the space stays part of the label.
+      name: entity.space ? `${entity.name} (${entity.space})` : entity.name,
+      iconURL: (entity.type ? iconByType.get(entity.type) : undefined) || fallbackIcon,
+    }));
+  }, [entities, allSubtypes, entityType]);
+
   const revisionHints = useMemo<NumericInputHint[]>(
     () =>
       baselines
@@ -293,7 +397,13 @@ export default function Repair() {
   const handleEntityChange = (val: string) => {
     const parts = val.split('::');
     if (parts[1]) subtypeSetExplicitly.current = true;
-    setEntityType(parts[0] as EntityType);
+    const nextEntityType = parts[0] as EntityType;
+    if (nextEntityType !== entityType) {
+      // Entity keys of one type mean nothing for another one, so a type switch starts from scratch. A
+      // subtype switch keeps the selection - the prune effect drops whatever the new list omits.
+      setSelectedEntities([]);
+    }
+    setEntityType(nextEntityType);
     setEntitySubtype(parts[1] || '');
     setResult(null);
     setError(null);
@@ -513,7 +623,9 @@ export default function Repair() {
       projectId,
       entityType,
       entitySubtype: entitySubtype || null,
-      userQuery: userQuery || null,
+      // The two filters are mutually exclusive in the UI, so exactly one of them reaches the backend.
+      userQuery: selectionActive ? null : userQuery || null,
+      entities: selectionActive && selectedEntities.length > 0 ? selectedEntities.map(entityKeyToRef) : null,
       revision: entityType === 'COLLECTION' || !revision ? null : String(revision),
       sort: sort || null,
       limit,
@@ -693,6 +805,12 @@ export default function Repair() {
               entityValue={entityValue}
               combinedEntityOptions={combinedEntityOptions}
               onEntityChange={handleEntityChange}
+              filterMode={filterMode}
+              onFilterModeChange={setFilterMode}
+              entityOptions={entityOptions}
+              entitiesLoading={entitiesLoading}
+              selectedEntities={selectedEntities}
+              onSelectedEntitiesChange={setSelectedEntities}
               userQuery={userQuery}
               onUserQueryChange={setUserQuery}
               revision={revision}

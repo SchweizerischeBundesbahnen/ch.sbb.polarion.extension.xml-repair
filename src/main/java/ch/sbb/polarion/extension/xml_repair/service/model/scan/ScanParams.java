@@ -29,6 +29,10 @@ public class ScanParams {
     @Schema(description = "Additional query to select entities for scanning, e.g. 'id:TEST-12345'", nullable = true)
     private String userQuery;
 
+    @Schema(description = "Explicit list of entities to scan, an alternative to 'userQuery' (both are combined with AND if provided together). "
+            + "Empty or not provided means all entities of the given type", nullable = true)
+    private List<EntityRef> entities;
+
     @Schema(description = "SVN revision to scan against. If null, scans current HEAD; otherwise the entire query runs as of that revision.", example = "12345", nullable = true)
     private String revision;
 

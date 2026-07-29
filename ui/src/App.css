@@ -81,6 +81,36 @@
   font-size: 13px;
 }
 
+/* The filter row holds either the entity multi-select or the query input, plus the mode toggle. */
+.filter-control {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.filter-mode-toggle {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: var(--sbb-control-height);
+  height: var(--sbb-control-height);
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--sbb-control-radius);
+  background: none;
+  color: #555;
+  cursor: pointer;
+}
+
+.filter-mode-toggle:hover {
+  border-color: var(--sbb-control-border);
+  background: #ffffff;
+  color: #000000;
+}
+
 .advanced-section {
   margin-top: 10px;
   border-top: 1px solid #dddddd;
@@ -649,16 +679,12 @@
   box-shadow: var(--sbb-control-shadow-hover);
 }
 
-/* The Entity Type combobox is now the shared generic SearchableDropdown (see SearchableSelect):
-   make it fill the form row like the inputs, and indent nested subtype options — the `indented`
-   class is forwarded onto the popup option via preserveOptionClasses. (.sd-portal is body-level.) */
+/* The comboboxes are the shared RSP SearchableSelect: make them fill the form row like the inputs.
+   Indenting nested subtype options (`indent`) and the multi-select shrink guard are the component's
+   own styles now, in RSP's SearchableSelect.css. */
 .xml-repair-app .form-row .searchable-dropdown {
   flex: 1;
   width: auto;
-}
-
-.sd-portal .option.indented {
-  padding-left: 30px;
 }
 
 /* ---- Dev-only Landing page (?feature=landing) ---- */

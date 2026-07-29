@@ -151,6 +151,66 @@
         ]
       }
     },
+    "/api/entities": {
+      "get": {
+        "operationId": "listEntities",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entity type",
+            "in": "query",
+            "name": "entityType",
+            "required": true,
+            "schema": {
+              "enum": [
+                "COLLECTION",
+                "DOCUMENT",
+                "WORKITEM"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Entity subtype",
+            "in": "query",
+            "name": "entitySubtype",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EntityInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of entities"
+          },
+          "400": {
+            "description": "The entity type does not support selection"
+          }
+        },
+        "summary": "Get list of entities of the specified type which can be selected for scanning. Not supported for work items",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
     "/api/readme": {
       "get": {
         "operationId": "getDocumentation",
@@ -831,6 +891,54 @@
         },
         "type": "object"
       },
+      "EntityInfo": {
+        "description": "Selectable entity of a project: a document or a collection",
+        "properties": {
+          "id": {
+            "description": "The entity id: module name for documents, collection id for collections",
+            "type": "string"
+          },
+          "name": {
+            "description": "The entity display name: title for documents, name for collections",
+            "type": "string"
+          },
+          "space": {
+            "description": "Space of the entity (documents only)",
+            "example": "Specification",
+            "nullable": true,
+            "type": "string"
+          },
+          "type": {
+            "description": "The entity type id, used to resolve the display icon (documents only)",
+            "example": "specification",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "EntityRef": {
+        "description": "Reference to a single entity selected for scanning",
+        "nullable": true,
+        "properties": {
+          "id": {
+            "description": "The entity id: module name for documents, collection id for collections",
+            "example": "specification",
+            "type": "string"
+          },
+          "space": {
+            "description": "Space of the entity (documents only)",
+            "example": "Specification",
+            "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RepairParams": {
         "properties": {
           "configs": {
@@ -993,6 +1101,14 @@
               }
             },
             "type": "object"
+          },
+          "entities": {
+            "description": "Explicit list of entities to scan, an alternative to 'userQuery' (both are combined with AND if provided together). Empty or not provided means all entities of the given type",
+            "items": {
+              "$ref": "#/components/schemas/EntityRef"
+            },
+            "nullable": true,
+            "type": "array"
           },
           "entitySubtype": {
             "description": "Entity subtype to scan, e.g. 'requirement' for work items or 'specification' for documents (if not provided, all subtypes will be scanned)",

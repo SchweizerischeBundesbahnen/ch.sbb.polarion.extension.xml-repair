@@ -3,6 +3,7 @@ package ch.sbb.polarion.extension.xml_repair.rest.controller;
 import ch.sbb.polarion.extension.generic.service.PolarionBaselineExecutor;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo;
+import ch.sbb.polarion.extension.xml_repair.service.model.EntityInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
 import ch.sbb.polarion.extension.xml_repair.service.model.TypeInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
@@ -96,6 +97,31 @@ public class InternalController {
     public Response listDocumentTypes(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
         return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
                 transaction -> polarionService.getDocumentTypes(projectId))).build();
+    }
+
+    @GET
+    @Path("/entities")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of entities of the specified type which can be selected for scanning. Not supported for work items",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Successfully retrieved the list of entities",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = EntityInfo.class)))
+                    ),
+                    @ApiResponse(responseCode = "400",
+                            description = "The entity type does not support selection"
+                    )
+            })
+    public Response listEntities(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId,
+                                 @Parameter(description = "Entity type", required = true) @QueryParam("entityType") EntityType entityType,
+                                 @Parameter(description = "Entity subtype") @QueryParam("entitySubtype") String entitySubtype) {
+        if (entityType == null || entityType == EntityType.WORKITEM) {
+            return Response.status(Response.Status.BAD_REQUEST)
+                    .entity("Supported entity types: %s, %s".formatted(EntityType.DOCUMENT, EntityType.COLLECTION))
+                    .build();
+        }
+        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
+                transaction -> polarionService.getEntities(projectId, entityType, entitySubtype))).build();
     }
 
     @POST

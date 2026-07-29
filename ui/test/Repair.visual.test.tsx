@@ -10,6 +10,7 @@ import {
   REPAIRERS_BY_ENTITY_TYPE,
   SCAN_RESULT,
   WORK_ITEM_TYPES,
+  entitiesFor,
   repairersFor,
 } from './fixtures';
 import { type Route, installFetchMock, jsonResponse } from './mockFetch';
@@ -27,6 +28,7 @@ const routes = (): Route[] => [
   { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
+  { method: 'GET', match: /\/entities\?/, respond: (url) => jsonResponse(entitiesFor(url)) },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
   { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
   {
@@ -100,6 +102,19 @@ async function selectEntityType(entityType: EntityType) {
   await stubEntityIcons();
 }
 
+// Picks entities in the multi-select the way a click on the dropdown's checkbox options does, then waits
+// for the chips the trigger renders for them.
+async function pickEntities(...keys: string[]) {
+  const select = document.querySelector<HTMLSelectElement>('.filter-control select[multiple]')!;
+  await vi.waitFor(() => expect(select.options.length).toBeGreaterThan(0));
+  for (const option of Array.from(select.options)) {
+    option.selected = keys.includes(option.value);
+  }
+  select.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(keys.length));
+  await stubEntityIcons();
+}
+
 async function captureApp(name: string) {
   const app = document.querySelector('.app') as HTMLElement;
   await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
@@ -112,13 +127,43 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
     await captureApp('repair-initial');
   });
 
-  it('documents selected (document query hint + document repairers)', async () => {
-    // Same view as repair-initial but for the Documents entity type: the dropdown trigger and the query
-    // placeholder follow the selection, and the collapsed Repairers summary counts the document repairer
-    // set (13 of them, one deselected by default) instead of the six work item ones.
+  it('documents selected (document picker with chips + document repairers)', async () => {
+    // Same view as repair-initial but for the Documents entity type: the filter row becomes the document
+    // multi-select (two documents picked, each rendered as a removable chip, next to the mode toggle),
+    // and the collapsed Repairers summary counts the document repairer set (13 of them, one deselected by
+    // default) instead of the six work item ones.
     await mount();
     await selectEntityType('DOCUMENT');
+    await pickEntities('_default/specification', 'Requirements/srs');
     await captureApp('repair-documents');
+  });
+
+  it('documents in query mode (the Lucene query field behind the mode toggle)', async () => {
+    // The escape hatch from the picker: the same row carries the query input and the toggle flips back to
+    // the selection. This is the only view where the query placeholder of a non-default entity type shows.
+    await mount();
+    await selectEntityType('DOCUMENT');
+    document.querySelector<HTMLButtonElement>('.filter-mode-toggle')!.click();
+    await vi.waitFor(() => expect(document.querySelector('#user-query')).not.toBeNull());
+    await captureApp('repair-documents-query');
+  });
+
+  it('collections selected (collection picker with chips)', async () => {
+    // The other entity type with a picker. A collection is addressed by id alone, so its chips carry no
+    // space suffix, and it has no subtype list - the icon on each option is the entity type's own.
+    await mount();
+    await selectEntityType('COLLECTION');
+    await pickEntities('42', '43');
+    await captureApp('repair-collections');
+  });
+
+  it('collections in query mode (the Lucene query field behind the mode toggle)', async () => {
+    // Same escape hatch as for documents, with the collection query placeholder.
+    await mount();
+    await selectEntityType('COLLECTION');
+    document.querySelector<HTMLButtonElement>('.filter-mode-toggle')!.click();
+    await vi.waitFor(() => expect(document.querySelector('#user-query')).not.toBeNull());
+    await captureApp('repair-collections-query');
   });
 
   it('advanced expanded (all scan parameters)', async () => {

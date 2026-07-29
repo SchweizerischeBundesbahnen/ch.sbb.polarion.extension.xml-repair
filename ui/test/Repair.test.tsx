@@ -2,7 +2,15 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import { userEvent } from 'vitest/browser';
 import App from '../src/App';
-import { BASELINES, DOCUMENT_TYPES, SCAN_RESULT, WORK_ITEM_TYPES, repairersFor } from './fixtures';
+import {
+  BASELINES,
+  DOCUMENTS,
+  DOCUMENT_TYPES,
+  SCAN_RESULT,
+  WORK_ITEM_TYPES,
+  entitiesFor,
+  repairersFor,
+} from './fixtures';
 import { type FetchMock, type Route, installFetchMock, jsonResponse } from './mockFetch';
 
 // Full behavior test of the Scan & Repair page, driven through the real App (feature router). The
@@ -16,6 +24,7 @@ const defaultRoutes = (): Route[] => [
   { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
+  { method: 'GET', match: /\/entities\?/, respond: (url) => jsonResponse(entitiesFor(url)) },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
   { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
   {
@@ -347,6 +356,164 @@ describe('Scan & Repair page', () => {
     await vi.waitFor(() => expect(document.querySelector('.breakdown-filter')).not.toBeNull());
     document.querySelector<HTMLButtonElement>('.breakdown-filter')!.click();
     await vi.waitFor(() => expect(document.querySelector('tr.repairer-hidden')).not.toBeNull());
+  });
+
+  // ---- entity selection vs Lucene query ----
+
+  const entitySelect = (): HTMLSelectElement => {
+    const select = document.querySelector<HTMLSelectElement>('.filter-control select[multiple]');
+    if (!select) throw new Error('entity multi-select not rendered');
+    return select;
+  };
+
+  const queryInput = (): HTMLInputElement => {
+    const input = document.querySelector<HTMLInputElement>('#user-query');
+    if (!input) throw new Error('query input not rendered');
+    return input;
+  };
+
+  /** Switches the Entity Type row and waits for the entity list of the new type to arrive. */
+  async function selectEntityType(entityType: string, expectEntities = true) {
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    select.value = entityType;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    if (expectEntities) {
+      await vi.waitFor(() => expect(entitySelect().options.length).toBeGreaterThan(0));
+    }
+  }
+
+  /** Picks entities the way a click on the dropdown's checkbox options ends up doing. */
+  function pickEntities(...keys: string[]) {
+    const select = entitySelect();
+    for (const option of Array.from(select.options)) {
+      option.selected = keys.includes(option.value);
+    }
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  const lastScanBody = () => {
+    const call = fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/scan')).at(-1)!;
+    return JSON.parse(String((call[1] as RequestInit).body));
+  };
+
+  it('keeps work items on the query field, with no selection to switch to', async () => {
+    await mountRepair();
+    // Work items are query-only: no mode toggle, and the entity list is never requested for them.
+    expect(document.querySelector('.filter-mode-toggle')).toBeNull();
+    expect(document.querySelector('.filter-control select[multiple]')).toBeNull();
+    expect(queryInput()).not.toBeNull();
+    expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('/entities'))).toBe(false);
+  });
+
+  it('scans the documents picked from the dropdown instead of a query', async () => {
+    await mountRepair();
+    await selectEntityType('DOCUMENT');
+    // Documents default to selection mode, so the dropdown is what the row shows.
+    expect(document.querySelector('#user-query')).toBeNull();
+    // Two documents of the fixture share the name "Specification" in different spaces, so the space is
+    // part of the label that tells them apart.
+    expect(Array.from(entitySelect().options, (o) => o.text)).toContain('Specification (Requirements)');
+
+    pickEntities('_default/specification', 'Requirements/srs');
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(2));
+
+    await runScan();
+    const body = lastScanBody();
+    expect(body.entities).toEqual([
+      { space: '_default', id: 'specification' },
+      { space: 'Requirements', id: 'srs' },
+    ]);
+    expect(body.userQuery).toBeNull();
+  });
+
+  it('scans all documents when nothing is picked', async () => {
+    await mountRepair();
+    await selectEntityType('DOCUMENT');
+    await runScan();
+    // An empty selection is not a filter: the backend scans every document of the project.
+    expect(lastScanBody().entities).toBeNull();
+    expect(lastScanBody().userQuery).toBeNull();
+  });
+
+  it('switches a document scan to a Lucene query and back, keeping both values', async () => {
+    await mountRepair();
+    await selectEntityType('DOCUMENT');
+    pickEntities('_default/specification');
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(1));
+
+    document.querySelector<HTMLButtonElement>('.filter-mode-toggle')!.click();
+    await vi.waitFor(() => expect(document.querySelector('#user-query')).not.toBeNull());
+    await userEvent.fill(queryInput(), 'moduleName:spec*');
+    await runScan();
+    // Query mode sends the query alone, even though a selection is still remembered.
+    expect(lastScanBody().userQuery).toBe('moduleName:spec*');
+    expect(lastScanBody().entities).toBeNull();
+
+    document.querySelector<HTMLButtonElement>('.filter-mode-toggle')!.click();
+    await vi.waitFor(() => expect(document.querySelector('.filter-control select[multiple]')).not.toBeNull());
+    // The selection survived the round trip, and so does the query when switching back again.
+    expect(document.querySelectorAll('.sd-chip').length).toBe(1);
+    document.querySelector<HTMLButtonElement>('.filter-mode-toggle')!.click();
+    await vi.waitFor(() => expect(queryInput().value).toBe('moduleName:spec*'));
+  });
+
+  it('offers collections the same selection, addressed by id alone', async () => {
+    await mountRepair();
+    await selectEntityType('COLLECTION');
+    expect(Array.from(entitySelect().options, (o) => o.text)).toEqual(['Release 1.0', 'Release 2.0']);
+
+    pickEntities('43');
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(1));
+    await runScan();
+    expect(lastScanBody().entities).toEqual([{ space: null, id: '43' }]);
+  });
+
+  it('restores the remembered selection and drops entities the project does not have', async () => {
+    document.cookie = 'xmlRepair_entityType=DOCUMENT; path=/';
+    document.cookie = 'xmlRepair_filterMode=SELECTION; path=/';
+    // The second key belongs to another project's document - the pruning must remove it.
+    document.cookie = `xmlRepair_selectedEntities=${encodeURIComponent('_default/specification,Elsewhere/gone')}; path=/`;
+
+    await mountRepair();
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(1));
+    await runScan();
+    expect(lastScanBody().entities).toEqual([{ space: '_default', id: 'specification' }]);
+  });
+
+  it('clears the selection when the entity type changes', async () => {
+    await mountRepair();
+    await selectEntityType('DOCUMENT');
+    pickEntities('_default/specification');
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(1));
+
+    await selectEntityType('COLLECTION');
+    await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(0));
+  });
+
+  it('reports an error when the entity list fails to load but still shows the page', async () => {
+    const routes = defaultRoutes().filter((r) => !String(r.match).includes('entities'));
+    routes.push({ method: 'GET', match: /\/entities\?/, status: 500, json: { message: 'boom' } });
+    await mountRepair(routes);
+    await selectEntityType('DOCUMENT', false);
+    // The dropdown stays empty and the page remains usable - the user can switch to a query.
+    await vi.waitFor(() => expect(entitySelect().options.length).toBe(0));
+    expect(document.querySelector('.filter-mode-toggle')).not.toBeNull();
+  });
+
+  it('reloads the entity list when a document subtype is selected', async () => {
+    await mountRepair();
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    select.value = 'DOCUMENT::generic';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() =>
+      expect(
+        fetchMock.mock.calls.some(
+          (c) => String(c[0]).includes('/entities') && String(c[0]).includes('entitySubtype=generic'),
+        ),
+      ).toBe(true),
+    );
+    // The reloaded list is what the picker offers, so the subtype narrows the selection too.
+    await vi.waitFor(() => expect(entitySelect().options.length).toBe(DOCUMENTS.length));
   });
 
   it('expands a collection and its sub-items, and selects the collection', async () => {

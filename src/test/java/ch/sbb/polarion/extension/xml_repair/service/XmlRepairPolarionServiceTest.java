@@ -20,6 +20,7 @@ import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
+import ch.sbb.polarion.extension.xml_repair.service.model.scan.EntityRef;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanEntity;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
@@ -1422,6 +1423,198 @@ class XmlRepairPolarionServiceTest {
                 Arguments.of("a\tb", "a b"),                         // tab collapsed to single space
                 Arguments.of("created\nupdated", "created updated")  // newline collapsed to single space
         );
+    }
+
+    // ---- entity selection tests ----
+
+    @ParameterizedTest
+    @MethodSource("escapeLuceneValueCases")
+    void testEscapeLuceneValue(String input, String expected) {
+        assertEquals(expected, polarionService.escapeLuceneValue(input));
+    }
+
+    private static Stream<Arguments> escapeLuceneValueCases() {
+        return Stream.of(
+                Arguments.of("specification", "specification"),           // nothing to escape
+                Arguments.of("_default", "_default"),                     // the default space needs no escaping
+                Arguments.of("My Document", "\"My Document\""),           // a space forces quoting
+                Arguments.of("a+b", "a\\+b"),                             // plus escaped
+                Arguments.of("a-b", "a\\-b"),                             // minus escaped
+                Arguments.of("a:b", "a\\:b"),                             // the field separator escaped
+                Arguments.of("a(b)c", "a\\(b\\)c"),                       // parentheses escaped
+                Arguments.of("a\\b", "a\\\\b"),                           // backslash escaped first, not doubled again
+                Arguments.of("a&&b", "a\\&&b"),                           // boolean AND operator escaped
+                Arguments.of("a||b", "a\\||b"),                           // boolean OR operator escaped
+                Arguments.of("a b:c", "\"a b\\:c\"")                      // escaped and quoted together
+        );
+    }
+
+    @Test
+    void testBuildEntitiesQueryWithoutSelectionReturnsNull() {
+        assertNull(polarionService.buildEntitiesQuery(EntityType.DOCUMENT, null));
+        assertNull(polarionService.buildEntitiesQuery(EntityType.DOCUMENT, List.of()));
+        // Refs without an id carry no information, so a list of them is the same as no selection.
+        assertNull(polarionService.buildEntitiesQuery(EntityType.DOCUMENT, List.of(new EntityRef("space", ""))));
+    }
+
+    @Test
+    void testBuildEntitiesQueryForDocumentsAddressesSpaceAndModuleName() {
+        // Documents are addressed the way Polarion itself does it: space.id + moduleName.
+        String query = polarionService.buildEntitiesQuery(EntityType.DOCUMENT,
+                List.of(new EntityRef("_default", "spec"), new EntityRef("My Space", "other doc")));
+
+        assertEquals("(space.id:_default AND moduleName:spec) OR (space.id:\"My Space\" AND moduleName:\"other doc\")", query);
+    }
+
+    @Test
+    void testBuildEntitiesQueryForDocumentWithoutSpaceFallsBackToModuleName() {
+        assertEquals("(moduleName:spec)", polarionService.buildEntitiesQuery(EntityType.DOCUMENT, List.of(new EntityRef(null, "spec"))));
+    }
+
+    @Test
+    void testBuildEntitiesQueryForCollectionsAddressesId() {
+        String query = polarionService.buildEntitiesQuery(EntityType.COLLECTION,
+                List.of(new EntityRef(null, "1"), new EntityRef(null, "2")));
+
+        assertEquals("id:1 OR id:2", query);
+    }
+
+    @ParameterizedTest
+    @MethodSource("combineQueriesCases")
+    void testCombineQueries(String userQuery, String entitiesQuery, String expected) {
+        assertEquals(expected, polarionService.combineQueries(userQuery, entitiesQuery));
+    }
+
+    private static Stream<Arguments> combineQueriesCases() {
+        return Stream.of(
+                Arguments.of(null, null, null),                                  // no filter at all
+                Arguments.of("", "", null),                                      // empty behaves like null
+                Arguments.of("id:WI-1", null, "id:WI-1"),                        // query mode
+                Arguments.of(null, "id:1", "id:1"),                              // selection mode
+                Arguments.of("status:open", "id:1", "(status:open) AND (id:1)")  // both are parenthesized before AND
+        );
+    }
+
+    @Test
+    void testScanPassesSelectionAsQuery() {
+        ScanParams params = new ScanParams();
+        params.setProjectId("proj");
+        params.setEntityType(EntityType.DOCUMENT);
+        params.setLimit(10);
+        params.setTimeout(60000L);
+        params.setRepairers(List.of("TestRepairer"));
+        params.setEntities(List.of(new EntityRef("_default", "spec")));
+
+        doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
+
+        polarionService.scan(params);
+
+        verify(polarionService).queryEntities("proj", PrototypeEnum.Document, null,
+                "(space.id:_default AND moduleName:spec)", null, null, 0, 10);
+    }
+
+    @Test
+    void testScanRaisesBatchSizeToSelectionSize() {
+        // The user picked more entities than the "show top rows" limit: the selection wins, otherwise
+        // the query would silently drop what was explicitly selected.
+        ScanParams params = new ScanParams();
+        params.setProjectId("proj");
+        params.setEntityType(EntityType.COLLECTION);
+        params.setLimit(2);
+        params.setTimeout(60000L);
+        params.setRepairers(List.of("TestRepairer"));
+        params.setEntities(List.of(new EntityRef(null, "1"), new EntityRef(null, "2"), new EntityRef(null, "3")));
+
+        doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
+
+        polarionService.scan(params);
+
+        verify(polarionService).queryEntities("proj", PrototypeEnum.BaselineCollection, null,
+                "id:1 OR id:2 OR id:3", null, null, 0, 3);
+    }
+
+    @Test
+    void testGetEntitiesReturnsDocumentsSortedBySpaceAndName() {
+        ModelObject first = mockDocumentModelObject("Zebra Space", "doc-z", "Zebra doc", "specification");
+        ModelObject second = mockDocumentModelObject("Alpha Space", "doc-b", "b doc", null);
+        ModelObject third = mockDocumentModelObject("Alpha Space", "doc-a", "A doc", "generic");
+
+        doReturn(List.of(first, second, third)).when(polarionService)
+                .queryEntities("proj", PrototypeEnum.Document, "specification", null, null, null, 0, XmlRepairPolarionService.ENTITY_LIST_LIMIT);
+
+        List<EntityInfo> result = polarionService.getEntities("proj", EntityType.DOCUMENT, "specification");
+
+        assertEquals(List.of(
+                new EntityInfo("Alpha Space", "doc-a", "A doc", "generic"),
+                new EntityInfo("Alpha Space", "doc-b", "b doc", null),
+                new EntityInfo("Zebra Space", "doc-z", "Zebra doc", "specification")
+        ), result);
+    }
+
+    @Test
+    void testGetEntitiesFallsBackToModuleNameWhenTitleIsMissing() {
+        ModelObject document = mockDocumentModelObject("_default", "spec", null, null);
+
+        doReturn(List.of(document)).when(polarionService)
+                .queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+        assertEquals(new EntityInfo("_default", "spec", "spec", null),
+                polarionService.getEntities("proj", EntityType.DOCUMENT, null).getFirst());
+    }
+
+    @Test
+    void testGetEntitiesReturnsCollections() {
+        ModelObject collection = mockCollectionModelObject("42", "Release 1.0");
+        ModelObject unnamed = mockCollectionModelObject("43", null);
+
+        doReturn(List.of(collection, unnamed)).when(polarionService)
+                .queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+        assertEquals(List.of(
+                new EntityInfo(null, "43", "43", null),
+                new EntityInfo(null, "42", "Release 1.0", null)
+        ), polarionService.getEntities("proj", EntityType.COLLECTION, null));
+    }
+
+    @Test
+    void testGetEntitiesSkipsUnsupportedEntities() {
+        // A work item can only appear here if the prototype and the entity type disagree; it maps to no
+        // EntityInfo and must be dropped rather than break the whole list.
+        doReturn(List.of(createMockModelObject("WI-1"))).when(polarionService)
+                .queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+
+        assertTrue(polarionService.getEntities("proj", EntityType.DOCUMENT, null).isEmpty());
+    }
+
+    @Test
+    void testGetEntitiesRejectsWorkItems() {
+        assertThrows(IllegalArgumentException.class, () -> polarionService.getEntities("proj", EntityType.WORKITEM, null));
+    }
+
+    private ModelObject mockDocumentModelObject(String space, String moduleName, String title, String type) {
+        ModelObject modelObject = mock(ModelObject.class);
+        IModule module = mock(IModule.class);
+        when(module.getModuleFolder()).thenReturn(space);
+        when(module.getModuleName()).thenReturn(moduleName);
+        when(module.getTitleOrName()).thenReturn(title);
+        if (type == null) {
+            when(module.getType()).thenReturn(null);
+        } else {
+            ITypeOpt typeOpt = mock(ITypeOpt.class);
+            when(typeOpt.getId()).thenReturn(type);
+            when(module.getType()).thenReturn(typeOpt);
+        }
+        when(modelObject.getOldApi()).thenReturn(module);
+        return modelObject;
+    }
+
+    private ModelObject mockCollectionModelObject(String id, String name) {
+        ModelObject modelObject = mock(ModelObject.class);
+        IBaselineCollection collection = mock(IBaselineCollection.class);
+        when(collection.getId()).thenReturn(id);
+        when(collection.getName()).thenReturn(name);
+        when(modelObject.getOldApi()).thenReturn(collection);
+        return modelObject;
     }
 
     // ---- getBaselines tests ----
