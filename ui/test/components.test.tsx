@@ -3,11 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import NumericInput from '../src/components/NumericInput';
 import SearchableInput from '../src/components/SearchableInput';
-import SearchableSelect from '../src/components/SearchableSelect';
 
-// Focused unit tests for the extension-specific form controls, covering the secondary branches the
-// Repair page flow never reaches: no maxDigits, an emptied field, hint lists arriving after mount, and
-// a value driven from React state onto an already-wrapped dropdown trigger.
+// Focused unit tests for the form controls this app owns, covering the secondary branches the Repair
+// page flow never reaches: no maxDigits, an emptied field, hint lists arriving after mount, and a value
+// driven from React state onto an already-wrapped dropdown trigger. The comboboxes are RSP's
+// SearchableSelect (both modes), tested there.
 // Note: vitest-browser-react's render commits asynchronously - always await the first query.
 
 function setNativeValue(el: HTMLInputElement, value: string) {
@@ -113,45 +113,5 @@ describe('SearchableInput', () => {
     expect(input.value).toBe('3');
     document.querySelector<HTMLButtonElement>('button')!.click();
     await vi.waitFor(() => expect(input.value).toBe('25'));
-  });
-});
-
-describe('SearchableSelect', () => {
-  it('renders a placeholder empty option and reflects a state-driven value change', async () => {
-    function Harness() {
-      const [value, setValue] = useState('');
-      return (
-        <>
-          <SearchableSelect
-            value={value}
-            onChange={() => {}}
-            options={[
-              { id: 'a', name: 'Alpha' },
-              { id: 'b', name: 'Beta' },
-            ]}
-            allowEmpty
-            placeholder="Pick one"
-          />
-          <button onClick={() => setValue('b')}>pick</button>
-        </>
-      );
-    }
-    render(<Harness />);
-    await vi.waitFor(() => expect(document.querySelector('select')).not.toBeNull());
-    const select = document.querySelector<HTMLSelectElement>('select')!;
-    const options = Array.from(select.querySelectorAll('option'));
-    expect(options[0].getAttribute('value')).toBe('');
-    expect(options[0].textContent).toBe('Pick one');
-
-    document.querySelector<HTMLButtonElement>('button')!.click();
-    await vi.waitFor(() => expect(select.value).toBe('b'));
-  });
-
-  it('renders disabled with no empty option when allowEmpty is off', async () => {
-    render(<SearchableSelect value="a" onChange={() => {}} options={[{ id: 'a', name: 'Alpha' }]} disabled />);
-    await vi.waitFor(() => expect(document.querySelector('select')).not.toBeNull());
-    const select = document.querySelector<HTMLSelectElement>('select')!;
-    expect(select.disabled).toBe(true);
-    expect(Array.from(select.querySelectorAll('option')).every((o) => o.getAttribute('value') !== '')).toBe(true);
   });
 });

@@ -16,6 +16,10 @@ public class ScanParams {
 
     public static final int DEFAULT_LIMIT = 100;
     public static final long DEFAULT_TIMEOUT = 60000L;
+    // Upper bound of an explicit selection. Every reference becomes one clause of the query and raises the
+    // batch size, so an unbounded list would let a single request build an arbitrarily large query. It is
+    // also the size of the list the selection is picked from, so no reachable selection can exceed it.
+    public static final int MAX_ENTITIES = 2000;
 
     @Schema(description = "The unique identifier for the project", example = "elibrary")
     private String projectId;
@@ -28,6 +32,10 @@ public class ScanParams {
 
     @Schema(description = "Additional query to select entities for scanning, e.g. 'id:TEST-12345'", nullable = true)
     private String userQuery;
+
+    @Schema(description = "Explicit list of entities to scan, an alternative to 'userQuery' (both are combined with AND if provided together). "
+            + "Empty or not provided means all entities of the given type. At most " + MAX_ENTITIES + " entries", nullable = true)
+    private List<EntityRef> entities;
 
     @Schema(description = "SVN revision to scan against. If null, scans current HEAD; otherwise the entire query runs as of that revision.", example = "12345", nullable = true)
     private String revision;

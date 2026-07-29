@@ -15,6 +15,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
+import ch.sbb.polarion.extension.xml_repair.service.model.scan.EntityRef;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanEntity;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
@@ -117,6 +118,11 @@ public class XmlRepairPolarionService extends PolarionService {
             )
     );
     private static final int DEFAULT_LIMIT = 100;
+    // Upper bound for the selectable entity list of a project. Big enough for any real project, small
+    // enough to keep the response and the client-side dropdown filtering fast. Same number as the bound
+    // on a submitted selection, so what the picker offers and what a scan accepts cannot diverge.
+    @VisibleForTesting
+    static final int ENTITY_LIST_LIMIT = ScanParams.MAX_ENTITIES;
 
     private final Logger logger = Logger.getLogger(XmlRepairPolarionService.class);
 
@@ -181,12 +187,27 @@ public class XmlRepairPolarionService extends PolarionService {
         boolean skipScanTimeLimitReached = false;
         long processedItemsCount = 0;
         int queryOffset = 0;
-        int batchSize = params.isHideValid() ? Math.max(params.getLimit(), DEFAULT_LIMIT) : params.getLimit();
+        // An explicit selection is what the user asked to scan, so it must not be cut by the "show top
+        // rows" limit: the batch is at least as big as the selection. Which is why the selection is
+        // bounded first - it sizes both the query and the batch, and the UI can only ever pick from a
+        // list of at most MAX_ENTITIES.
+        int selectionSize = params.getEntities() == null ? 0 : params.getEntities().size();
+        if (selectionSize > ScanParams.MAX_ENTITIES) {
+            throw new IllegalArgumentException("Too many entities to scan: %d, at most %d are supported".formatted(selectionSize, ScanParams.MAX_ENTITIES));
+        }
+        String entitiesQuery = buildEntitiesQuery(params.getEntityType(), params.getEntities());
+        if (selectionSize > 0 && entitiesQuery == null) {
+            // Every reference was unusable (null, or without an id). Treating that as "no selection" would
+            // silently widen the scan to the whole project, which is the opposite of what the caller asked.
+            throw new IllegalArgumentException("Entity selection contains no usable entity reference");
+        }
+        int batchSize = Math.max(params.isHideValid() ? Math.max(params.getLimit(), DEFAULT_LIMIT) : params.getLimit(), selectionSize);
+        String customQuery = combineQueries(params.getUserQuery(), entitiesQuery);
 
         do {
             report.info("Query started (offset=%d)...".formatted(queryOffset));
             List<? extends ModelObject> entities = queryEntities(params.getProjectId(), params.getEntityType().proto(), params.getEntitySubtype(),
-                    params.getUserQuery(), params.getRevision(), params.getSort(), queryOffset, batchSize);
+                    customQuery, params.getRevision(), params.getSort(), queryOffset, batchSize);
             report.info("Query finished. %d items retrieved.".formatted(entities.size()));
 
             if (entities.isEmpty()) {
@@ -354,6 +375,92 @@ public class XmlRepairPolarionService extends PolarionService {
                 .offset(offset == null ? 0 : offset);
 
         return results.toArrayList();
+    }
+
+    /**
+     * Lists the entities of a project the user can select for scanning. Not supported for work items:
+     * a project holds far too many of them for a dropdown, they are selected by query instead.
+     */
+    public List<EntityInfo> getEntities(@NotNull String projectId, @NotNull EntityType entityType, @Nullable String entitySubtype) {
+        if (entityType == EntityType.WORKITEM) {
+            throw new IllegalArgumentException("Entity list is not supported for work items, use a query instead");
+        }
+        List<? extends ModelObject> entities = queryEntities(projectId, entityType.proto(), StringUtils.getNullIfEmpty(entitySubtype),
+                null, null, null, 0, ENTITY_LIST_LIMIT);
+        if (entities.size() >= ENTITY_LIST_LIMIT) {
+            logger.warn("Entity list of project '%s' hit the limit of %d items, it may be incomplete.".formatted(projectId, ENTITY_LIST_LIMIT));
+        }
+        return entities.stream()
+                .map(object -> toEntityInfo((IUniqueObject) object.getOldApi()))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing((EntityInfo info) -> info.space() == null ? "" : info.space(), String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(EntityInfo::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    @VisibleForTesting
+    @Nullable
+    EntityInfo toEntityInfo(@NotNull IUniqueObject entity) {
+        if (entity instanceof IModule module) {
+            return new EntityInfo(module.getModuleFolder(), module.getModuleName(),
+                    Objects.requireNonNullElse(module.getTitleOrName(), module.getModuleName()),
+                    module.getType() == null ? null : module.getType().getId());
+        }
+        if (entity instanceof IBaselineCollection collection) {
+            return new EntityInfo(null, entity.getId(), Objects.requireNonNullElse(collection.getName(), entity.getId()), null);
+        }
+        return null;
+    }
+
+    /**
+     * Builds the query fragment selecting exactly the given entities. Documents are addressed the way
+     * Polarion itself addresses them in Lucene (space.id + moduleName), everything else by id.
+     */
+    @VisibleForTesting
+    @Nullable
+    String buildEntitiesQuery(@NotNull EntityType entityType, @Nullable List<EntityRef> entities) {
+        if (entities == null || entities.isEmpty()) {
+            return null;
+        }
+        Stream<String> fragments = entities.stream()
+                .filter(ref -> ref != null && !StringUtils.isEmpty(ref.getId()))
+                .map(ref -> entityType == EntityType.DOCUMENT ? documentFragment(ref) : "id:" + escapeLuceneValue(ref.getId()));
+        String query = fragments.collect(Collectors.joining(" OR "));
+        return StringUtils.getNullIfEmpty(query);
+    }
+
+    private @NotNull String documentFragment(@NotNull EntityRef ref) {
+        String moduleName = "moduleName:" + escapeLuceneValue(ref.getId());
+        return StringUtils.isEmpty(ref.getSpace())
+                ? "(%s)".formatted(moduleName)
+                : "(space.id:%s AND %s)".formatted(escapeLuceneValue(ref.getSpace()), moduleName);
+    }
+
+    @VisibleForTesting
+    @Nullable
+    String combineQueries(@Nullable String userQuery, @Nullable String entitiesQuery) {
+        if (StringUtils.isEmpty(userQuery)) {
+            return StringUtils.getNullIfEmpty(entitiesQuery);
+        }
+        if (StringUtils.isEmpty(entitiesQuery)) {
+            return userQuery;
+        }
+        return "(%s) AND (%s)".formatted(userQuery, entitiesQuery);
+    }
+
+    /**
+     * Escapes a value for a Lucene query the same way Polarion's own LuceneQueryPart.escape does.
+     * Reimplemented here to keep this extension off Polarion's internal GWT-facing query classes.
+     */
+    @VisibleForTesting
+    @NotNull
+    String escapeLuceneValue(@NotNull String value) {
+        String escaped = value;
+        for (char character : "\\+-!(){}[]^\"~:".toCharArray()) {
+            escaped = escaped.replace(String.valueOf(character), "\\" + character);
+        }
+        escaped = escaped.replace("&&", "\\&&").replace("||", "\\||");
+        return escaped.contains(" ") ? "\"" + escaped + "\"" : escaped;
     }
 
     /**

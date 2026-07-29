@@ -1,4 +1,4 @@
-import type { EntityType, Repairer, ScanResult } from '../src/types';
+import type { EntityInfo, EntityType, Repairer, ScanResult } from '../src/types';
 
 // ---------------------------------------------------------------------------------------------------
 // Repairer fixtures = a verbatim mirror of the Java side, NOT invented data.
@@ -220,6 +220,28 @@ export const WORK_ITEM_TYPES = [
 ];
 
 export const DOCUMENT_TYPES = [{ id: 'generic', name: 'Generic', iconURL: null }];
+
+// `/entities?entityType=DOCUMENT` -> XmlRepairPolarionService#getEntities: documents of the project,
+// sorted by space then name. One document carries a known type (its icon comes from DOCUMENT_TYPES), one
+// carries none (it falls back to the entity type icon), and two share a name across different spaces -
+// the case that makes the space part of the option label.
+export const DOCUMENTS: EntityInfo[] = [
+  { space: '_default', id: 'specification', name: 'Specification', type: 'generic' },
+  { space: 'Requirements', id: 'specification', name: 'Specification', type: null },
+  { space: 'Requirements', id: 'srs', name: 'System Requirements', type: 'generic' },
+];
+
+// `/entities?entityType=COLLECTION` -> collections have no space and no type, only an id and a name.
+export const COLLECTIONS: EntityInfo[] = [
+  { space: null, id: '42', name: 'Release 1.0', type: null },
+  { space: null, id: '43', name: 'Release 2.0', type: null },
+];
+
+/** Entity list for an `/entities?entityType=<type>` URL, the way the backend answers it. */
+export function entitiesFor(url: string): EntityInfo[] {
+  const entityType = new URL(url, window.location.origin).searchParams.get('entityType');
+  return entityType === 'COLLECTION' ? COLLECTIONS : DOCUMENTS;
+}
 
 export const BASELINES = [
   { revision: '4321', name: 'Release 1.0' },

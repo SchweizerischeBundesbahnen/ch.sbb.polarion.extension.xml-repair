@@ -24,7 +24,8 @@ The app is built with Vite and React, producing a static bundle that gets embedd
 
 ## Local development
 
-Prerequisites: Node.js 20+ installed.
+Prerequisites: Node.js 24+ installed, matching the `engines` field of `package.json`. The Maven build
+brings its own Node (v24.18.0, pinned by the generic parent), so this applies to running npm directly.
 
 ```bash
 # Install dependencies
