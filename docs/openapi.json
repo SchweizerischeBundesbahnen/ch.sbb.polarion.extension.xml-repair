@@ -299,7 +299,7 @@
     },
     "/api/roles": {
       "get": {
-        "operationId": "getRoles_1",
+        "operationId": "getRoles",
         "parameters": [
           {
             "description": "Scope, e.g. project/<projectId>/ (empty for global scope)",
@@ -753,37 +753,6 @@
         "summary": "Get list of work item types for the specified project",
         "tags": [
           "XML Repair"
-        ]
-      }
-    },
-    "/internal/roles": {
-      "get": {
-        "operationId": "getRoles",
-        "parameters": [
-          {
-            "description": "Scope, e.g. project/<projectId>/ (empty for global scope)",
-            "in": "query",
-            "name": "scope",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RolesInfo"
-                }
-              }
-            },
-            "description": "Successfully retrieved the available roles"
-          }
-        },
-        "summary": "Get the global and project roles available in the specified scope",
-        "tags": [
-          "Roles"
         ]
       }
     }
