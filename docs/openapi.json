@@ -928,11 +928,6 @@
                 "convertToPlainText": true
               }
             },
-            "properties": {
-              "empty": {
-                "type": "boolean"
-              }
-            },
             "type": "object"
           },
           "issueMetaInfos": {
@@ -1064,11 +1059,6 @@
                 "convertToPlainText": true
               }
             },
-            "properties": {
-              "empty": {
-                "type": "boolean"
-              }
-            },
             "type": "object"
           },
           "entities": {
@@ -1192,31 +1182,6 @@
           "id",
           "name"
         ],
-        "type": "object"
-      },
-      "UserConfigs": {
-        "additionalProperties": {
-          "default": {},
-          "description": "User custom repair configurations",
-          "example": {
-            "ModuleContentLinksRepairer": {
-              "convertToPlainText": true
-            }
-          },
-          "type": "object"
-        },
-        "default": {},
-        "description": "User custom repair configurations",
-        "example": {
-          "ModuleContentLinksRepairer": {
-            "convertToPlainText": true
-          }
-        },
-        "properties": {
-          "empty": {
-            "type": "boolean"
-          }
-        },
         "type": "object"
       },
       "Version": {
