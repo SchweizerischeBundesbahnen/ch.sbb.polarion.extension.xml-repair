@@ -614,6 +614,72 @@ class BaseLinksRepairerTest {
                 && ((Text) t).getContent().contains("data-scope=\"otherProject\" data-url=")));
     }
 
+    @Test
+    void testRepairFixesOnlyFirstOfIdenticalLinks() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // the same work item referenced twice produces two issues with identical markup; one repair call must
+        // fix one occurrence only, so the second issue still has something to repair and is not reported as failed
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        String fullHtml = link + "<p>text between</p>" + link;
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        Text text = mock(Text.class);
+        when(text.getContent()).thenReturn(fullHtml);
+        when(text.isPlain()).thenReturn(false);
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("otherProject", "EL-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
+
+        RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
+
+        assertTrue(result.isSuccess());
+        String fixedLink = link.replace("data-scope=\"otherProject\"", "");
+        verify(entity).setValue(eq("content"), argThat(t -> t instanceof Text
+                && ((Text) t).getContent().equals(fixedLink + "<p>text between</p>" + link)));
+    }
+
+    @Test
+    void testRepairIdenticalLinksRepairedOneByOne() {
+        TestableLinksRepairer repairer = new TestableLinksRepairer();
+
+        // repairing both issues of a duplicated link must succeed twice and leave no broken occurrence behind
+        String link = "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>";
+        String fixedLink = link.replace("data-scope=\"otherProject\"", "");
+
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("link")).thenReturn(link);
+        when(metaInfo.getString("fieldId")).thenReturn("content");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getProjectId()).thenReturn("elibrary");
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.isWorkItemExists("otherProject", "EL-1", null)).thenReturn(false);
+        when(polarionService.isWorkItemExists("elibrary", "EL-1", null)).thenReturn(true);
+
+        // the content as the entity holds it; each repair reads it and writes the updated value back
+        String[] content = {link + link};
+        doAnswer(invocation -> content[0] = ((Text) invocation.getArgument(1)).getContent())
+                .when(entity).setValue(eq("content"), any());
+
+        for (int i = 0; i < 2; i++) {
+            Text text = mock(Text.class);
+            when(text.getContent()).thenReturn(content[0]);
+            when(text.isPlain()).thenReturn(false);
+            assertTrue(repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs()).isSuccess());
+        }
+
+        assertEquals(fixedLink + fixedLink, content[0]);
+    }
+
     // ---- adjustWorkItemPrefix config tests ----
 
     @Test
