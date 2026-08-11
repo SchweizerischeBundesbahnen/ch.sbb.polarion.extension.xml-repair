@@ -54,6 +54,12 @@
         <wiremock.version>3.13.1</wiremock.version>
         <slf4j-api.version>2.0.18</slf4j-api.version>
 
+        <!-- The workflow sets MARKDOWN2HTML_MAVEN_PLUGIN_FAIL_ON_ERROR=true, so a broken
+             README.md -> about.html conversion fails CI instead of shipping an empty About page.
+             Unset locally, the property does not resolve to a boolean and the plugin reads it as
+             false, which is the parent's default. -->
+        <!--suppress UnresolvedMavenProperty -->
+        <markdown2html-maven-plugin.failOnError>${env.MARKDOWN2HTML_MAVEN_PLUGIN_FAIL_ON_ERROR}</markdown2html-maven-plugin.failOnError>
     </properties>
 
     <dependencies>
