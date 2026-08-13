@@ -54,10 +54,6 @@
         <wiremock.version>3.13.1</wiremock.version>
         <slf4j-api.version>2.0.18</slf4j-api.version>
 
-        <!-- The workflow sets MARKDOWN2HTML_MAVEN_PLUGIN_FAIL_ON_ERROR=true, so a broken
-             README.md -> about.html conversion fails CI instead of shipping an empty About page.
-             Unset locally, the property does not resolve to a boolean and the plugin reads it as
-             false, which is the parent's default. -->
         <!-- A broken README.md -> about.html conversion fails the build instead of shipping an
              empty About page. markdown2html renders locally since 1.7.x - no GitHub API, no token -
              so the same setting is right in CI, in a deploy job and on a developer machine. -->
@@ -162,7 +158,6 @@
                 <configuration>
                     <outputFormat>JSON</outputFormat>
                     <!-- Stable ordering, so a rebuild does not reshuffle docs/openapi.json. -->
-                    <sortOutput>true</sortOutput>
                     <resourcePackages>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.info</package>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.roles</package>
