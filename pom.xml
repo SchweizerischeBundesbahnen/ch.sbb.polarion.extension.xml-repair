@@ -5,7 +5,7 @@
     <parent>
         <groupId>ch.sbb.polarion.extensions</groupId>
         <artifactId>ch.sbb.polarion.extension.generic</artifactId>
-        <version>15.10.0</version>
+        <version>15.11.0</version>
     </parent>
 
     <artifactId>ch.sbb.polarion.extension.xml-repair</artifactId>
@@ -54,6 +54,10 @@
         <wiremock.version>3.13.1</wiremock.version>
         <slf4j-api.version>2.0.18</slf4j-api.version>
 
+        <!-- A broken README.md -> about.html conversion fails the build instead of shipping an
+             empty About page. markdown2html renders locally since 1.7.x - no GitHub API, no token -
+             so the same setting is right in CI, in a deploy job and on a developer machine. -->
+        <markdown2html-maven-plugin.failOnError>true</markdown2html-maven-plugin.failOnError>
     </properties>
 
     <dependencies>
@@ -153,6 +157,7 @@
                 <artifactId>swagger-maven-plugin-jakarta</artifactId>
                 <configuration>
                     <outputFormat>JSON</outputFormat>
+                    <!-- Stable ordering, so a rebuild does not reshuffle docs/openapi.json. -->
                     <resourcePackages>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.info</package>
                         <package>ch.sbb.polarion.extension.generic.rest.controller.roles</package>

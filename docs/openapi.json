@@ -116,6 +116,27 @@
         ]
       }
     },
+    "/api/disclaimer": {
+      "get": {
+        "operationId": "getDisclaimer",
+        "responses": {
+          "default": {
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "HTML help article"
+          }
+        },
+        "summary": "Returns the build-generated DISCLAIMER help article shown on the Usage Disclaimer page",
+        "tags": [
+          "Extension Information"
+        ]
+      }
+    },
     "/api/document-types": {
       "get": {
         "operationId": "listDocumentTypes",
@@ -299,7 +320,7 @@
     },
     "/api/roles": {
       "get": {
-        "operationId": "getRoles_1",
+        "operationId": "getRoles",
         "parameters": [
           {
             "description": "Scope, e.g. project/<projectId>/ (empty for global scope)",
@@ -755,37 +776,6 @@
           "XML Repair"
         ]
       }
-    },
-    "/internal/roles": {
-      "get": {
-        "operationId": "getRoles",
-        "parameters": [
-          {
-            "description": "Scope, e.g. project/<projectId>/ (empty for global scope)",
-            "in": "query",
-            "name": "scope",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RolesInfo"
-                }
-              }
-            },
-            "description": "Successfully retrieved the available roles"
-          }
-        },
-        "summary": "Get the global and project roles available in the specified scope",
-        "tags": [
-          "Roles"
-        ]
-      }
     }
   },
   "components": {
@@ -959,11 +949,6 @@
                 "convertToPlainText": true
               }
             },
-            "properties": {
-              "empty": {
-                "type": "boolean"
-              }
-            },
             "type": "object"
           },
           "issueMetaInfos": {
@@ -1095,11 +1080,6 @@
                 "convertToPlainText": true
               }
             },
-            "properties": {
-              "empty": {
-                "type": "boolean"
-              }
-            },
             "type": "object"
           },
           "entities": {
@@ -1223,31 +1203,6 @@
           "id",
           "name"
         ],
-        "type": "object"
-      },
-      "UserConfigs": {
-        "additionalProperties": {
-          "default": {},
-          "description": "User custom repair configurations",
-          "example": {
-            "ModuleContentLinksRepairer": {
-              "convertToPlainText": true
-            }
-          },
-          "type": "object"
-        },
-        "default": {},
-        "description": "User custom repair configurations",
-        "example": {
-          "ModuleContentLinksRepairer": {
-            "convertToPlainText": true
-          }
-        },
-        "properties": {
-          "empty": {
-            "type": "boolean"
-          }
-        },
         "type": "object"
       },
       "Version": {

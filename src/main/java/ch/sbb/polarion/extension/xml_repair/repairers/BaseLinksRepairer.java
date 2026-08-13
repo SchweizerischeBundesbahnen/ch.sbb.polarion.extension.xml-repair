@@ -16,6 +16,7 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class BaseLinksRepairer extends BaseRepairer {
 
@@ -80,9 +81,13 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
         }
 
         RepairResult result = new RepairResult(issueMetaInfo, false);
+        // The scan reports one issue per occurrence, so a field referencing the same work item several times
+        // yields several issues carrying identical link markup. Repair only the first occurrence: fixing all of
+        // them at once would leave the remaining issues reporting a failure although the content is correct.
+        AtomicBoolean occurrenceHandled = new AtomicBoolean(false);
         String fixedHtml = RegexMatcher.get(LINK_REGEX).useJavaUtil().replace(html, regexEngine -> {
             String link = regexEngine.group();
-            if (!Objects.equals(link, linkToFix)) {
+            if (!Objects.equals(link, linkToFix) || occurrenceHandled.getAndSet(true)) {
                 return link;
             }
             String providedProjectId = regexEngine.group(GROUP_PROJECT_ID);
