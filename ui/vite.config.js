@@ -1,5 +1,24 @@
+import { copyFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+
+// Copy react-sbb-polarion's breadcrumb bridge next to the built app, where RSP's BreadcrumbInjector
+// looks for it (it resolves the URL relative to the running app). The file cannot be bundled: it runs
+// in the Polarion shell window, outside this app's frame, and has to be a classic script. It is served
+// from this app's own context, so generic's webapp is no longer involved in the breadcrumb at all.
+function copyBreadcrumbBridge() {
+  return {
+    name: 'copy-breadcrumb-bridge',
+    writeBundle(options) {
+      const require = createRequire(import.meta.url);
+      copyFileSync(
+        require.resolve('@grigoriev/react-sbb-polarion/breadcrumb-bridge.js'),
+        `${options.dir}/breadcrumb-bridge.js`,
+      );
+    },
+  };
+}
 
 export default defineConfig(({ command, mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -19,8 +38,8 @@ export default defineConfig(({ command, mode }) => {
       resolve,
       server: {
         proxy: {
-          // Generic UI toolkit (BreadcrumbBridge JS + any generic assets) served by GenericUiServlet.
-          // Served unauthenticated in Polarion, so the dev proxy can fetch it without a session.
+          // Generic assets still served by GenericUiServlet: only the markdown stylesheet index.html
+          // links. Served unauthenticated in Polarion, so the dev proxy can fetch it without a session.
           '/polarion/xml-repair-app/ui/generic': {
             target: polarionUrl,
             changeOrigin: true,
@@ -47,7 +66,7 @@ export default defineConfig(({ command, mode }) => {
   }
 
   return {
-    plugins: [react()],
+    plugins: [react(), copyBreadcrumbBridge()],
     resolve,
     // Never let a developer's personal access token reach a shipped bundle. VITE_BEARER_TOKEN is a
     // `vite dev` convenience (it switches useRemote to the token-authenticated /api endpoints); Vite
