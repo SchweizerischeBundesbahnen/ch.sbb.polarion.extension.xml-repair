@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { PageLayout } from '@grigoriev/react-sbb-polarion';
+import { PageLayout } from '@sbb-polarion/react-sbb-polarion';
 import { toast } from 'sonner';
 import type { NumericInputHint } from '../components/NumericInput';
 import RepairersPanel from '../components/RepairersPanel';

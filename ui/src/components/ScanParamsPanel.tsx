@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from 'react';
-import { SearchableSelect } from '@grigoriev/react-sbb-polarion';
+import { SearchableSelect } from '@sbb-polarion/react-sbb-polarion';
 import type { EntityType, FilterMode, IconSelectOption } from '../types';
 import NumericInput from './NumericInput';
 import type { NumericInputHint } from './NumericInput';

@@ -1,7 +1,7 @@
 # XML Repair App (React UI)
 
 This submodule contains the React frontend for the XML Repair Polarion extension, built on the shared
-`@grigoriev/react-sbb-polarion` (RSP) component library. It is a single Vite bundle
+`@sbb-polarion/react-sbb-polarion` (RSP) component library. It is a single Vite bundle
 with feature routing by `?feature=<id>`, hosting three surfaces:
 
 - **Scan & Repair** (no `?feature=`, the default): scan and repair XML issues in Polarion entities
