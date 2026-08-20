@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { FEATURES, findFeature } from '../src/features';
 import { EXTENSION_LABEL, GENERAL_CHECKS, HOME, PURGE_OUTDATED_DATA } from '../src/navigation';
 
-// The node ids are a contract with the Java side: XmlRepairNavigationExtender.HOME_FEATURE,
-// GeneralChecksNode.NODE_ID and PurgeOutdatedDataNode.NODE_ID put these exact strings into `?feature=`, and
-// Home appends them to the portal's topic path. The Java tests pin the same literals from the other side, so
-// changing one without the other fails here or there.
+// The node ids are a contract with the Java side: XmlRepairNavigationExtender puts these exact strings into
+// `?feature=` - HOME_FEATURE for the root node, GENERAL_CHECKS and PURGE_OUTDATED_DATA for the two
+// XmlRepairNavigationNodes below it - and Home appends them to the portal's topic path. The Java tests pin the
+// same literals from the other side, so changing one without the other fails here or there.
 
 describe('navigation node ids', () => {
   it('matches the ids the Java navigation nodes emit', () => {

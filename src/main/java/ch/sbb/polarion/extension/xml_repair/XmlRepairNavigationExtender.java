@@ -13,8 +13,19 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     public static final String ID = "xml-repair";
     public static final String LABEL = "XML-Repair";
 
-    /** The React page behind the root node: links to the two children below. */
+    /** The React page behind the root node: links to the two pages below it. */
     static final String HOME_FEATURE = "home";
+
+    /**
+     * The ids of the pages below the root node. Each one is both a {@code ?feature=} value and the id of a
+     * {@link XmlRepairNavigationNode}, and must stay equal to the matching entry of
+     * {@code ui/src/navigation.ts}: the node puts its own id into the URL, and the React home page appends it
+     * to the portal's topic path to select the node in the tree.
+     */
+    public static final String GENERAL_CHECKS = "general-checks";
+    public static final String PURGE_OUTDATED_DATA = "purge-outdated-data";
+
+    private static final String MENU_ICONS = "/polarion/xml-repair-app/ui/images/menu/";
 
     /**
      * The React page of one navigation node. There is a single index.html and bundle; which page it renders
@@ -46,7 +57,7 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     @Nullable
     @Override
     public String getIconUrl() {
-        return "/polarion/xml-repair-app/ui/images/menu/30x30/_parent.svg";
+        return MENU_ICONS + "30x30/_parent.svg";
     }
 
     @Nullable
@@ -63,6 +74,9 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     @NotNull
     @Override
     public List<NavigationExtenderNode> getRootNodes(@NotNull IContextId contextId) {
-        return List.of(new GeneralChecksNode(), new PurgeOutdatedDataNode());
+        return List.of(
+                new XmlRepairNavigationNode(GENERAL_CHECKS, "General checks", MENU_ICONS + "16x16/general_checks.svg"),
+                new XmlRepairNavigationNode(PURGE_OUTDATED_DATA, "Purge outdated data", MENU_ICONS + "16x16/purge.svg")
+        );
     }
 }
