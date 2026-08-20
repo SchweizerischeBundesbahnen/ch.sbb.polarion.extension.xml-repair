@@ -1,7 +1,10 @@
 package ch.sbb.polarion.extension.xml_repair;
 
+import com.polarion.alm.ui.server.navigation.NavigationExtenderNode;
 import com.polarion.subterra.base.data.identification.IContextId;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -29,10 +32,20 @@ class XmlRepairNavigationExtenderTest {
     @Test
     void testGetPageUrl() {
         XmlRepairNavigationExtender extender = new XmlRepairNavigationExtender();
-        IContextId contextId = mock(IContextId.class);
-        when(contextId.getContextName()).thenReturn("myProject");
 
-        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=repair&embedded=true&projectId=myProject", extender.getPageUrl(contextId));
+        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=home&embedded=true&projectId=myProject",
+                extender.getPageUrl(contextId("myProject")));
+    }
+
+    @Test
+    void testNavPageUrlLeavesProjectIdEmptyOutsideProjectScope() {
+        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=home&embedded=true&projectId=",
+                XmlRepairNavigationExtender.navPageUrl("home", null));
+        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=home&embedded=true&projectId=",
+                XmlRepairNavigationExtender.navPageUrl("home", contextId(null)));
+        // Polarion prefixes a project group name with a dash, and a group is not a project id.
+        assertEquals("/polarion/xml-repair-app/ui/app/index.html?feature=home&embedded=true&projectId=",
+                XmlRepairNavigationExtender.navPageUrl("home", contextId("-myGroup")));
     }
 
     @Test
@@ -44,7 +57,15 @@ class XmlRepairNavigationExtenderTest {
     @Test
     void testGetRootNodes() {
         XmlRepairNavigationExtender extender = new XmlRepairNavigationExtender();
+
+        List<NavigationExtenderNode> rootNodes = extender.getRootNodes(contextId("myProject"));
+
+        assertEquals(List.of("general-checks", "purge-outdated-data"), rootNodes.stream().map(NavigationExtenderNode::getId).toList());
+    }
+
+    private IContextId contextId(String contextName) {
         IContextId contextId = mock(IContextId.class);
-        assertTrue(extender.getRootNodes(contextId).isEmpty());
+        when(contextId.getContextName()).thenReturn(contextName);
+        return contextId;
     }
 }

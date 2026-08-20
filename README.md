@@ -54,7 +54,28 @@ Restart Polarion for the changes to take effect.
    ```
 6. Save changes by clicking 💾 Save.
 
-After Polarion restart, the "XML-Repair" item will appear in the project's left navigation panel. Clicking it opens the XML Repair UI where you can scan and repair entities.
+After Polarion restart, the "XML-Repair" item will appear in the project's left navigation panel. The single
+`<topic id="xml-repair"/>` entry enables it together with the two pages below it:
+
+| Page | What it does |
+|---|---|
+| General checks | Scans WorkItems, Documents and Collections for XML issues and repairs the selected ones. |
+| Purge outdated data | Finds attributes which are filled on the scanned entities but no longer defined in their custom fields configuration, and clears the selected ones. |
+
+Clicking "XML-Repair" itself opens an entry page that links to both.
+
+### Purge outdated data
+
+An attribute counts as outdated when it holds a value on an entity but is not part of the custom fields
+configuration for that entity's type. Removing a custom field definition leaves such values behind.
+
+1. Choose what to scan, exactly as on the General checks page, then press `Scan`.
+2. The "Outdated attributes" block lists what the scan found, with how many items hold each attribute. Every
+   attribute starts ticked; unticking one removes the items that only held that attribute from the results.
+3. Tick the items to clean up and press `Purge`.
+
+Purging writes through the same path as a repair, so it obeys the `Repair Authorization` setting below and is
+refused for a scan pinned to a revision or baseline.
 
 ## Extension Configuration
 

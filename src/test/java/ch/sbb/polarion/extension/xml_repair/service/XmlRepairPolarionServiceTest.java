@@ -16,6 +16,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.repairers.BaseRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.BrokenLinkedWorkItemsRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.IRepairer;
+import ch.sbb.polarion.extension.xml_repair.repairers.OutdatedCustomFieldsRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
@@ -498,6 +499,15 @@ class XmlRepairPolarionServiceTest {
         assertEquals(6, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
     }
 
+    /** The purge repairer backs its own page, so the "Repairers" block of General checks must not offer it. */
+    @Test
+    void testGetRepairerMetasExcludesPurgeRepairers() {
+        for (EntityType entityType : EntityType.values()) {
+            assertTrue(polarionService.getRepairerMetas(entityType).stream()
+                    .noneMatch(meta -> meta.getId().equals(OutdatedCustomFieldsRepairer.class.getSimpleName())));
+        }
+    }
+
     @Test
     void testGetRepairersForEntityCollection() {
         var entity = mock(IBaselineCollection.class, RETURNS_DEEP_STUBS);
@@ -505,7 +515,8 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(13, repairers.size());
+        assertEquals(14, repairers.size());
+        assertTrue(containsPurgeRepairer(repairers));
     }
 
     @Test
@@ -515,7 +526,8 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(13, repairers.size());
+        assertEquals(14, repairers.size());
+        assertTrue(containsPurgeRepairer(repairers));
     }
 
     @Test
@@ -525,7 +537,13 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(6, repairers.size());
+        assertEquals(7, repairers.size());
+        assertTrue(containsPurgeRepairer(repairers));
+    }
+
+    /** /repair and /scan resolve a repairer through this list, so the purge one has to be reachable there. */
+    private boolean containsPurgeRepairer(List<IRepairer> repairers) {
+        return repairers.stream().anyMatch(OutdatedCustomFieldsRepairer.class::isInstance);
     }
 
     // ---- scanEntity validation tests ----

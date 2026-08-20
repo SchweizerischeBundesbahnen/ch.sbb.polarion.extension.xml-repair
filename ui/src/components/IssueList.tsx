@@ -1,8 +1,10 @@
+import { issueGroup } from '../services/scanEntities';
 import type { Issue, Repairer } from '../types';
 
 interface IssueListProps {
   issues: Issue[];
   selected: Set<number>;
+  /** Group descriptors, used to label each issue: repairers on the Scan & Repair page, attributes on the Purge page. */
   repairers: Repairer[];
   hiddenRepairers?: Set<string>;
   onToggle: (index: number) => void;
@@ -24,7 +26,8 @@ export default function IssueList({
   return (
     <ul className={`issue-list${className ? ` ${className}` : ''}`}>
       {issues.map((issue, i) => {
-        if (hiddenRepairers?.has(issue.repairer)) return null;
+        const group = issueGroup(issue);
+        if (hiddenRepairers?.has(group)) return null;
         return (
           <li
             key={i}
@@ -42,8 +45,7 @@ export default function IssueList({
               />
             )}
             <span>
-              <strong>{repairers.find((r) => r.id === issue.repairer)?.name || issue.repairer}</strong>:{' '}
-              {issue.description}
+              <strong>{repairers.find((r) => r.id === group)?.name || group}</strong>: {issue.description}
             </span>
             {issue.repairResult && !issue.repairResult.success && !(issue.repairResult.warnings?.length > 0) && (
               <ul className="issue-warnings">

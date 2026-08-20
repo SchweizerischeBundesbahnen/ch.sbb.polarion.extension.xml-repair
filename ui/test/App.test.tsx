@@ -81,7 +81,8 @@ describe('feature router', () => {
     render(<App />);
     await vi.waitFor(() => expect(document.querySelector('.feature-list')).not.toBeNull());
     const links = Array.from(document.querySelectorAll('.feature-list a')).map((a) => a.textContent);
-    expect(links).toContain('Scan & Repair');
+    expect(links).toContain('General checks');
+    expect(links).toContain('Purge outdated data');
     expect(links).toContain('About');
     expect(links).toContain('Repair Authorization');
   });
