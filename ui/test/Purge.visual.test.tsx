@@ -29,7 +29,7 @@ afterEach(() => {
     const name = c.split('=')[0];
     if (name.startsWith('xmlRepair_')) document.cookie = `${name}=; path=/; max-age=0`;
   });
-  window.top?.document.querySelectorAll('script[id^="sbb-breadcrumb-bridge"]').forEach((s) => s.remove());
+  window.top?.document.querySelectorAll('script[id$="-breadcrumb-bridge"]').forEach((s) => s.remove());
 });
 
 // The entity-type icons point at Polarion-served SVGs that do not exist under test, so they would render

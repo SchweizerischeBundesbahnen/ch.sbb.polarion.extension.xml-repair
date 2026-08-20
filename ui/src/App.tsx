@@ -1,5 +1,4 @@
-import { Toaster } from '@sbb-polarion/react-sbb-polarion';
-import BreadcrumbTopic from './components/BreadcrumbTopic';
+import { BreadcrumbInjector, Toaster } from '@sbb-polarion/react-sbb-polarion';
 import { findFeature } from './features';
 import { EXTENSION_ICON, EXTENSION_LABEL } from './navigation';
 import Landing from './pages/Landing';
@@ -22,9 +21,10 @@ export default function App() {
     // `.app` supplies the base font/padding (App.css); `standard-admin-page` scopes the shared generic
     // checkbox styling (bundled in react-sbb-polarion's style.css) and the --sbb-* control tokens.
     <div className="app standard-admin-page">
-      {/* Fixes the app-header breadcrumb when opened as a project-navigation topic (nav extender). The pages
-          below the root node name themselves; everything else keeps the extension's own label. */}
-      <BreadcrumbTopic
+      {/* Fixes the app-header breadcrumb when opened as a project-navigation topic (nav extender). The two
+          pages below the root node name themselves and pass the node's label as `parent`, so the breadcrumb
+          reads "XML-Repair › General checks"; every other surface keeps the extension's own label alone. */}
+      <BreadcrumbInjector
         marker="xml-repair"
         title={feature?.breadcrumbTitle ?? EXTENSION_LABEL}
         parent={feature?.breadcrumbParent}

@@ -32,7 +32,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   setUrl(origUrl);
-  window.top?.document.querySelectorAll('script[id^="sbb-breadcrumb-bridge"]').forEach((s) => s.remove());
+  window.top?.document.querySelectorAll('script[id$="-breadcrumb-bridge"]').forEach((s) => s.remove());
 });
 
 describe('subTopicHref', () => {

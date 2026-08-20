@@ -27,6 +27,35 @@ describe('feature router', () => {
     expect(Array.from(document.querySelectorAll('button')).some((b) => b.textContent === 'Scan')).toBe(true);
   });
 
+  // The breadcrumb component itself is react-sbb-polarion's, and tested there; what belongs here is the
+  // wiring - which label and parent each feature hands it, since one bundle serves several navigation nodes.
+  describe('app-header breadcrumb', () => {
+    const loader = (): HTMLScriptElement | null =>
+      window.top?.document.querySelector<HTMLScriptElement>('script[id$="-breadcrumb-bridge"]') ?? null;
+
+    it('names the page and its parent node for a page below the root node', async () => {
+      installFetchMock([{ method: 'GET', match: /\/repairers/, json: REPAIRERS }]);
+      setUrl('?feature=general-checks&projectId=elibrary');
+      render(<App />);
+
+      await vi.waitFor(() => expect(loader()).not.toBeNull());
+      expect(loader()!.dataset.marker).toBe('xml-repair');
+      expect(loader()!.dataset.title).toBe('General checks');
+      expect(loader()!.dataset.parent).toBe('XML-Repair');
+      expect(loader()!.dataset.icon).toContain('general_checks.svg');
+    });
+
+    it('keeps the extension label with no parent everywhere else', async () => {
+      setUrl('?feature=home&projectId=elibrary');
+      render(<App />);
+
+      await vi.waitFor(() => expect(loader()).not.toBeNull());
+      expect(loader()!.dataset.title).toBe('XML-Repair');
+      expect(loader()!.dataset.parent).toBeUndefined();
+      expect(loader()!.dataset.icon).toContain('_parent.svg');
+    });
+  });
+
   it('opens the Repair Authorization page against the authorization setting', async () => {
     // The page itself is react-sbb-polarion's, and tested there; what belongs here is the wiring -
     // that this feature id reads the roles and the setting this extension's permission check uses.

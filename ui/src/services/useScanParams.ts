@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { SendRequest } from '@sbb-polarion/react-sbb-polarion';
 import { toast } from 'sonner';
 import type { NumericInputHint } from '../components/NumericInput';
 import type {
@@ -12,7 +13,6 @@ import type {
 } from '../types';
 import { getCookie as getRawCookie, setCookie as setRawCookie } from './cookies';
 import { entityKey, entityKeyToRef } from './scanEntities';
-import type { SendRequest } from './useRemote';
 
 export const ENTITY_TYPE_OPTIONS: IconSelectOption[] = [
   { id: 'WORKITEM', name: 'Work Items', iconURL: '/polarion/ria/images/topicIconsSmallDark/workItems.svg' },

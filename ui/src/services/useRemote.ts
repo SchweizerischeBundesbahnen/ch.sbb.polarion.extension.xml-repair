@@ -10,9 +10,6 @@ interface RequestParams {
   contentType?: string;
 }
 
-/** The request function this hook hands out, as the pages and the shared hooks consume it. */
-export type SendRequest = (params: RequestParams) => Promise<Response>;
-
 export default function useRemote() {
   const sendRequest = useCallback(({ method, url, body, contentType }: RequestParams): Promise<Response> => {
     const headers: Record<string, string> = {};

@@ -23,7 +23,7 @@ The app is built with Vite and React, producing a static bundle that gets embedd
 
 ## How it integrates with Polarion
 
-1. **Navigation entry point** — `XmlRepairNavigationExtender` registers an "XML-Repair" item in Polarion's left side panel, with `GeneralChecksNode` and `PurgeOutdatedDataNode` below it. Each one loads `/polarion/xml-repair-app/ui/app/index.html` with its own `?feature=`. `BreadcrumbTopic` relabels the shell's app header per page, which RSP's own `BreadcrumbInjector` cannot do for a node that has children.
+1. **Navigation entry point** — `XmlRepairNavigationExtender` registers an "XML-Repair" item in Polarion's left side panel, with `GeneralChecksNode` and `PurgeOutdatedDataNode` below it. Each one loads `/polarion/xml-repair-app/ui/app/index.html` with its own `?feature=`. RSP's `BreadcrumbInjector` relabels the shell's app header per page: the two pages below the root node pass its label as `parent`, so the breadcrumb reads "XML-Repair › General checks".
 
 2. **Webapp registration** — `plugin.xml` declares a `xml-repair-app` webapp. Polarion's Tomcat serves the static files through `XmlRepairAppServlet` (mapped to `/ui/*`).
 

@@ -11,7 +11,7 @@ const origUrl = window.location.pathname + window.location.search;
 afterEach(() => {
   cleanup();
   window.history.replaceState({}, '', origUrl);
-  window.top?.document.querySelectorAll('script[id^="sbb-breadcrumb-bridge"]').forEach((s) => s.remove());
+  window.top?.document.querySelectorAll('script[id$="-breadcrumb-bridge"]').forEach((s) => s.remove());
 });
 
 describe.skipIf(!__PIXEL_REFERENCES__)('Home page visual', () => {
