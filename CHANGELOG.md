@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.3.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.2.0...v3.3.0) (2026-08-21)
+
+
+### Features
+
+* add "Purge outdated data" page under a two-node XML-Repair navigation tree ([#206](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/206)) ([feb204b](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/feb204b1cfbd8e219ef131646fb341a68ccfac35))
+
+
+### Bug Fixes
+
+* move to generic 16.0.0 and react-sbb-polarion 2.0.1 ([#207](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/207)) ([26168ef](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/26168ef3700e50200d4b2cd76f784bf7e2313140))
+
 ## [3.2.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.1.1...v3.2.0) (2026-08-18)
 
 
