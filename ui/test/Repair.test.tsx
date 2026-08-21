@@ -639,6 +639,51 @@ describe('Scan & Repair page, stale scan responses', () => {
     expect(document.querySelector('.results-section')).toBeNull();
   });
 
+  it('keeps a completed scan when a remembered entity selection is pruned in query mode', async () => {
+    // The entity keys are remembered in a cookie that is not scoped per project, and the entity list loads on
+    // the entity type regardless of the filter mode. So a query-mode scan can be in flight when the list
+    // arrives and prunes stale keys - which buildScanParams never submitted in that mode, so the scan stands.
+    document.cookie = 'xmlRepair_entityType=DOCUMENT; path=/';
+    document.cookie = 'xmlRepair_filterMode=QUERY; path=/';
+    document.cookie = 'xmlRepair_selectedEntities=OtherProject/ghost; path=/';
+
+    let releaseEntities: (() => void) | undefined;
+    let releaseScan: (() => void) | undefined;
+    await mountRepair([
+      ...defaultRoutes().filter((r) => !/entities|scan/.test(r.match.source)),
+      {
+        method: 'GET',
+        match: /\/entities\?/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseEntities = resolve;
+          });
+          return jsonResponse(DOCUMENTS);
+        },
+      },
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          return jsonResponse(SCAN_RESULT);
+        },
+      },
+    ]);
+
+    await vi.waitFor(() => expect(releaseEntities).toBeDefined());
+    expect(textButton('Scan').disabled).toBe(false);
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(releaseScan).toBeDefined());
+
+    releaseEntities!();
+    releaseScan!();
+
+    await vi.waitFor(() => expect(document.querySelector('.results-section')).not.toBeNull());
+  });
+
   it('ignores Enter while a scan is already running, so responses cannot overlap', async () => {
     let scans = 0;
     await mountRepair([

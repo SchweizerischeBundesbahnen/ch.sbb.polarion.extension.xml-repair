@@ -302,6 +302,57 @@ describe('Purge outdated data page', () => {
     expect(document.querySelector('.results-section')).toBeNull();
   });
 
+  it('keeps a completed scan when a remembered entity selection is pruned in query mode', async () => {
+    // Both the filter mode and the entity keys are remembered in cookies, and the keys are not scoped per
+    // project. So the page can mount in query mode holding keys from another project, and the entity list still
+    // loads (it is gated on the entity type, not on the mode). When it arrives the stale keys are pruned, which
+    // changes `selectedEntities`. In query mode buildScanParams submits `entities: null`, so that prune changed
+    // nothing about what was scanned and must not discard the response.
+    document.cookie = 'xmlRepair_purge_entityType=DOCUMENT; path=/';
+    document.cookie = 'xmlRepair_purge_filterMode=QUERY; path=/';
+    document.cookie = 'xmlRepair_purge_selectedEntities=OtherProject/ghost; path=/';
+
+    let releaseEntities: (() => void) | undefined;
+    let releaseScan: (() => void) | undefined;
+    await mountPurge([
+      ...defaultRoutes().filter((r) => !/entities|scan/.test(r.match.source)),
+      {
+        method: 'GET',
+        match: /\/entities\?/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseEntities = resolve;
+          });
+          return jsonResponse(DOCUMENTS);
+        },
+      },
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          return jsonResponse(PURGE_SCAN_RESULT);
+        },
+      },
+    ]);
+
+    // Query mode leaves the button enabled while the entity list is still loading, which is what opens the race.
+    await vi.waitFor(() => expect(releaseEntities).toBeDefined());
+    expect(textButton('Scan').disabled).toBe(false);
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(releaseScan).toBeDefined());
+    expect(scanBody().entities).toBeNull();
+
+    // The list arrives mid-scan and prunes the keys it does not offer, then the scan comes back.
+    releaseEntities!();
+    releaseScan!();
+
+    await vi.waitFor(() => expect(document.querySelector('.results-section')).not.toBeNull());
+    expect(attributeNames()).toEqual(['legacyOwner', 'obsoleteFlag', 'oldEstimate']);
+  });
+
   it('refuses to scan without a project in the URL', async () => {
     await mountPurge(defaultRoutes(), '?feature=purge-outdated-data');
 

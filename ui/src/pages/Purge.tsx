@@ -124,10 +124,18 @@ export default function Purge() {
     discardResult();
   }, [entityType, setEntitySubtype, subtypeSetExplicitly, discardResult]);
 
+  /**
+   * The entity selection as the request will carry it. `buildScanParams` sends `entities: null` unless the
+   * selection is active, so in query mode the remembered keys are not part of the scan at all: pruning them -
+   * which the entity list does on arrival for keys restored from another project - has to leave a completed
+   * scan alone. Depending on `selectedEntities` directly discarded it instead, silently.
+   */
+  const submittedEntities = params.selectionActive ? params.selectedEntities : null;
+
   // Any change of what would be scanned invalidates the displayed result.
   useEffect(() => {
     discardResult();
-  }, [params.selectedEntities, params.filterMode, discardResult]);
+  }, [submittedEntities, params.filterMode, discardResult]);
 
   /**
    * Applies a new attribute selection and drops the row selections it just hid, so an unticked attribute
