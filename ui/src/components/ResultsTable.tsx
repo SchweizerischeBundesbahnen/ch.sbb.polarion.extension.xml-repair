@@ -1,4 +1,5 @@
 import React, { memo, useState } from 'react';
+import { hasSubitems, issueGroup, itemKey, subitemKey } from '../services/scanEntities';
 import type { Repairer, ScanEntity, ScanResult } from '../types';
 import IssueList from './IssueList';
 import RepairerBreakdownTable from './RepairerBreakdownTable';
@@ -8,11 +9,27 @@ const EntityRef = memo(({ html, fallback }: { html?: string; fallback: string })
   html ? <span className="entity-ref" dangerouslySetInnerHTML={{ __html: html }} /> : <>{fallback}</>,
 );
 
-const hasSubitems = (item: ScanEntity): boolean => item.subitems && item.subitems.length > 0;
-const itemKey = (item: ScanEntity): string => `${item.projectId}-${item.space || ''}-${item.entityId}`;
-const subitemKey = (parentKey: string, sub: ScanEntity): string =>
-  `${parentKey}/${sub.projectId}-${sub.space || ''}-${sub.entityId}`;
 const REVISIONED_TOOLTIP = 'Items at a specific revision cannot be repaired';
+
+/**
+ * What this table calls the things it lists. The Scan & Repair page reports issues grouped by repairer, the
+ * Purge page reports outdated attributes grouped by attribute; the table itself is the same either way.
+ */
+export interface ResultsTerms {
+  issueSingular: string;
+  issuePlural: string;
+  issueColumn: string;
+  emptyMessage: string;
+  groupColumn: string;
+}
+
+export const DEFAULT_RESULTS_TERMS: ResultsTerms = {
+  issueSingular: 'issue',
+  issuePlural: 'issues',
+  issueColumn: 'Issues',
+  emptyMessage: 'No issues found.',
+  groupColumn: 'Repairer',
+};
 
 interface ResultsTableProps {
   result: ScanResult;
@@ -20,6 +37,7 @@ interface ResultsTableProps {
   hiddenRepairers: Set<string>;
   onToggleRepairer: (id: string) => void;
   repairers: Repairer[];
+  terms?: ResultsTerms;
   selectedIssues: Map<string, Set<number>>;
   expandedRows: Set<string>;
   repairingEntity: string | null;
@@ -54,13 +72,14 @@ export default function ResultsTable({
   onCollapseAll,
   allItemsSelected,
   someItemsSelected,
+  terms = DEFAULT_RESULTS_TERMS,
 }: ResultsTableProps) {
   const visibleIssueCount = (entity: ScanEntity): number =>
-    entity.issues.filter((iss) => !hiddenRepairers.has(iss.repairer)).length;
+    entity.issues.filter((iss) => !hiddenRepairers.has(issueGroup(iss))).length;
   const visibleIssueIndices = (entity: ScanEntity): number[] => {
     const out: number[] = [];
     entity.issues.forEach((iss, i) => {
-      if (!hiddenRepairers.has(iss.repairer)) out.push(i);
+      if (!hiddenRepairers.has(issueGroup(iss))) out.push(i);
     });
     return out;
   };
@@ -88,7 +107,8 @@ export default function ResultsTable({
   const collectIssues = (items: ScanEntity[]): void => {
     items.forEach((item) => {
       item.issues.forEach((issue) => {
-        issuesByRepairer.set(issue.repairer, (issuesByRepairer.get(issue.repairer) ?? 0) + 1);
+        const group = issueGroup(issue);
+        issuesByRepairer.set(group, (issuesByRepairer.get(group) ?? 0) + 1);
       });
       if (hasSubitems(item)) collectIssues(item.subitems);
     });
@@ -103,7 +123,7 @@ export default function ResultsTable({
 
   const summaryText = (
     <>
-      {totalIssues} {totalIssues === 1 ? 'issue' : 'issues'} in {result.items.length}{' '}
+      {totalIssues} {totalIssues === 1 ? terms.issueSingular : terms.issuePlural} in {result.items.length}{' '}
       {result.items.length === 1 ? 'item' : 'items'}
     </>
   );
@@ -132,6 +152,8 @@ export default function ResultsTable({
           rows={repairerBreakdown}
           hiddenRepairers={hiddenRepairers}
           onToggleRepairer={onToggleRepairer}
+          groupColumnLabel={terms.groupColumn}
+          countColumnLabel={terms.issueColumn}
         />
       )}
 
@@ -154,7 +176,7 @@ export default function ResultsTable({
                   />
                 )}
               </th>
-              <th className="col-issues">Issues</th>
+              <th className="col-issues">{terms.issueColumn}</th>
               <th style={{ position: 'relative' }}>
                 Entity
                 {itemsWithIssues.length > 0 &&
@@ -399,7 +421,7 @@ export default function ResultsTable({
           </tbody>
         </table>
       ) : (
-        <p className="no-issues">No issues found.</p>
+        <p className="no-issues">{terms.emptyMessage}</p>
       )}
 
       {result.report && (

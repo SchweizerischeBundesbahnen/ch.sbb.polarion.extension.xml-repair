@@ -350,3 +350,68 @@ export const SCAN_RESULT: ScanResult = {
     },
   ],
 };
+
+// ---------------------------------------------------------------------------------------------------
+// Purge page fixture: what POST /scan returns when asked for OutdatedCustomFieldsRepairer alone. Every
+// issue names that repairer and carries the attribute id in `group`, which is what the page groups,
+// counts and filters by (see OutdatedCustomFieldsRepairer#scan). It covers three attributes, one of them
+// filled on two work items, and one reached only through a collection's document.
+// ---------------------------------------------------------------------------------------------------
+const outdated = (metaInfo: string, attribute: string, entityId: string) => ({
+  metaInfo,
+  repairer: 'OutdatedCustomFieldsRepairer',
+  group: attribute,
+  description: `Filled but not defined in the custom fields configuration (${entityId}).`,
+  warnings: [],
+});
+
+export const PURGE_SCAN_RESULT: ScanResult = {
+  report: 'Scanned 3 entities in 0.4s',
+  items: [
+    {
+      entityType: 'WORKITEM',
+      projectId: 'elibrary',
+      space: null,
+      entityId: 'EL-100',
+      revision: null,
+      issues: [outdated('purge-1', 'legacyOwner', 'EL-100'), outdated('purge-2', 'oldEstimate', 'EL-100')],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+    {
+      entityType: 'WORKITEM',
+      projectId: 'elibrary',
+      space: null,
+      entityId: 'EL-200',
+      revision: null,
+      issues: [outdated('purge-3', 'legacyOwner', 'EL-200')],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+    {
+      entityType: 'COLLECTION',
+      projectId: 'elibrary',
+      space: 'coll',
+      entityId: 'COLL-1',
+      revision: null,
+      issues: [],
+      fields: {},
+      warnings: [],
+      subitems: [
+        {
+          entityType: 'DOCUMENT',
+          projectId: 'elibrary',
+          space: 'spaceA',
+          entityId: 'DOC-1',
+          revision: null,
+          issues: [outdated('purge-4', 'obsoleteFlag', 'DOC-1')],
+          fields: {},
+          subitems: [],
+          warnings: [],
+        },
+      ],
+    },
+  ],
+};

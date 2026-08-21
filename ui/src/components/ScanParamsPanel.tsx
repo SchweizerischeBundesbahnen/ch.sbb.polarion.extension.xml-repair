@@ -52,6 +52,8 @@ interface ScanParamsPanelProps {
   onSelectedEntitiesChange: (values: string[]) => void;
   userQuery: string;
   onUserQueryChange: (val: string) => void;
+  /** False on a page that cannot scan a revision, which removes the row rather than disabling it. */
+  showRevision?: boolean;
   revision: number;
   onRevisionChange: (val: number) => void;
   revisionHints: NumericInputHint[];
@@ -64,6 +66,8 @@ interface ScanParamsPanelProps {
   onTimeoutChange: (val: number) => void;
   hideValid: boolean;
   onHideValidChange: (val: boolean) => void;
+  /** What "valid" means on this page: issues on Scan & Repair, outdated attributes on Purge. */
+  hideValidLabel?: string;
   onEnterKey: () => void;
 }
 
@@ -80,6 +84,7 @@ export default function ScanParamsPanel({
   onSelectedEntitiesChange,
   userQuery,
   onUserQueryChange,
+  showRevision = true,
   revision,
   onRevisionChange,
   revisionHints,
@@ -92,6 +97,7 @@ export default function ScanParamsPanel({
   onTimeoutChange,
   hideValid,
   onHideValidChange,
+  hideValidLabel = 'Show items with issues only',
   onEnterKey,
 }: ScanParamsPanelProps) {
   // `selection` is absent for entity types without a picker (work items): no toggle button, the query
@@ -163,7 +169,7 @@ export default function ScanParamsPanel({
       <details className="advanced-section">
         <summary className="advanced-summary">Advanced</summary>
         <div className="advanced-fields">
-          {entityType !== 'COLLECTION' && (
+          {showRevision && entityType !== 'COLLECTION' && (
             <div className="form-row">
               <label>
                 Revision/Baseline
@@ -202,7 +208,7 @@ export default function ScanParamsPanel({
             <NumericInput value={timeout} defaultValue={60} onChange={onTimeoutChange} />
           </div>
           <div className="form-row">
-            <label htmlFor="hide-valid">Show items with issues only</label>
+            <label htmlFor="hide-valid">{hideValidLabel}</label>
             <input
               id="hide-valid"
               type="checkbox"

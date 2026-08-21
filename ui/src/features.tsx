@@ -1,6 +1,9 @@
 import { type ComponentType, useMemo } from 'react';
 import { AuthorizationSettings, createAuthorizationService } from '@sbb-polarion/react-sbb-polarion';
+import { EXTENSION_LABEL, GENERAL_CHECKS, HOME, PURGE_OUTDATED_DATA } from './navigation';
 import About from './pages/About';
+import Home from './pages/Home';
+import Purge from './pages/Purge';
 import Repair from './pages/Repair';
 import useRemote from './services/useRemote';
 
@@ -37,25 +40,53 @@ function Authorization() {
   );
 }
 
+/** What `?feature=repair` used to open, kept working so older bookmarks still land on the right page. */
+const LEGACY_FEATURE_IDS: Record<string, string> = { repair: GENERAL_CHECKS };
+
 /**
  * A single navigable page of the app. The `id` is what appears in the URL as `?feature=<id>` and is
  * what `hivemodule.xml` / the navigation extender point at. Keep the ids stable and aligned with the
- * extender ids: `repair` (XmlRepairNavigationExtender), `about` and `authorization` (hivemodule.xml).
+ * extender ids: `home`, `general-checks` and `purge-outdated-data` (XmlRepairNavigationExtender and its
+ * root nodes), `about` and `authorization` (hivemodule.xml).
  * A URL that matches none of these falls back to the dev Landing (see App.tsx / findFeature).
+ *
+ * The three optional breadcrumb fields override what the app header shows. Only the pages that hang below the
+ * root navigation node need them; everything else keeps the extension's own label.
  */
 export interface Feature {
   id: string;
   label: string;
   description: string;
   component: ComponentType;
+  breadcrumbTitle?: string;
+  breadcrumbParent?: string;
+  breadcrumbIcon?: string;
 }
 
 export const FEATURES: Feature[] = [
   {
-    id: 'repair',
-    label: 'Scan & Repair',
+    id: HOME,
+    label: 'XML-Repair',
+    description: 'Entry page of the navigation node, linking to the pages below it.',
+    component: Home,
+  },
+  {
+    id: GENERAL_CHECKS,
+    label: 'General checks',
     description: 'Scan Polarion entities for XML issues and repair them.',
     component: Repair,
+    breadcrumbTitle: 'General checks',
+    breadcrumbParent: EXTENSION_LABEL,
+    breadcrumbIcon: '/polarion/xml-repair-app/ui/images/menu/16x16/general_checks.svg',
+  },
+  {
+    id: PURGE_OUTDATED_DATA,
+    label: 'Purge outdated data',
+    description: 'Find attributes which are filled but no longer defined, and clear them.',
+    component: Purge,
+    breadcrumbTitle: 'Purge outdated data',
+    breadcrumbParent: EXTENSION_LABEL,
+    breadcrumbIcon: '/polarion/xml-repair-app/ui/images/menu/16x16/purge.svg',
   },
   {
     id: 'about',
@@ -72,5 +103,9 @@ export const FEATURES: Feature[] = [
 ];
 
 export function findFeature(id: string | null): Feature | undefined {
-  return FEATURES.find((f) => f.id === id);
+  if (id === null) {
+    return undefined;
+  }
+  const resolvedId = LEGACY_FEATURE_IDS[id] ?? id;
+  return FEATURES.find((f) => f.id === resolvedId);
 }

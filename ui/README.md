@@ -2,19 +2,28 @@
 
 This submodule contains the React frontend for the XML Repair Polarion extension, built on the shared
 `@sbb-polarion/react-sbb-polarion` (RSP) component library. It is a single Vite bundle
-with feature routing by `?feature=<id>`, hosting three surfaces:
+with feature routing by `?feature=<id>`, hosting five surfaces:
 
-- **Scan & Repair** (no `?feature=`, the default): scan and repair XML issues in Polarion entities
-  (Work Items, Documents, Baseline Collections). Opened by `XmlRepairNavigationExtender`.
+- **Home** (`?feature=home`): the entry page of the navigation node, linking to the two pages below it.
+- **General checks** (`?feature=general-checks`): scan and repair XML issues in Polarion entities
+  (Work Items, Documents, Baseline Collections). `?feature=repair` still resolves here, for older bookmarks.
+- **Purge outdated data** (`?feature=purge-outdated-data`): find attributes which are filled on the scanned
+  entities but no longer defined in their custom fields configuration, and clear the selected ones. It scans
+  with `OutdatedCustomFieldsRepairer` alone and writes through the same `/repair` endpoint.
 - **About** (`?feature=about`): the shared RSP About page.
 - **Repair Authorization** (`?feature=authorization`): configure which global/project roles may repair.
   The shared RSP `AuthorizationSettings` page over this extension's `authorization` setting.
+
+The first three ids are a contract with the Java side: `XmlRepairNavigationExtender` and its two
+`NavigationExtenderNode`s put their own ids into `?feature=`, and the Home page appends a node id to the
+portal's topic path to select it in the tree. `src/navigation.ts` holds them, and `test/navigation.test.ts`
+pins the literals from this side while the Java tests pin them from the other.
 
 The app is built with Vite and React, producing a static bundle that gets embedded into the extension JAR during the Maven build.
 
 ## How it integrates with Polarion
 
-1. **Navigation entry point** — `XmlRepairNavigationExtender` registers an "XML-Repair" item in Polarion's left side panel. Clicking it loads `/polarion/xml-repair-app/ui/app/index.html`.
+1. **Navigation entry point** — `XmlRepairNavigationExtender` registers an "XML-Repair" item in Polarion's left side panel, with an `XmlRepairNavigationNode` per page below it. Each one loads `/polarion/xml-repair-app/ui/app/index.html` with its own `?feature=`. RSP's `BreadcrumbInjector` relabels the shell's app header per page: the two pages below the root node pass its label as `parent`, so the breadcrumb reads "XML-Repair › General checks".
 
 2. **Webapp registration** — `plugin.xml` declares a `xml-repair-app` webapp. Polarion's Tomcat serves the static files through `XmlRepairAppServlet` (mapped to `/ui/*`).
 

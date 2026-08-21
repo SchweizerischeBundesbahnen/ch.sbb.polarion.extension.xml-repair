@@ -117,6 +117,17 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsWrongTypeRepairer()
             )
     );
+
+    /**
+     * The repairers behind the "Purge outdated data" page. A second registry on purpose: they must be
+     * resolvable by {@link #scan} and {@link #repair}, but must stay out of {@link #getRepairerMetas}, which
+     * fills the "Repairers" block of the General checks page.
+     */
+    public static final Map<EntityType, List<IRepairer>> PURGE_REPAIRERS = Map.of(
+            EntityType.COLLECTION, List.of(new OutdatedCustomFieldsRepairer()),
+            EntityType.DOCUMENT, List.of(new OutdatedCustomFieldsRepairer()),
+            EntityType.WORKITEM, List.of(new OutdatedCustomFieldsRepairer())
+    );
     private static final int DEFAULT_LIMIT = 100;
     // Upper bound for the selectable entity list of a project. Big enough for any real project, small
     // enough to keep the response and the client-side dropdown filtering fast. Same number as the bound
@@ -483,7 +494,8 @@ public class XmlRepairPolarionService extends PolarionService {
 
     @VisibleForTesting
     List<IRepairer> getRepairersForEntity(IUniqueObject entity) {
-        return REPAIRERS.get(EntityType.fromPrototype(entity.getPrototype()));
+        EntityType entityType = EntityType.fromPrototype(entity.getPrototype());
+        return Stream.concat(REPAIRERS.get(entityType).stream(), PURGE_REPAIRERS.get(entityType).stream()).toList();
     }
 
     @VisibleForTesting
@@ -495,7 +507,7 @@ public class XmlRepairPolarionService extends PolarionService {
         if (countByRepairer.isEmpty()) {
             return;
         }
-        Map<String, String> repairerNames = REPAIRERS.values().stream()
+        Map<String, String> repairerNames = Stream.concat(REPAIRERS.values().stream(), PURGE_REPAIRERS.values().stream())
                 .flatMap(List::stream)
                 .collect(Collectors.toMap(IRepairer::getRepairerId, IRepairer::getDisplayName, (a, b) -> a));
         StringBuilder sb = new StringBuilder("Issues by repairer:");

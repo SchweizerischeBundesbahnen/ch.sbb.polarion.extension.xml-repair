@@ -687,6 +687,51 @@
   width: auto;
 }
 
+/* ---- Home page of the navigation node (?feature=home) ---- */
+.home-page h3 {
+  margin: 0 0 4px;
+}
+
+.home-page p {
+  color: #666;
+  margin: 0 0 8px;
+}
+
+.home-page-links {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.home-page-links li {
+  padding: 6px 0;
+  border-top: 1px solid #eee;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--sbb-accent);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.home-page-desc {
+  display: block;
+  color: #666;
+  font-size: 12px;
+}
+
+/* The attributes block reuses the repairer-block styling; only its empty state is its own. */
+.attributes-placeholder {
+  color: #666;
+  font-size: 12px;
+  margin: 4px 0;
+}
+
 /* ---- Dev-only Landing page (?feature=landing) ---- */
 .landing-intro {
   color: #666;
