@@ -2,9 +2,8 @@
  * The navigation node ids and the extension's own labelling, kept out of `features.tsx` so that a page can name
  * a sibling node without importing the registry that lists the pages themselves.
  *
- * Each id is both a `?feature=` value and the `NODE_ID` of the matching Java class in
- * `ch.sbb.polarion.extension.xml_repair`: the node's `getPageUrl()` puts its own id into the URL, and the Home
- * page appends it to the portal's topic path. The two sides must not drift; a test pins them.
+ * Each id is both a `?feature=` value and a node id declared in `XmlRepairNavigationExtender`
+ * (`HOME_FEATURE`, `GENERAL_CHECKS`, `PURGE_OUTDATED_DATA`): the node's `getPageUrl()` puts its own id into the
  */
 export const HOME = 'home';
 export const GENERAL_CHECKS = 'general-checks';
