@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { type SearchableDropdownInstance, createEditableSelect } from '@grigoriev/react-sbb-polarion';
+import { type SearchableDropdownInstance, createEditableSelect } from '@sbb-polarion/react-sbb-polarion';
 import type { NumericInputHint } from './NumericInput';
 
 interface SearchableInputProps {

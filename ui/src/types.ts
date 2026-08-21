@@ -1,4 +1,4 @@
-import type { SelectOption } from '@grigoriev/react-sbb-polarion';
+import type { SelectOption } from '@sbb-polarion/react-sbb-polarion';
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.EntityType
 export type EntityType = 'COLLECTION' | 'DOCUMENT' | 'WORKITEM';

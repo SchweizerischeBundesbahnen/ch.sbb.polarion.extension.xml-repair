@@ -1,5 +1,33 @@
 # Changelog
 
+## [3.2.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.1.1...v3.2.0) (2026-08-18)
+
+
+### Features
+
+* ability to select documents/collections from the list ([#172](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/172)) ([b64853d](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/b64853ddbefd4714ee9cb5424922df4efabd577a)), closes [#171](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/171)
+* different handling for users ([#161](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/161)) ([76e4dfe](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/76e4dfe29dda80ad90b874c8ade4f662f36a0b68)), closes [#145](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/145)
+* replace the native confirm with a dialog ([#167](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/167)) ([d9b9d84](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d9b9d8475d09e9e7881a897eaede66b9cd29c673))
+
+
+### Bug Fixes
+
+* add checker/repairer for cross-reference links within rich text fields ([#146](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/146)) ([4064a7a](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/4064a7aee388f26cf96ea4725297f3bc74168c77))
+* **deps:** update dependency @grigoriev/react-sbb-polarion to ^0.2.0 ([#181](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/181)) ([d743206](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d7432069bdd6b54375715f5c5a4034a2fe07042d))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v15.10.1 ([#165](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/165)) ([8014aa5](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/8014aa5b1a1fbcab785630607a9db2ad11ce79b2))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v15.11.0 ([#194](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/194)) ([ee86434](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/ee864346c81ed3153d0789daab82642f21803f64))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v15.6.0 ([#148](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/148)) ([85bc5da](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/85bc5da628153e2d066ec530b66c0a255d0f3428))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v15.7.0 ([#156](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/156)) ([5a7bdfa](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/5a7bdfa78ea578adbf998d22705d3d3409e8e460))
+* harden the UI build (no dev token in bundles, install from the lock) ([#160](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/160)) ([8a53888](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/8a53888c71414129d3579abeb1f61bceb78de46d)), closes [#159](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/159)
+* react review followups ([#158](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/158)) ([743a3a6](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/743a3a6f09a314f4c8920a1e6230143e072f208e))
+* repair miscounts duplicated broken links ([#185](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/185)) ([5fc320a](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/5fc320abb6102e948dc837f5e3095d8ad96c7ff0)), closes [#184](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/184)
+* unify admin fonts via react-sbb-polarion ([#152](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/152)) ([9606440](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/960644024d12b816706e36c72c794763462956b7))
+
+
+### Documentation
+
+* regenerate the OpenAPI spec for generic 15.10.1 ([#175](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/175)) ([c99e613](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/c99e61318c6f3d92ca27057bf1c9b5f7c7e3c358))
+
 ## [3.1.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.1.0...v3.1.1) (2026-07-15)
 
 
