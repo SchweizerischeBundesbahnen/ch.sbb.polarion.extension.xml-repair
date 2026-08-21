@@ -8,6 +8,10 @@ export interface Issue {
   metaInfo: string;
   repairer: string;
   description: string;
+  // Finer-grained grouping key, absent unless the repairer sets one. OutdatedCustomFieldsRepairer sets it to
+  // the attribute id, which is what lets the Purge page group, filter and count per attribute. Read it through
+  // `issueGroup` rather than directly, so the fallback to `repairer` stays in one place.
+  group?: string;
   warnings: string[];
   // Client-side annotation after repair
   repairResult?: RepairIssueResult;
