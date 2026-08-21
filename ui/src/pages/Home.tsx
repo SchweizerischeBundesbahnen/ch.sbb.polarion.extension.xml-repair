@@ -1,6 +1,6 @@
 import { PageLayout } from '@sbb-polarion/react-sbb-polarion';
 import { GENERAL_CHECKS, PURGE_OUTDATED_DATA } from '../navigation';
-import { getShellWindow } from '../services/shell';
+import { navigateSelf, navigateShell } from '../services/shell';
 
 /** The topic path of a sub-topic: Polarion's own topic URL with the node id appended. */
 export function subTopicHref(currentHref: string, nodeId: string): string {
@@ -28,17 +28,14 @@ const PAGES = [
  *
  * In Polarion this page sits in an iframe of the portal shell, whose URL is the node's own topic path. Appending
  * the sub-node id to that URL is what makes the portal select the sub-node in the navigation tree, which then
- * loads the page from that node's `getPageUrl()`. Standing alone - `vite dev`, a test - there is no shell, so
- * the feature router is addressed directly instead.
+ * loads the page from that node's `getPageUrl()`. Whenever that shell cannot be driven - no separate top window
+ * (`vite dev`, a test), or a cross-origin one - the feature router of this bundle is addressed directly instead.
  */
 export default function Home() {
   const openPage = (nodeId: string) => {
-    const shell = getShellWindow();
-    if (shell) {
-      shell.location.assign(subTopicHref(shell.location.href, nodeId));
-      return;
+    if (!navigateShell((shellHref) => subTopicHref(shellHref, nodeId))) {
+      navigateSelf(localHref(nodeId));
     }
-    window.location.assign(localHref(nodeId));
   };
 
   return (

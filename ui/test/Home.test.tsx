@@ -3,14 +3,17 @@ import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
 import { GENERAL_CHECKS, PURGE_OUTDATED_DATA } from '../src/navigation';
 import Home, { localHref, subTopicHref } from '../src/pages/Home';
-import { getShellWindow } from '../src/services/shell';
-
-// `window.top` is not redefinable, so the shell lookup is mocked at its own module seam instead.
-vi.mock('../src/services/shell', () => ({ getShellWindow: vi.fn() }));
-const shellMock = vi.mocked(getShellWindow);
+import { navigateSelf, navigateShell } from '../src/services/shell';
 
 // The entry page of the XML-Repair navigation node. Its job is to reach the two nodes below it, which it
 // does by appending a node id to the portal shell's own topic path.
+
+// Both navigations are mocked at the module seam: `window.top` cannot be redefined here, and
+// `window.location.assign` cannot be spied on, so this is the only way to observe which one the page chose
+// without navigating the test runner. navigateShell's own behavior is covered in shell.test.ts.
+vi.mock('../src/services/shell', () => ({ navigateShell: vi.fn(), navigateSelf: vi.fn() }));
+const navigateShellMock = vi.mocked(navigateShell);
+const navigateSelfMock = vi.mocked(navigateSelf);
 
 const origUrl = window.location.pathname + window.location.search;
 const setUrl = (search: string) => window.history.replaceState({}, '', search);
@@ -23,8 +26,16 @@ const linkButton = (label: string): HTMLButtonElement => {
   return b;
 };
 
+const renderHome = async () => {
+  render(<Home />);
+  await vi.waitFor(() => expect(document.querySelector('.home-page')).not.toBeNull());
+};
+
 beforeEach(() => {
-  shellMock.mockReturnValue(null);
+  // mockReturnValue does not clear the call history, and these are module-level mocks shared by every test.
+  navigateShellMock.mockReset();
+  navigateSelfMock.mockReset();
+  navigateShellMock.mockReturnValue(false);
 });
 
 afterEach(() => {
@@ -51,30 +62,40 @@ describe('subTopicHref', () => {
 
 describe('Home page', () => {
   it('offers one link per page below the node', async () => {
-    render(<Home />);
+    await renderHome();
 
-    await vi.waitFor(() => expect(document.querySelector('.home-page')).not.toBeNull());
     expect(linkButton('General checks')).toBeDefined();
     expect(linkButton('Purge outdated data')).toBeDefined();
     expect(document.body.textContent).toContain('Please select below what you wish to do');
   });
 
-  it('navigates the portal shell to the sub-node when embedded', async () => {
-    const assign = vi.fn();
-    const shell = { location: { href: 'https://polarion/#/project/elibrary/xml-repair', assign } };
-    shellMock.mockReturnValue(shell as unknown as Window);
-    render(<Home />);
+  it('navigates the portal shell to the sub-node when it can be driven', async () => {
+    navigateShellMock.mockReturnValue(true);
+    await renderHome();
 
-    await vi.waitFor(() => expect(document.querySelector('.home-page')).not.toBeNull());
     linkButton('Purge outdated data').click();
 
-    expect(assign).toHaveBeenCalledWith('https://polarion/#/project/elibrary/xml-repair/purge-outdated-data');
+    expect(navigateShellMock).toHaveBeenCalledOnce();
+    expect(navigateSelfMock).not.toHaveBeenCalled();
+    // The page hands over how to build the target, not the target itself, so the shell URL stays unread here.
+    const buildHref = navigateShellMock.mock.calls[0][0];
+    expect(buildHref('https://polarion/#/project/elibrary/xml-repair')).toBe(
+      'https://polarion/#/project/elibrary/xml-repair/purge-outdated-data',
+    );
   });
 
-  it('addresses its own feature router when there is no shell, keeping the project', () => {
-    // Standing alone (vite dev, a test) or behind a cross-origin shell there is no portal to drive, so the
-    // page below is addressed through this bundle's own feature router instead. Only the URL is asserted:
-    // window.location.assign cannot be stubbed here, and letting the click run would navigate the runner.
+  it('falls back to its own feature router when the shell cannot be driven', async () => {
+    // No separate top window, or a cross-origin one: both report false, and the click must still land somewhere
+    // rather than dying inside the handler.
+    setUrl('?feature=home&projectId=elibrary');
+    await renderHome();
+
+    linkButton('General checks').click();
+
+    expect(navigateSelfMock).toHaveBeenCalledWith('?feature=general-checks&projectId=elibrary');
+  });
+
+  it('builds the local href from the current query, keeping the project', () => {
     setUrl('?feature=home&projectId=elibrary');
 
     expect(localHref(GENERAL_CHECKS)).toBe('?feature=general-checks&projectId=elibrary');
