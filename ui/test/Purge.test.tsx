@@ -203,6 +203,64 @@ describe('Purge outdated data page', () => {
     expect(purge.title).toContain('at least one item');
   });
 
+  it('drops a scan response that arrived after the parameters changed', async () => {
+    // Otherwise the stale result is installed with every attribute ticked, arming a purge against entities
+    // the user is no longer looking at.
+    let releaseScan: (() => void) | undefined;
+    await mountPurge([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          return jsonResponse(PURGE_SCAN_RESULT);
+        },
+      },
+    ]);
+
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(releaseScan).toBeDefined());
+
+    // The entity type changes while the scan is still in flight, which discards what it would land in. The
+    // response is released only once that change has been fully applied - documents show their picker instead
+    // of the query field - so this reproduces the real ordering, where the response lands long after.
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    select.value = 'DOCUMENT';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(document.querySelector('.filter-control select[multiple]')).not.toBeNull());
+    releaseScan!();
+
+    await vi.waitFor(() => expect(document.querySelector('.scanning-indicator')).toBeNull());
+    expect(document.querySelector('.results-section')).toBeNull();
+    expect(attributeNames()).toEqual([]);
+  });
+
+  it('ignores Enter while a scan is already running, so responses cannot overlap', async () => {
+    let releases = 0;
+    await mountPurge([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: () => {
+          releases += 1;
+          return jsonResponse(PURGE_SCAN_RESULT);
+        },
+      },
+    ]);
+
+    textButton('Scan').click();
+    // The Scan button is disabled while scanning, but the query field is not: Enter reaches the same handler.
+    const queryInput = document.querySelector<HTMLInputElement>('#user-query')!;
+    queryInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    await vi.waitFor(() => expect(document.querySelector('.results-section')).not.toBeNull());
+    expect(releases).toBe(1);
+  });
+
   it('surfaces a failed scan and shows no results', async () => {
     await mountPurge([
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),

@@ -49,6 +49,14 @@ export default function Repair() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const repairersRef = useRef<HTMLDetailsElement>(null);
   const isFirstRender = useRef(true);
+  // Identifies the scan whose response may still be installed. Bumped by a new scan and by anything that
+  // discards the result, so a response arriving late is dropped rather than reviving results for parameters
+  // the user has moved on from - which would leave stale issues selectable for the next repair.
+  const scanRunRef = useRef(0);
+  // Whether a scan is in flight right now. A ref rather than the `scanning` state, because that only reaches
+  // the handlers on the next render: pressing Enter in a parameter field immediately after clicking Scan would
+  // still see `scanning === false` and start a second, overlapping request.
+  const scanInFlightRef = useRef(false);
 
   // Row and issue selection, shared with the Purge page: same keys, same toggles, same write bookkeeping.
   const selection = useScanSelection({ result, hiddenGroups: hiddenRepairers, busy: batchRepairing });
@@ -111,6 +119,13 @@ export default function Repair() {
     }
   }, [entityType, sendRequest]);
 
+  /** Nothing found for the previous parameters still holds, so a scan still in flight for them is orphaned. */
+  const discardResult = useCallback(() => {
+    scanRunRef.current += 1;
+    setResult(null);
+    setError(null);
+  }, []);
+
   useEffect(() => {
     void loadRepairers();
     if (isFirstRender.current) {
@@ -120,20 +135,17 @@ export default function Repair() {
     } else {
       setEntitySubtype('');
     }
-    setResult(null);
-    setError(null);
-  }, [loadRepairers, setEntitySubtype, subtypeSetExplicitly]);
+    discardResult();
+  }, [loadRepairers, setEntitySubtype, subtypeSetExplicitly, discardResult]);
 
   // Any change of what would be scanned invalidates the displayed result.
   useEffect(() => {
-    setResult(null);
-    setError(null);
-  }, [selectedRepairers, params.selectedEntities, params.filterMode]);
+    discardResult();
+  }, [selectedRepairers, params.selectedEntities, params.filterMode, discardResult]);
 
   const handleEntityChange = (value: string) => {
     params.handleEntityChange(value);
-    setResult(null);
-    setError(null);
+    discardResult();
   };
 
   /** Hiding a repairer must also drop the selections of the issues it just hid. */
@@ -170,6 +182,14 @@ export default function Repair() {
       return;
     }
 
+    if (scanInFlightRef.current) {
+      return;
+    }
+    scanInFlightRef.current = true;
+    const runId = ++scanRunRef.current;
+    /** True once this run's response is no longer the one the page is waiting for. */
+    const superseded = () => scanRunRef.current !== runId;
+
     setError(null);
     setResult(null);
     setScanning(true);
@@ -202,20 +222,32 @@ export default function Repair() {
 
       if (response.ok) {
         const scanResult: ScanResult = await response.json();
+        if (superseded()) {
+          return;
+        }
         setResultHideValid(params.hideValid);
         setHiddenRepairers(new Set());
         setResult(scanResult);
       } else {
         const errData = await response.json().catch(() => null);
+        if (superseded()) {
+          return;
+        }
         const msg = errData?.message || `Request failed with status ${response.status}`;
         setError(msg);
         toast.error(msg);
       }
     } catch (e) {
+      if (superseded()) {
+        return;
+      }
       const msg = (e as Error).message;
       setError(msg);
       toast.error(msg);
     } finally {
+      // Safe to reset unconditionally: the re-entry guard keeps a single scan in flight, so this run still owns
+      // the timer and the flag even when its response was dropped as superseded.
+      scanInFlightRef.current = false;
       clearInterval(timerRef.current);
       setScanning(false);
     }
@@ -286,6 +318,8 @@ export default function Repair() {
     selection.clearSelection();
   };
 
+  const scanDisabled = scanning || batchRepairing || selectedRepairers.length === 0 || params.selectionPending;
+
   return (
     // No title: Scan & Repair is the primary product surface, not an admin page, so it carries the
     // dev-only Overview back link (via PageLayout) but not the admin-style heading + underline.
@@ -296,14 +330,16 @@ export default function Repair() {
             <ScanParamsPanel
               {...params.panelProps}
               onEntityChange={handleEntityChange}
-              onEnterKey={() => void handleScan()}
+              onEnterKey={() => {
+                if (!scanDisabled) void handleScan();
+              }}
             />
 
             <div className="actions">
               <button
                 className="btn btn-scan"
                 onClick={handleScan}
-                disabled={scanning || batchRepairing || selectedRepairers.length === 0 || params.selectionPending}
+                disabled={scanDisabled}
                 title={
                   selectedRepairers.length === 0
                     ? 'Please select at least one repairer'

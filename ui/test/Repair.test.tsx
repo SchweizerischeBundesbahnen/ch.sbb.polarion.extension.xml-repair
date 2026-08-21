@@ -603,3 +603,62 @@ describe('Scan & Repair page', () => {
     });
   });
 });
+
+describe('Scan & Repair page, stale scan responses', () => {
+  it('drops a scan response that arrived after the parameters changed', async () => {
+    // Otherwise the stale result is installed and its issues stay selectable, arming a repair against
+    // entities the user has moved on from.
+    let releaseScan: (() => void) | undefined;
+    await mountRepair([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          return jsonResponse(SCAN_RESULT);
+        },
+      },
+    ]);
+
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(releaseScan).toBeDefined());
+
+    // The entity type changes while the scan is still in flight, which discards what it would land in. The
+    // response is released only once that change has been fully applied - the document repairer list has
+    // arrived - so this reproduces the real ordering, where the response lands long after the change.
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    select.value = 'DOCUMENT';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await vi.waitFor(() => expect(document.querySelector('.repairers-count')?.textContent).toContain('/13'));
+    releaseScan!();
+
+    await vi.waitFor(() => expect(document.querySelector('.scanning-indicator')).toBeNull());
+    expect(document.querySelector('.results-section')).toBeNull();
+  });
+
+  it('ignores Enter while a scan is already running, so responses cannot overlap', async () => {
+    let scans = 0;
+    await mountRepair([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: () => {
+          scans += 1;
+          return jsonResponse(SCAN_RESULT);
+        },
+      },
+    ]);
+
+    textButton('Scan').click();
+    // The Scan button is disabled while scanning, but the query field is not: Enter reaches the same handler.
+    const queryInput = document.querySelector<HTMLInputElement>('#user-query')!;
+    queryInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    await vi.waitFor(() => expect(document.querySelector('.results-section')).not.toBeNull());
+    expect(scans).toBe(1);
+  });
+});

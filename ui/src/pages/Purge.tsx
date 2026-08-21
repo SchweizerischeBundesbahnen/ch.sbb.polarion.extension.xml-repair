@@ -56,6 +56,14 @@ export default function Purge() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const attributesRef = useRef<HTMLDetailsElement>(null);
   const isFirstRender = useRef(true);
+  // Identifies the scan whose response may still be installed. Bumped by a new scan and by anything that
+  // discards the result, so a response that arrives late is dropped instead of reviving what it was scanned
+  // for - which would leave stale entities selectable, with every attribute ticked, for the next purge.
+  const scanRunRef = useRef(0);
+  // Whether a scan is in flight right now. A ref rather than the `scanning` state, because that only reaches
+  // the handlers on the next render: pressing Enter in a parameter field immediately after clicking Scan would
+  // still see `scanning === false` and start a second, overlapping request.
+  const scanInFlightRef = useRef(false);
 
   const attributeCounts = useMemo(
     () => (result ? collectIssueGroupCounts(result) : new Map<string, number>()),
@@ -85,6 +93,7 @@ export default function Purge() {
 
   /** Nothing found for the previous parameters still holds, and neither does the attribute list built from it. */
   const discardResult = useCallback(() => {
+    scanRunRef.current += 1;
     setResult(null);
     setError(null);
     setAttributes([]);
@@ -140,6 +149,14 @@ export default function Purge() {
       return;
     }
 
+    if (scanInFlightRef.current) {
+      return;
+    }
+    scanInFlightRef.current = true;
+    const runId = ++scanRunRef.current;
+    /** True once this run's response is no longer the one the page is waiting for. */
+    const superseded = () => scanRunRef.current !== runId;
+
     setError(null);
     setResult(null);
     setScanning(true);
@@ -159,6 +176,9 @@ export default function Purge() {
 
       if (response.ok) {
         const scanResult: ScanResult = await response.json();
+        if (superseded()) {
+          return;
+        }
         // Everything found starts ticked, so the results are visible straight away; unticking narrows them.
         const found = [...collectIssueGroupCounts(scanResult).keys()].sort((a, b) => a.localeCompare(b));
         setAttributes(found);
@@ -170,15 +190,24 @@ export default function Purge() {
         }
       } else {
         const errData = await response.json().catch(() => null);
+        if (superseded()) {
+          return;
+        }
         const msg = errData?.message || `Request failed with status ${response.status}`;
         setError(msg);
         toast.error(msg);
       }
     } catch (e) {
+      if (superseded()) {
+        return;
+      }
       const msg = (e as Error).message;
       setError(msg);
       toast.error(msg);
     } finally {
+      // Safe to reset unconditionally: the re-entry guard keeps a single scan in flight, so this run still owns
+      // the timer and the flag even when its response was dropped as superseded.
+      scanInFlightRef.current = false;
       clearInterval(timerRef.current);
       setScanning(false);
     }
@@ -236,6 +265,8 @@ export default function Purge() {
     selection.clearSelection();
   };
 
+  const scanDisabled = scanning || purging || params.selectionPending;
+
   return (
     <PageLayout>
       <div className="xml-repair-app">
@@ -245,14 +276,16 @@ export default function Purge() {
               {...params.panelProps}
               onEntityChange={handleEntityChange}
               hideValidLabel="Show items with outdated attributes only"
-              onEnterKey={() => void handleScan()}
+              onEnterKey={() => {
+                if (!scanDisabled) void handleScan();
+              }}
             />
 
             <div className="actions">
               <button
                 className="btn btn-scan"
                 onClick={handleScan}
-                disabled={scanning || purging || params.selectionPending}
+                disabled={scanDisabled}
                 title={params.selectionPending ? 'Please wait until the entity list is loaded' : ''}
               >
                 {scanning ? 'Scanning...' : 'Scan'}
