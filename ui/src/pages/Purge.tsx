@@ -91,14 +91,25 @@ export default function Purge() {
     };
   }, []);
 
-  /** Nothing found for the previous parameters still holds, and neither does the attribute list built from it. */
-  const discardResult = useCallback(() => {
-    scanRunRef.current += 1;
+  /** Clears everything a scan produced: the results, any error, and the attribute list derived from them. */
+  const clearScanState = useCallback(() => {
     setResult(null);
     setError(null);
     setAttributes([]);
     setSelectedAttributes(new Set());
   }, []);
+
+  /**
+   * The same, and additionally orphans a scan still in flight, because what it would land in no longer applies.
+   *
+   * Only for the invalidation points - a parameter change. Starting a scan must call `clearScanState` instead:
+   * bumping the counter here would supersede the very run being started, so its own response would be dropped
+   * and no scan could ever show results.
+   */
+  const discardResult = useCallback(() => {
+    scanRunRef.current += 1;
+    clearScanState();
+  }, [clearScanState]);
 
   // A different entity type has different definitions. The subtype is cleared unless the user picked one
   // explicitly, which is what handleEntityChange records.
@@ -157,8 +168,7 @@ export default function Purge() {
     /** True once this run's response is no longer the one the page is waiting for. */
     const superseded = () => scanRunRef.current !== runId;
 
-    setError(null);
-    setResult(null);
+    clearScanState();
     setScanning(true);
     setElapsed(0);
     selection.reset();

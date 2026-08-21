@@ -274,6 +274,34 @@ describe('Purge outdated data page', () => {
     expect(document.querySelector('.results-section')).toBeNull();
   });
 
+  it('clears the attributes of the previous scan when the next one fails', async () => {
+    // Otherwise the panel keeps listing attributes, all ticked, next to an error and with no results behind
+    // them - the state a purge would then be built from.
+    let scans = 0;
+    await mountPurge([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan$/,
+        respond: () => {
+          scans += 1;
+          return scans === 1
+            ? jsonResponse(PURGE_SCAN_RESULT)
+            : jsonResponse({ message: 'Lucene query is broken' }, 400);
+        },
+      },
+    ]);
+
+    await runScan();
+    expect(attributeNames()).toEqual(['legacyOwner', 'obsoleteFlag', 'oldEstimate']);
+
+    textButton('Scan').click();
+
+    await vi.waitFor(() => expect(document.querySelector('.error-message')).not.toBeNull());
+    expect(attributeNames()).toEqual([]);
+    expect(document.querySelector('.results-section')).toBeNull();
+  });
+
   it('refuses to scan without a project in the URL', async () => {
     await mountPurge(defaultRoutes(), '?feature=purge-outdated-data');
 

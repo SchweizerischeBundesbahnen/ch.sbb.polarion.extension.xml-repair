@@ -119,7 +119,13 @@ export default function Repair() {
     }
   }, [entityType, sendRequest]);
 
-  /** Nothing found for the previous parameters still holds, so a scan still in flight for them is orphaned. */
+  /**
+   * Nothing found for the previous parameters still holds, so a scan still in flight for them is orphaned.
+   *
+   * Only for the invalidation points - a parameter change. Starting a scan clears the same state inline
+   * instead: bumping the counter here would supersede the very run being started, so its own response would be
+   * dropped and no scan could ever show results.
+   */
   const discardResult = useCallback(() => {
     scanRunRef.current += 1;
     setResult(null);
