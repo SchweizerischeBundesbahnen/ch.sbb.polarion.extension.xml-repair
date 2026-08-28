@@ -3,6 +3,7 @@ import { cleanup, render } from 'vitest-browser-react';
 import { page } from 'vitest/browser';
 import App from '../src/App';
 import { installFetchMock } from './mockFetch';
+import { settleBeforeCapture } from './visualHelpers';
 
 // Docker-only snapshot of the Repair Authorization page: the two role groups with the Polarion-styled
 // checkboxes, the Save / Cancel / Default / Revisions toolbar and the Quick Help. The page itself is
@@ -38,6 +39,7 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Repair Authorization page visual', () =>
     await vi.waitFor(() => expect(document.querySelectorAll('.roles-list input[type="checkbox"]').length).toBe(4));
     const app = document.querySelector('.app') as HTMLElement;
     await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
+    await settleBeforeCapture();
     await expect(page.elementLocator(app)).toMatchScreenshot('authorization-loaded');
   });
 });

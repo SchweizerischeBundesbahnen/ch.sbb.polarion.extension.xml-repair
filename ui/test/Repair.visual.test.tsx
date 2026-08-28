@@ -14,6 +14,7 @@ import {
   repairersFor,
 } from './fixtures';
 import { type Route, installFetchMock, jsonResponse } from './mockFetch';
+import { settleBeforeCapture } from './visualHelpers';
 
 // Docker-only snapshots of the Scan & Repair page: the initial parameter/repairers panel for the default
 // Work Items entity type, the same panel with Documents selected (document query hint + the larger
@@ -118,6 +119,7 @@ async function pickEntities(...keys: string[]) {
 async function captureApp(name: string) {
   const app = document.querySelector('.app') as HTMLElement;
   await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
+  await settleBeforeCapture();
   await expect(page.elementLocator(app)).toMatchScreenshot(name);
 }
 
