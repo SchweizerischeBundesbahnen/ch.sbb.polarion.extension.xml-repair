@@ -5,7 +5,7 @@ import App from '../src/App';
 import appIcon from '../src/assets/app-icon.svg';
 import { BASELINES, DOCUMENTS, DOCUMENT_TYPES, PURGE_SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
 import { type Route, installFetchMock } from './mockFetch';
-import { settleBeforeCapture } from './visualHelpers';
+import { settleBeforeCapture, settleLayout } from './visualHelpers';
 
 // Docker-only snapshots of the Purge outdated data page: the initial state, where the attribute block can
 // only show its placeholder because nothing has been scanned yet; the advanced parameters, which carry no
@@ -73,6 +73,7 @@ async function runScan() {
 
 async function captureApp(name: string) {
   const app = document.querySelector('.app') as HTMLElement;
+  await settleLayout();
   await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
   await settleBeforeCapture();
   await expect(page.elementLocator(app)).toMatchScreenshot(name);
