@@ -35,6 +35,11 @@ public class ApiController extends InternalController {
     }
 
     @Override
+    public Response listEntities(String projectId, EntityType entityType, String entitySubtype) {
+        return polarionService.callPrivileged(() -> super.listEntities(projectId, entityType, entitySubtype));
+    }
+
+    @Override
     public Response scan(ScanParams scanParams) {
         return polarionService.callPrivileged(() -> super.scan(scanParams));
     }
