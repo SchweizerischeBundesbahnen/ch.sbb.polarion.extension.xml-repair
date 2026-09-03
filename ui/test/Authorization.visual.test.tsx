@@ -5,10 +5,11 @@ import App from '../src/App';
 import { installFetchMock } from './mockFetch';
 import { settleBeforeCapture, settleLayout } from './visualHelpers';
 
-// Docker-only snapshot of the Repair Authorization page: the two role groups with the Polarion-styled
-// checkboxes, the Save / Cancel / Default / Revisions toolbar and the Quick Help. The page itself is
-// react-sbb-polarion's shared AuthorizationSettings, so this reference is what would catch a change in
-// the library moving this page's look.
+// Docker-only snapshot of the Repair Authorization page: the two role groups, the Save / Cancel /
+// Default / Revisions toolbar and the Quick Help. Each role set is a multi-select SearchableSelect,
+// whose chips and trigger only render in the product's look under the `.standard-admin-page` scope.
+// The page itself is react-sbb-polarion's shared AuthorizationSettings, so this reference is what
+// would catch a change in the library moving this page's look.
 
 const origUrl = window.location.pathname + window.location.search;
 
@@ -36,7 +37,9 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Repair Authorization page visual', () =>
     window.history.replaceState({}, '', '?feature=authorization&embedded=true&scope=project/elibrary/');
     render(<App />);
 
-    await vi.waitFor(() => expect(document.querySelectorAll('.roles-list input[type="checkbox"]').length).toBe(4));
+    // Both controls, not just the first: they are upgraded asynchronously, and a capture taken between
+    // the two catches the page mid-upgrade.
+    await vi.waitFor(() => expect(document.querySelectorAll('.roles-group .sd-trigger-multi')).toHaveLength(2));
     const app = document.querySelector('.app') as HTMLElement;
     await settleLayout();
     await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);

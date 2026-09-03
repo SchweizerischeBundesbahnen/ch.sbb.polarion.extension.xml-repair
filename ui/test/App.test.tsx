@@ -76,7 +76,7 @@ describe('feature router', () => {
     setUrl(`?feature=authorization&scope=${encodeURIComponent('project/elibrary/')}`);
     render(<App />);
 
-    await vi.waitFor(() => expect(document.querySelector('.roles-list')).not.toBeNull());
+    await vi.waitFor(() => expect(document.querySelector('.roles-group .sd-trigger-multi')).not.toBeNull());
     expect(document.querySelector('h1')!.textContent).toBe('Repair Authorization');
     expect(seen.some((url) => url.includes('/settings/authorization/'))).toBe(true);
   });
