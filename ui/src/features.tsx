@@ -11,8 +11,8 @@ import useRemote from './services/useRemote';
 const AUTHORIZATION_SETTING = 'authorization';
 
 /**
- * Repair Authorization: react-sbb-polarion's shared role-checkbox page over this extension's setting.
- * The checked roles are the ones `XmlRepairPolarionService.userAuthorizedForRepair` accepts.
+ * Repair Authorization: react-sbb-polarion's shared role-selection page over this extension's setting.
+ * The selected roles are the ones `XmlRepairPolarionService.userAuthorizedForRepair` accepts.
  */
 function Authorization() {
   const { sendRequest } = useRemote();
