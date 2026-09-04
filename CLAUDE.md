@@ -9,9 +9,9 @@ Builds require `.mvn/settings.xml` (JFrog, GitHub Packages, Sonatype credentials
 You must extract dependencies from the Polarion installer using [polarion-artifacts-deployer](https://github.com/SchweizerischeBundesbahnen/polarion-artifacts-deployer) before the Maven build will work.
 
 ### Local Polarion Installation
-Requires `POLARION_HOME` environment variable. Use the `install-to-local-polarion` Maven profile:
+Requires `POLARION_HOME` environment variable. Use the `local-install-into-polarion` Maven profile:
 ```bash
-mvn clean install -P install-to-local-polarion
+mvn clean install -P local-install-into-polarion
 ```
 
 ### Remote Debugging

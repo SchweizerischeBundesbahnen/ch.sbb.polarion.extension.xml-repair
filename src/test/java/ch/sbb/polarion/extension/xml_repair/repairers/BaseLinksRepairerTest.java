@@ -250,7 +250,7 @@ class BaseLinksRepairerTest {
         when(searchResults.size()).thenReturn(2);
         when(searchResults.get(0)).thenReturn(found1);
         when(searchResults.get(1)).thenReturn(found2);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
@@ -284,7 +284,7 @@ class BaseLinksRepairerTest {
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(1);
         when(searchResults.getFirst()).thenReturn(foundItem);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
@@ -318,7 +318,7 @@ class BaseLinksRepairerTest {
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(1);
         when(searchResults.getFirst()).thenReturn(foundItem);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
@@ -348,7 +348,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         UserConfigs configs = new UserConfigs();
         configs.put("TestableLinksRepairer", Map.of(CONVERT_TO_PLAIN_TEXT, true));
@@ -382,7 +382,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         UserConfigs configs = new UserConfigs();
         configs.put("TestableLinksRepairer", Map.of(CONVERT_TO_PLAIN_TEXT, true));
@@ -414,7 +414,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
@@ -605,7 +605,7 @@ class BaseLinksRepairerTest {
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(1);
         when(searchResults.getFirst()).thenReturn(foundItem);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-266\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-266"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
@@ -843,7 +843,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"OLD-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:OLD\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         UserConfigs configs = new UserConfigs();
         configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
@@ -877,7 +877,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"NODASH\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:NODASH"), isNull(), eq(2))).thenReturn(searchResults);
 
         UserConfigs configs = new UserConfigs();
         configs.put("TestableLinksRepairer", Map.of(ADJUST_WORK_ITEM_PREFIX, true));
@@ -912,7 +912,7 @@ class BaseLinksRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"OLD-1\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:OLD\\-1"), isNull(), eq(2))).thenReturn(searchResults);
 
         RepairResult result = repairer.repairLinksInHtml(text, entity, polarionService, metaInfo, new UserConfigs());
 
