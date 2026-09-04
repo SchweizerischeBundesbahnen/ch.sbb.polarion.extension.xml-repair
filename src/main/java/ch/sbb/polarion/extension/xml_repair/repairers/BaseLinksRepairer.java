@@ -1,5 +1,6 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
+import ch.sbb.polarion.extension.generic.util.LuceneUtils;
 import ch.sbb.polarion.extension.generic.regex.RegexMatcher;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.Issue;
@@ -125,7 +126,7 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
 
             // otherwise try to search globally
             IPObjectList<IWorkItem> itemsFound = entity.getDataSvc().searchInstances(
-                    IWorkItem.PROTO, "id:\"%s\"".formatted(workItemId), null, 2);
+                    IWorkItem.PROTO, LuceneUtils.term("id", workItemId), null, 2);
             if (itemsFound.size() > 1) {
                 result.getWarnings().add("Work item '%s' found at least in 2 projects: '%s' and '%s'".formatted(workItemId, itemsFound.get(0).getProjectId(), itemsFound.get(1).getProjectId()));
                 return link;

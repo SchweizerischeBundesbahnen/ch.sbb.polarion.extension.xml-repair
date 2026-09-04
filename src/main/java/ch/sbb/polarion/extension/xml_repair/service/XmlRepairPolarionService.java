@@ -4,6 +4,7 @@ import ch.sbb.polarion.extension.generic.exception.ObjectNotFoundException;
 import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.generic.rest.exception.UnauthorizedException;
 import ch.sbb.polarion.extension.generic.service.PolarionService;
+import ch.sbb.polarion.extension.generic.util.LuceneUtils;
 import ch.sbb.polarion.extension.generic.settings.AuthorizationModel;
 import ch.sbb.polarion.extension.generic.settings.NamedSettings;
 import ch.sbb.polarion.extension.generic.settings.NamedSettingsRegistry;
@@ -367,13 +368,9 @@ public class XmlRepairPolarionService extends PolarionService {
             throw new IllegalStateException("This method must be called within a transaction");
         }
         ModelObjectsSearch search = transaction.byEnum(entityPrototype).search();
-        String query = "";
-        if (subtype != null) {
-            query = "type:" + subtype;
-        }
-        if (customQuery != null && !customQuery.isEmpty()) {
-            query = query.isEmpty() ? customQuery : query + " AND (" + customQuery + ")";
-        }
+        // The subtype arrives from a request and is a value, so it is escaped. The custom query is
+        // free-form Lucene by design, so it is only parenthesized.
+        String query = LuceneUtils.and(subtype == null ? null : LuceneUtils.term("type", subtype), customQuery);
         String scopedQuery = ((InternalPolarionUtils) transaction.utils())
                 .addScopeToLuceneQuery(new ScopeFactoryImpl().fromPath(projectId), query);
         String sortNormalized = normalizeSort(sort);
@@ -435,43 +432,24 @@ public class XmlRepairPolarionService extends PolarionService {
         }
         Stream<String> fragments = entities.stream()
                 .filter(ref -> ref != null && !StringUtils.isEmpty(ref.getId()))
-                .map(ref -> entityType == EntityType.DOCUMENT ? documentFragment(ref) : "id:" + escapeLuceneValue(ref.getId()));
+                .map(ref -> entityType == EntityType.DOCUMENT ? documentFragment(ref) : LuceneUtils.term("id", ref.getId()));
         String query = fragments.collect(Collectors.joining(" OR "));
         return StringUtils.getNullIfEmpty(query);
     }
 
     private @NotNull String documentFragment(@NotNull EntityRef ref) {
-        String moduleName = "moduleName:" + escapeLuceneValue(ref.getId());
+        String moduleName = LuceneUtils.term("moduleName", ref.getId());
         return StringUtils.isEmpty(ref.getSpace())
                 ? "(%s)".formatted(moduleName)
-                : "(space.id:%s AND %s)".formatted(escapeLuceneValue(ref.getSpace()), moduleName);
+                // Both parts are single terms built here, so they need no protective brackets of their
+                // own: only the fragment as a whole does, because the fragments are joined with OR.
+                : "(%s AND %s)".formatted(LuceneUtils.term("space.id", ref.getSpace()), moduleName);
     }
 
     @VisibleForTesting
     @Nullable
     String combineQueries(@Nullable String userQuery, @Nullable String entitiesQuery) {
-        if (StringUtils.isEmpty(userQuery)) {
-            return StringUtils.getNullIfEmpty(entitiesQuery);
-        }
-        if (StringUtils.isEmpty(entitiesQuery)) {
-            return userQuery;
-        }
-        return "(%s) AND (%s)".formatted(userQuery, entitiesQuery);
-    }
-
-    /**
-     * Escapes a value for a Lucene query the same way Polarion's own LuceneQueryPart.escape does.
-     * Reimplemented here to keep this extension off Polarion's internal GWT-facing query classes.
-     */
-    @VisibleForTesting
-    @NotNull
-    String escapeLuceneValue(@NotNull String value) {
-        String escaped = value;
-        for (char character : "\\+-!(){}[]^\"~:".toCharArray()) {
-            escaped = escaped.replace(String.valueOf(character), "\\" + character);
-        }
-        escaped = escaped.replace("&&", "\\&&").replace("||", "\\||");
-        return escaped.contains(" ") ? "\"" + escaped + "\"" : escaped;
+        return StringUtils.getNullIfEmpty(LuceneUtils.and(userQuery, entitiesQuery));
     }
 
     /**

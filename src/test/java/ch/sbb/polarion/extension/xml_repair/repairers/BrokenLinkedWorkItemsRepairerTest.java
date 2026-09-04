@@ -383,7 +383,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         when(searchResults.size()).thenReturn(2);
         when(searchResults.get(0)).thenReturn(found1);
         when(searchResults.get(1)).thenReturn(found2);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-100"), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
 
@@ -426,7 +426,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(1);
         when(searchResults.getFirst()).thenReturn(foundItem);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-100"), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         // branches 1 and 2 must fail so we reach the global search
@@ -469,7 +469,7 @@ class BrokenLinkedWorkItemsRepairerTest {
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(1);
         when(searchResults.getFirst()).thenReturn(foundItem);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-100"), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
 
@@ -502,7 +502,7 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-100"), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
 
@@ -537,7 +537,7 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         IPObjectList<IWorkItem> searchResults = mock(IPObjectList.class);
         when(searchResults.size()).thenReturn(0);
-        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:\"EL-100\""), isNull(), eq(2))).thenReturn(searchResults);
+        when(entity.getDataSvc().searchInstances(eq(IWorkItem.PROTO), eq("id:EL\\-100"), isNull(), eq(2))).thenReturn(searchResults);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
 

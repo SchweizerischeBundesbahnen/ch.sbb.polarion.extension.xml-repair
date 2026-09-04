@@ -1446,28 +1446,6 @@ class XmlRepairPolarionServiceTest {
 
     // ---- entity selection tests ----
 
-    @ParameterizedTest
-    @MethodSource("escapeLuceneValueCases")
-    void testEscapeLuceneValue(String input, String expected) {
-        assertEquals(expected, polarionService.escapeLuceneValue(input));
-    }
-
-    private static Stream<Arguments> escapeLuceneValueCases() {
-        return Stream.of(
-                Arguments.of("specification", "specification"),           // nothing to escape
-                Arguments.of("_default", "_default"),                     // the default space needs no escaping
-                Arguments.of("My Document", "\"My Document\""),           // a space forces quoting
-                Arguments.of("a+b", "a\\+b"),                             // plus escaped
-                Arguments.of("a-b", "a\\-b"),                             // minus escaped
-                Arguments.of("a:b", "a\\:b"),                             // the field separator escaped
-                Arguments.of("a(b)c", "a\\(b\\)c"),                       // parentheses escaped
-                Arguments.of("a\\b", "a\\\\b"),                           // backslash escaped first, not doubled again
-                Arguments.of("a&&b", "a\\&&b"),                           // boolean AND operator escaped
-                Arguments.of("a||b", "a\\||b"),                           // boolean OR operator escaped
-                Arguments.of("a b:c", "\"a b\\:c\"")                      // escaped and quoted together
-        );
-    }
-
     @Test
     void testBuildEntitiesQueryWithoutSelectionReturnsNull() {
         assertNull(polarionService.buildEntitiesQuery(EntityType.DOCUMENT, null));
