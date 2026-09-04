@@ -369,7 +369,8 @@ public class XmlRepairPolarionService extends PolarionService {
         }
         ModelObjectsSearch search = transaction.byEnum(entityPrototype).search();
         // The subtype arrives from a request and is a value, so it is escaped. The custom query is
-        // free-form Lucene by design, so it is only parenthesized.
+        // free-form Lucene by design and is never escaped. With both parts present LuceneUtils.and
+        // brackets each one. With only the query, addScopeToLuceneQuery wraps it before adding the scope.
         String query = LuceneUtils.and(subtype == null ? null : LuceneUtils.term("type", subtype), customQuery);
         String scopedQuery = ((InternalPolarionUtils) transaction.utils())
                 .addScopeToLuceneQuery(new ScopeFactoryImpl().fromPath(projectId), query);

@@ -1330,10 +1330,43 @@ class XmlRepairPolarionServiceTest {
                     "proj", PrototypeEnum.WorkItem, "requirement", "id:PRJ-1", "rev-42", "~updated", 5, 50);
 
             assertTrue(result.isEmpty());
+            // The assembled query is this method's own contract: the subtype escaped as a value, the
+            // caller's query left free-form, and both parts bracketed by LuceneUtils.and.
+            verify(utils).addScopeToLuceneQuery(any(), eq("(type:requirement) AND (id:PRJ-1)"));
             verify(search).baseline("rev-42");
             verify(search).sort("~updated");
             verify(search).limit(50);
             verify(search).offset(5);
+        }
+    }
+
+    @Test
+    @SuppressWarnings("rawtypes")
+    void testQueryEntitiesEscapesTheSubtypeAndLeavesALoneQueryUnbracketed() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        InternalPolarionUtils utils = mock(InternalPolarionUtils.class);
+        when(transaction.utils()).thenReturn(utils);
+        when(utils.addScopeToLuceneQuery(any(), anyString())).thenReturn("scoped-query");
+
+        ModelObjectsSearch search = transaction.byEnum(PrototypeEnum.WorkItem).search();
+        when(search.query(anyString())).thenReturn(search);
+        when(search.sort(anyString())).thenReturn(search);
+        when(search.limit(anyInt())).thenReturn(search);
+        when(search.offset(anyInt())).thenReturn(search);
+        when(search.toArrayList()).thenReturn(new ArrayList<>());
+
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<ScopeFactoryImpl> ignored = mockConstruction(ScopeFactoryImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            // The subtype is a value, so a colon in it is escaped rather than starting a second field.
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, "odd:type", null, null, null, null, null);
+            verify(utils).addScopeToLuceneQuery(any(), eq("type:odd\\:type"));
+
+            // With no subtype the query is the only part, so it reaches Polarion unbracketed and
+            // addScopeToLuceneQuery is what groups it.
+            polarionService.queryEntities("proj", PrototypeEnum.WorkItem, null, "id:1 OR id:2", null, null, null, null);
+            verify(utils).addScopeToLuceneQuery(any(), eq("id:1 OR id:2"));
         }
     }
 
