@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.4.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.3.0...v3.4.0) (2026-09-06)
+
+
+### Features
+
+* upgrade authorization settings page where roles selection is implemented as dropdowns instead of checkboxes ([#230](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/230)) ([9ba25cc](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/9ba25cc1a5e752255082f7685de2e1cad5025cba))
+
+
+### Bug Fixes
+
+* **deps:** update dependency @types/react-dom to v19.2.7 ([#237](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/237)) ([8c42108](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/8c4210833fcd4b967e847e329a4d5ab0564dfd4c))
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v16.1.0 ([#234](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/234)) ([b79999c](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/b79999c9f28279f9c44c242f9e68f9278038fcd6))
+* **deps:** update dependency globals to v17.12.0 ([#235](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/235)) ([c2dfcf5](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/c2dfcf5643b05497726c30c3be5e2c021398c9f3))
+* **deps:** update dependency typescript-eslint to v8.69.0 ([#232](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/232)) ([ec0f960](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/ec0f960e8e75e560aeff4bb2d3198ea3825fb49b))
+
 ## [3.3.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.2.0...v3.3.0) (2026-08-21)
 
 
