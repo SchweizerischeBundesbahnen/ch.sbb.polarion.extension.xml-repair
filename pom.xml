@@ -51,7 +51,6 @@
 
         <web.app.name>${maven-jar-plugin.Extension-Context}</web.app.name>
 
-        <wiremock.version>3.13.1</wiremock.version>
         <slf4j-api.version>2.0.18</slf4j-api.version>
 
     </properties>
