@@ -1,4 +1,4 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useId, useState } from 'react';
 import { hasSubitems, issueGroup, itemKey, subitemKey } from '../services/scanEntities';
 import type { Repairer, ScanEntity, ScanResult } from '../types';
 import IssueList from './IssueList';
@@ -77,6 +77,11 @@ export default function ResultsTable({
   someItemsSelected,
   terms = DEFAULT_RESULTS_TERMS,
 }: ResultsTableProps) {
+  // The prefix for the warning-popup ids. Not built from the entity key: that is
+  // `${projectId}-${space}-${entityId}`, and a Polarion document name routinely holds a blank, while
+  // aria-describedby is a blank-separated list of ids. Such a reference resolves to nothing.
+  const tableId = useId();
+
   const visibleIssueCount = (entity: ScanEntity): number =>
     entity.issues.filter((iss) => !hiddenRepairers.has(issueGroup(iss))).length;
   const visibleIssueIndices = (entity: ScanEntity): number[] => {
@@ -232,7 +237,7 @@ export default function ResultsTable({
             </tr>
           </thead>
           <tbody>
-            {result.items.filter(itemIsVisible).map((item) => {
+            {result.items.filter(itemIsVisible).map((item, itemIndex) => {
               const entityKey = itemKey(item);
               const isCollection = hasSubitems(item);
               const issueCount = isCollection ? visibleIssuesInItem(item) : visibleIssueCount(item);
@@ -305,10 +310,10 @@ export default function ResultsTable({
                           className="warning-icon"
                           tabIndex={0}
                           aria-label={`Warnings for ${item.entityId}`}
-                          aria-describedby={`${entityKey}-warnings`}
+                          aria-describedby={`${tableId}-warn-${itemIndex}`}
                         >
                           &#9888;
-                          <span className="warning-popup" id={`${entityKey}-warnings`} role="tooltip">
+                          <span className="warning-popup" id={`${tableId}-warn-${itemIndex}`} role="tooltip">
                             {item.warnings.map((w, i) => (
                               <span key={i} className="warning-popup-item">
                                 {w}
@@ -361,7 +366,7 @@ export default function ResultsTable({
 
                   {isExpanded &&
                     isCollection &&
-                    item.subitems.filter(subitemIsVisible).map((sub) => {
+                    item.subitems.filter(subitemIsVisible).map((sub, subIndex) => {
                       const subKey = subitemKey(entityKey, sub);
                       const subVisibleCount = visibleIssueCount(sub);
                       const subHasIssues = subVisibleCount > 0;
@@ -405,10 +410,14 @@ export default function ResultsTable({
                                   className="warning-icon"
                                   tabIndex={0}
                                   aria-label={`Warnings for ${sub.entityId}`}
-                                  aria-describedby={`${subKey}-warnings`}
+                                  aria-describedby={`${tableId}-warn-${itemIndex}-${subIndex}`}
                                 >
                                   &#9888;
-                                  <span className="warning-popup" id={`${subKey}-warnings`} role="tooltip">
+                                  <span
+                                    className="warning-popup"
+                                    id={`${tableId}-warn-${itemIndex}-${subIndex}`}
+                                    role="tooltip"
+                                  >
                                     {sub.warnings.map((w, i) => (
                                       <span key={i} className="warning-popup-item">
                                         {w}

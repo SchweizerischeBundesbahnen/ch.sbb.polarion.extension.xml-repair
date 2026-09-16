@@ -197,6 +197,25 @@ describe('ResultsTable collections', () => {
   });
 });
 
+describe('ResultsTable warning markers', () => {
+  it('points the marker at a popup that exists, even where the entity name holds a blank', async () => {
+    // aria-describedby is a blank-separated list of ids, and a Polarion document name routinely holds
+    // a blank, so an id built from the entity key would resolve to nothing at all.
+    const RESULT = {
+      report: 'Scanned 1 document',
+      items: [sub('Catalog Specification', { space: 'Specification', warnings: ['an outdated attribute'] })],
+    } as ScanResult;
+    render(<Harness result={RESULT} />);
+    await vi.waitFor(() => expect(document.querySelector('.warning-icon')).not.toBeNull());
+
+    const marker = document.querySelector('.warning-icon')!;
+    const described = marker.getAttribute('aria-describedby')!;
+    expect(described).not.toContain(' ');
+    expect(document.getElementById(described)).not.toBeNull();
+    expect(document.getElementById(described)!.textContent).toContain('an outdated attribute');
+  });
+});
+
 describe('ResultsTable expand-all controls', () => {
   const expandAll = () =>
     Array.from(document.querySelectorAll<HTMLButtonElement>('.expand-all-btn')).find(
