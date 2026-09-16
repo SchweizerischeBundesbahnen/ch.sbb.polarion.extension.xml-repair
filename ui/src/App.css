@@ -383,12 +383,15 @@
   appearance: none;
 }
 
-.expand-all-btn:hover:not(.disabled) {
+.expand-all-btn:hover:not(.disabled):not([aria-disabled='true']) {
   color: #333;
 }
 
+/* aria-disabled rather than disabled: a button that goes disabled in the same render as its own
+   click hands the keyboard user's focus back to <body>. The click guard does the refusing. */
 .expand-all-btn.disabled,
-.expand-all-btn:disabled {
+.expand-all-btn:disabled,
+.expand-all-btn[aria-disabled='true'] {
   color: #ccc;
   cursor: default;
 }

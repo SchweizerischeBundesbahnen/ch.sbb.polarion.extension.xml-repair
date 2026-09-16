@@ -203,21 +203,25 @@ export default function ResultsTable({
                       <span className="expand-all-controls">
                         <button
                           type="button"
-                          className={`expand-all-btn${allExpanded ? ' disabled' : ''}`}
+                          className={`expand-all-btn${allExpanded || batchRepairing ? ' disabled' : ''}`}
                           title="Expand all"
                           aria-label="Expand all"
-                          disabled={allExpanded}
-                          onClick={() => onExpandAll(allExpandableKeys)}
+                          aria-disabled={allExpanded || batchRepairing}
+                          onClick={() => {
+                            if (!allExpanded && !batchRepairing) onExpandAll(allExpandableKeys);
+                          }}
                         >
                           &#9662;
                         </button>
                         <button
                           type="button"
-                          className={`expand-all-btn${noneExpanded ? ' disabled' : ''}`}
+                          className={`expand-all-btn${noneExpanded || batchRepairing ? ' disabled' : ''}`}
                           title="Collapse all"
                           aria-label="Collapse all"
-                          disabled={noneExpanded}
-                          onClick={onCollapseAll}
+                          aria-disabled={noneExpanded || batchRepairing}
+                          onClick={() => {
+                            if (!noneExpanded && !batchRepairing) onCollapseAll();
+                          }}
                         >
                           &#9652;
                         </button>
@@ -297,9 +301,14 @@ export default function ResultsTable({
                     >
                       {issueCount}
                       {item.warnings && item.warnings.length > 0 && (
-                        <span className="warning-icon" tabIndex={0} aria-label="Warnings">
+                        <span
+                          className="warning-icon"
+                          tabIndex={0}
+                          aria-label={`Warnings for ${item.entityId}`}
+                          aria-describedby={`${entityKey}-warnings`}
+                        >
                           &#9888;
-                          <span className="warning-popup">
+                          <span className="warning-popup" id={`${entityKey}-warnings`} role="tooltip">
                             {item.warnings.map((w, i) => (
                               <span key={i} className="warning-popup-item">
                                 {w}
@@ -392,9 +401,14 @@ export default function ResultsTable({
                             >
                               {subVisibleCount}
                               {sub.warnings && sub.warnings.length > 0 && (
-                                <span className="warning-icon" tabIndex={0} aria-label="Warnings">
+                                <span
+                                  className="warning-icon"
+                                  tabIndex={0}
+                                  aria-label={`Warnings for ${sub.entityId}`}
+                                  aria-describedby={`${subKey}-warnings`}
+                                >
                                   &#9888;
-                                  <span className="warning-popup">
+                                  <span className="warning-popup" id={`${subKey}-warnings`} role="tooltip">
                                     {sub.warnings.map((w, i) => (
                                       <span key={i} className="warning-popup-item">
                                         {w}

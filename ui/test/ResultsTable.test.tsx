@@ -73,11 +73,13 @@ function Harness({
   hideValid = false,
   initialExpanded = [],
   terms,
+  batchRepairing = false,
 }: {
   result: ScanResult;
   hideValid?: boolean;
   initialExpanded?: string[];
   terms?: ResultsTerms;
+  batchRepairing?: boolean;
 }) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(initialExpanded));
   const [hiddenRepairers, setHiddenRepairers] = useState<Set<string>>(new Set());
@@ -98,7 +100,7 @@ function Harness({
       selectedIssues={new Map()}
       expandedRows={expandedRows}
       repairingEntity={null}
-      batchRepairing={false}
+      batchRepairing={batchRepairing}
       onToggleEntitySelection={() => {}}
       onToggleCollectionSelection={() => {}}
       onToggleIssueSelection={() => {}}
@@ -192,6 +194,30 @@ describe('ResultsTable collections', () => {
 
     byTitle('Collapse all')!.click();
     await vi.waitFor(() => expect(document.querySelectorAll('.expand-row').length).toBe(0));
+  });
+});
+
+describe('ResultsTable expand-all controls', () => {
+  const expandAll = () =>
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.expand-all-btn')).find(
+      (b) => b.getAttribute('aria-label') === 'Expand all',
+    )!;
+
+  it('refuses to expand while a batch repair holds the table, which pointer-events alone never did', async () => {
+    render(<Harness result={COLLECTION_RESULT} batchRepairing />);
+    await vi.waitFor(() => expect(expandAll()).not.toBeUndefined());
+    expect(expandAll().getAttribute('aria-disabled')).toBe('true');
+
+    expandAll().click();
+    expect(document.querySelectorAll('tr.subitem-row').length).toBe(0);
+  });
+
+  it('keeps the control focusable once it has nothing left to do, rather than dropping focus to body', async () => {
+    render(<Harness result={COLLECTION_RESULT} initialExpanded={[COLLECTION_KEY]} />);
+    await vi.waitFor(() => expect(subitemRows()).toBe(4));
+    // A real `disabled` here would have handed focus back to <body> in the same render as the click.
+    expandAll().focus();
+    expect(document.activeElement).toBe(expandAll());
   });
 });
 
