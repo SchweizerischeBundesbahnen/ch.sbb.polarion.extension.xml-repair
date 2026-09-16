@@ -11,6 +11,11 @@ interface IssueListProps {
   disabled: boolean;
   disabledTitle?: string;
   className?: string;
+  /**
+   * The accessible name of one issue's checkbox. Passed in because the wording is the caller's:
+   * the Purge page lists outdated attributes to purge, not issues to repair.
+   */
+  selectLabel?: (issueDescription: string) => string;
 }
 
 export default function IssueList({
@@ -22,6 +27,7 @@ export default function IssueList({
   disabled,
   disabledTitle,
   className,
+  selectLabel = (issueDescription) => `Select issue for repair: ${issueDescription}`,
 }: IssueListProps) {
   return (
     <ul className={`issue-list${className ? ` ${className}` : ''}`}>
@@ -42,6 +48,7 @@ export default function IssueList({
                 onChange={() => onToggle(i)}
                 disabled={disabled}
                 title={disabled ? disabledTitle : undefined}
+                aria-label={selectLabel(issue.description)}
               />
             )}
             <span>

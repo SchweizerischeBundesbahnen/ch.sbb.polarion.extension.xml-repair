@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
-import ResultsTable from '../src/components/ResultsTable';
+import ResultsTable, { type ResultsTerms } from '../src/components/ResultsTable';
+import { itemKey } from '../src/services/scanEntities';
 import type { ScanEntity, ScanResult } from '../src/types';
 import { REPAIRERS } from './fixtures';
 
@@ -71,10 +72,12 @@ function Harness({
   result,
   hideValid = false,
   initialExpanded = [],
+  terms,
 }: {
   result: ScanResult;
   hideValid?: boolean;
   initialExpanded?: string[];
+  terms?: ResultsTerms;
 }) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(initialExpanded));
   const [hiddenRepairers, setHiddenRepairers] = useState<Set<string>>(new Set());
@@ -110,6 +113,7 @@ function Harness({
       onToggleSelectAll={() => {}}
       onExpandAll={(keys) => setExpandedRows(new Set(keys))}
       onCollapseAll={() => setExpandedRows(new Set())}
+      terms={terms}
       allItemsSelected={false}
       someItemsSelected={false}
     />
@@ -188,6 +192,39 @@ describe('ResultsTable collections', () => {
 
     byTitle('Collapse all')!.click();
     await vi.waitFor(() => expect(document.querySelectorAll('.expand-row').length).toBe(0));
+  });
+});
+
+describe('ResultsTable selection checkbox names', () => {
+  // The Purge page renders this same table with its own wording. A checkbox that always said
+  // "for repair" would tell a screen reader user the wrong action on that page.
+  const PURGE_TERMS: ResultsTerms = {
+    issueSingular: 'outdated attribute',
+    issuePlural: 'outdated attributes',
+    issueColumn: 'Attributes',
+    emptyMessage: 'No outdated attributes found.',
+    groupColumn: 'Attribute',
+    selectAction: 'purge',
+  };
+
+  const labels = () =>
+    Array.from(document.querySelectorAll('input[type=checkbox]')).map((c) => c.getAttribute('aria-label'));
+
+  it('names every checkbox after the action the page performs', async () => {
+    render(<Harness result={FLAT_RESULT} initialExpanded={[itemKey(FLAT_RESULT.items[0])]} />);
+    await vi.waitFor(() => expect(document.querySelector('.issue-list')).not.toBeNull());
+    expect(labels()).toContain('Select all items for repair');
+    expect(labels()).toContain('Select EL-100 for repair');
+    expect(labels()).toContain('Select issue for repair: a');
+  });
+
+  it('follows the wording of the caller, so the Purge page never says "repair"', async () => {
+    render(<Harness result={FLAT_RESULT} terms={PURGE_TERMS} initialExpanded={[itemKey(FLAT_RESULT.items[0])]} />);
+    await vi.waitFor(() => expect(document.querySelector('.issue-list')).not.toBeNull());
+    expect(labels()).toContain('Select all items for purge');
+    expect(labels()).toContain('Select EL-100 for purge');
+    expect(labels()).toContain('Select outdated attribute for purge: a');
+    expect(labels().join(' ')).not.toContain('repair');
   });
 });
 
