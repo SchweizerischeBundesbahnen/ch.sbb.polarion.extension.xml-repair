@@ -364,6 +364,8 @@
   line-height: 0;
 }
 
+/* A <button>, so expanding the whole tree is not a pointer-only action. The properties a button
+   would otherwise take from the user agent are stated here. */
 .expand-all-btn {
   display: inline-block;
   font-size: 20px;
@@ -372,13 +374,21 @@
   cursor: pointer;
   user-select: none;
   padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  text-align: inherit;
+  appearance: none;
 }
 
 .expand-all-btn:hover:not(.disabled) {
   color: #333;
 }
 
-.expand-all-btn.disabled {
+.expand-all-btn.disabled,
+.expand-all-btn:disabled {
   color: #ccc;
   cursor: default;
 }
@@ -396,6 +406,8 @@
   margin-right: 2px;
 }
 
+/* A <button> where it toggles a row and a <span> where it is only a marker, so the same reset
+   applies here. */
 .expand-arrow {
   float: right;
   font-size: 20px;
@@ -403,6 +415,14 @@
   vertical-align: middle;
   color: #ddd;
   user-select: none;
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-weight: inherit;
+  font-style: inherit;
+  text-align: inherit;
+  appearance: none;
 }
 
 .expand-arrow.clickable {
@@ -642,7 +662,9 @@
   color: #664d03;
 }
 
-.warning-icon:hover .warning-popup {
+/* Hover is not the only way in: the marker takes focus, so the keyboard reaches the same warnings. */
+.warning-icon:hover .warning-popup,
+.warning-icon:focus-within .warning-popup {
   display: flex;
   flex-direction: column;
   gap: 4px;

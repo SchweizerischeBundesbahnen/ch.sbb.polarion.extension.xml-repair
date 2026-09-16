@@ -201,24 +201,26 @@ export default function ResultsTable({
                     const noneExpanded = expandedRows.size === 0;
                     return (
                       <span className="expand-all-controls">
-                        <span
+                        <button
+                          type="button"
                           className={`expand-all-btn${allExpanded ? ' disabled' : ''}`}
                           title="Expand all"
-                          onClick={() => {
-                            if (!allExpanded) onExpandAll(allExpandableKeys);
-                          }}
+                          aria-label="Expand all"
+                          disabled={allExpanded}
+                          onClick={() => onExpandAll(allExpandableKeys)}
                         >
                           &#9662;
-                        </span>
-                        <span
+                        </button>
+                        <button
+                          type="button"
                           className={`expand-all-btn${noneExpanded ? ' disabled' : ''}`}
                           title="Collapse all"
-                          onClick={() => {
-                            if (!noneExpanded) onCollapseAll();
-                          }}
+                          aria-label="Collapse all"
+                          disabled={noneExpanded}
+                          onClick={onCollapseAll}
                         >
                           &#9652;
-                        </span>
+                        </button>
                       </span>
                     );
                   })()}
@@ -295,7 +297,7 @@ export default function ResultsTable({
                     >
                       {issueCount}
                       {item.warnings && item.warnings.length > 0 && (
-                        <span className="warning-icon">
+                        <span className="warning-icon" tabIndex={0} aria-label="Warnings">
                           &#9888;
                           <span className="warning-popup">
                             {item.warnings.map((w, i) => (
@@ -310,13 +312,22 @@ export default function ResultsTable({
                     <td className="entity-cell">
                       {isRepairing && <span className="spinner spinner-sm" />}
                       <EntityRef html={item.fields?.['$_self']?.renderedValue} fallback={item.entityId} />
-                      <span
-                        className={`expand-arrow${hasIssues ? ' clickable' : ''}`}
-                        title={hasIssues ? (isExpanded ? 'Collapse' : 'Expand') : ''}
-                        onClick={() => hasIssues && onToggleExpanded(entityKey)}
-                      >
-                        {isExpanded ? '\u25B4' : '\u25BE'}
-                      </span>
+                      {hasIssues ? (
+                        <button
+                          type="button"
+                          className="expand-arrow clickable"
+                          title={isExpanded ? 'Collapse' : 'Expand'}
+                          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.entityId}`}
+                          aria-expanded={isExpanded}
+                          onClick={() => onToggleExpanded(entityKey)}
+                        >
+                          {isExpanded ? '\u25B4' : '\u25BE'}
+                        </button>
+                      ) : (
+                        <span className="expand-arrow" aria-hidden="true">
+                          {isExpanded ? '\u25B4' : '\u25BE'}
+                        </span>
+                      )}
                     </td>
                   </tr>
 
@@ -381,7 +392,7 @@ export default function ResultsTable({
                             >
                               {subVisibleCount}
                               {sub.warnings && sub.warnings.length > 0 && (
-                                <span className="warning-icon">
+                                <span className="warning-icon" tabIndex={0} aria-label="Warnings">
                                   &#9888;
                                   <span className="warning-popup">
                                     {sub.warnings.map((w, i) => (
@@ -396,13 +407,22 @@ export default function ResultsTable({
                             <td className="entity-cell subitem-entity">
                               {subIsRepairing && <span className="spinner spinner-sm" />}
                               <EntityRef html={sub.fields?.['$_self']?.renderedValue} fallback={sub.entityId} />
-                              <span
-                                className={`expand-arrow${subHasIssues ? ' clickable' : ''}`}
-                                title={subHasIssues ? (subIsExpanded ? 'Collapse' : 'Expand') : ''}
-                                onClick={() => subHasIssues && onToggleExpanded(subKey)}
-                              >
-                                {subIsExpanded ? '\u25B4' : '\u25BE'}
-                              </span>
+                              {subHasIssues ? (
+                                <button
+                                  type="button"
+                                  className="expand-arrow clickable"
+                                  title={subIsExpanded ? 'Collapse' : 'Expand'}
+                                  aria-label={`${subIsExpanded ? 'Collapse' : 'Expand'} ${sub.entityId}`}
+                                  aria-expanded={subIsExpanded}
+                                  onClick={() => onToggleExpanded(subKey)}
+                                >
+                                  {subIsExpanded ? '\u25B4' : '\u25BE'}
+                                </button>
+                              ) : (
+                                <span className="expand-arrow" aria-hidden="true">
+                                  {subIsExpanded ? '\u25B4' : '\u25BE'}
+                                </span>
+                              )}
                             </td>
                           </tr>
                           {subIsExpanded && subHasIssues && (
