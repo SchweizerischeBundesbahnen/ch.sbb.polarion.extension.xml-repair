@@ -21,6 +21,8 @@ export interface ResultsTerms {
   issueColumn: string;
   emptyMessage: string;
   groupColumn: string;
+  /** What ticking a row queues it for. Used in the accessible names of the selection checkboxes. */
+  selectAction: string;
 }
 
 export const DEFAULT_RESULTS_TERMS: ResultsTerms = {
@@ -29,6 +31,7 @@ export const DEFAULT_RESULTS_TERMS: ResultsTerms = {
   issueColumn: 'Issues',
   emptyMessage: 'No issues found.',
   groupColumn: 'Repairer',
+  selectAction: 'repair',
 };
 
 interface ResultsTableProps {
@@ -173,6 +176,7 @@ export default function ResultsTable({
                     checked={allItemsSelected}
                     onChange={onToggleSelectAll}
                     disabled={batchRepairing}
+                    aria-label={`Select all items for ${terms.selectAction}`}
                   />
                 )}
               </th>
@@ -278,6 +282,7 @@ export default function ResultsTable({
                           }
                           disabled={checkboxDisabled}
                           title={itemRevisioned ? REVISIONED_TOOLTIP : undefined}
+                          aria-label={`Select ${item.entityId} for ${terms.selectAction}`}
                         />
                       )}
                       {item.repaired && <span className="fixed-badge">&#10003;</span>}
@@ -319,6 +324,9 @@ export default function ResultsTable({
                     <tr className="expand-row">
                       <td colSpan={3}>
                         <IssueList
+                          selectLabel={(description) =>
+                            `Select ${terms.issueSingular} for ${terms.selectAction}: ${description}`
+                          }
                           issues={item.issues}
                           selected={selectedIssues.get(entityKey) || new Set()}
                           repairers={repairers}
@@ -360,6 +368,7 @@ export default function ResultsTable({
                                   onChange={() => onToggleEntitySelection(subKey, subVisibleIdx)}
                                   disabled={batchRepairing || !subHasIssues || !!sub.revision}
                                   title={sub.revision ? REVISIONED_TOOLTIP : undefined}
+                                  aria-label={`Select ${sub.entityId} for ${terms.selectAction}`}
                                 />
                               )}
                               {sub.repaired && <span className="fixed-badge">&#10003;</span>}
@@ -400,6 +409,9 @@ export default function ResultsTable({
                             <tr className="expand-row">
                               <td colSpan={3}>
                                 <IssueList
+                                  selectLabel={(description) =>
+                                    `Select ${terms.issueSingular} for ${terms.selectAction}: ${description}`
+                                  }
                                   issues={sub.issues}
                                   selected={subSelected}
                                   repairers={repairers}

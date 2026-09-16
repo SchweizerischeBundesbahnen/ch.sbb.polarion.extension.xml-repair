@@ -25,6 +25,7 @@ const RESULTS_TERMS: ResultsTerms = {
   issueColumn: 'Attributes',
   emptyMessage: 'No outdated attributes found.',
   groupColumn: 'Attribute',
+  selectAction: 'purge',
 };
 
 /**
