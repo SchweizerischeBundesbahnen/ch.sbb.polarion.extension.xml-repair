@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import App from '../src/App';
 import appIcon from '../src/assets/app-icon.svg';
 import type { EntityType } from '../src/types';
@@ -21,10 +21,16 @@ import { settleBeforeCapture, settleLayout } from './visualHelpers';
 // document repairer set behind the collapsed summary), the Advanced block expanded, the Repairers block
 // expanded (repairer cards + per-repairer settings), and the results table after a scan (items, issue
 // counts, repairer breakdown link).
+//
+// The results table is captured in four states, because its controls are keyboard operable and the look
+// of each state is what the pixels have to hold: collapsed, fully expanded with the spent Expand all
+// still focused, frozen by a batch repair, and with a warning popup opened by focus alone.
 
 const origUrl = window.location.pathname + window.location.search;
 
-const routes = (): Route[] => [
+// `holdRepair` leaves POST /repair unsettled, so the page stays in its batch-repair state for as long
+// as a capture needs. Nothing resolves it; the test file's cleanup drops the page.
+const routes = (holdRepair = false): Route[] => [
   // Answers per entityType exactly like the backend, so switching the dropdown reloads a different list.
   { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
@@ -36,6 +42,9 @@ const routes = (): Route[] => [
     method: 'POST',
     match: /\/repair$/,
     respond: (_url, init) => {
+      if (holdRepair) {
+        return new Promise<Response>(() => {});
+      }
       const body = JSON.parse(String(init?.body));
       return jsonResponse(
         (body.issueMetaInfos as string[]).map((m) => ({ issueMetaInfo: m, success: true, warnings: [] })),
@@ -79,8 +88,8 @@ async function stubEntityIcons() {
   );
 }
 
-async function mount() {
-  installFetchMock(routes());
+async function mount(holdRepair = false) {
+  installFetchMock(routes(holdRepair));
   // embedded=true mirrors how the navigation extender opens the page in Polarion: the PageLayout title
   // shows but the dev-only "Overview" back link is hidden, so the snapshot captures the production look.
   window.history.replaceState({}, '', '?feature=repair&projectId=elibrary&embedded=true');
@@ -122,6 +131,21 @@ async function captureApp(name: string) {
   await page.viewport(1280, Math.ceil(app.scrollHeight) + 40);
   await settleBeforeCapture();
   await expect(page.elementLocator(app)).toMatchScreenshot(name);
+}
+
+// Runs the scan every results shot starts from.
+async function scan() {
+  Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+    .find((b) => (b.textContent ?? '').trim() === 'Scan')!
+    .click();
+  await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull());
+}
+
+// The two expand-all controls carry the same class and differ only by their accessible name.
+function expandAllControl(label: string): HTMLButtonElement {
+  return Array.from(document.querySelectorAll<HTMLButtonElement>('.expand-all-btn')).find(
+    (b) => b.getAttribute('aria-label') === label,
+  )!;
 }
 
 describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
@@ -193,13 +217,63 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
   });
 
   it('results (issues table + breakdown)', async () => {
+    // Every row collapsed: the arrow of a row with issues (a button) beside the arrow of one without
+    // (a span, out of the tab order), the warning marker on EL-100, and Collapse all already spent.
     await mount();
-    Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
-      .find((b) => (b.textContent ?? '').trim() === 'Scan')!
-      .click();
-    await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull());
+    await scan();
     document.querySelector<HTMLButtonElement>('.breakdown-toggle')!.click();
     await vi.waitFor(() => expect(document.querySelector('.breakdown-table')).not.toBeNull());
     await captureApp('repair-results');
+  });
+
+  it('results expanded from the keyboard (open rows, sub-item rows, Expand all keeping its focus)', async () => {
+    // What the collapsed shot cannot hold: the flipped arrows, the issue lists behind them, and the
+    // sub-item rows with arrows of their own. Expand all is activated with Enter here, because the
+    // state worth locking is the one after that: spent, and still holding the focus ring. A real
+    // `disabled` would have handed focus to <body> in the same render as the keypress.
+    await mount();
+    await scan();
+    const expandAll = expandAllControl('Expand all');
+    expandAll.focus();
+    await userEvent.keyboard('{Enter}');
+    await vi.waitFor(() => expect(document.querySelectorAll('tr.subitem-row').length).toBeGreaterThan(0));
+    expect(expandAll.getAttribute('aria-disabled')).toBe('true');
+    expect(document.activeElement).toBe(expandAll);
+    // Asserted rather than assumed: without it the reference would lock a ring that is not there and
+    // claim the keyboard affordance is visible.
+    expect(expandAll.matches(':focus-visible')).toBe(true);
+    await captureApp('repair-results-expanded');
+  });
+
+  it('results frozen by a batch repair (the disabled look the mouse-only guard never had)', async () => {
+    // `pointer-events: none` dimmed nothing, so while the controls were spans this state had no look of
+    // its own. They are buttons now and take the disabled look from aria-disabled, which is what this
+    // shot holds: both expand-all controls greyed, every checkbox disabled, the table behind them.
+    await mount(true);
+    await scan();
+    document.querySelector<HTMLInputElement>('.issues-table thead .col-checkbox input')!.click();
+    const repair = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+      (b.textContent ?? '').startsWith('Repair'),
+    )!;
+    await vi.waitFor(() => expect(repair.disabled).toBe(false));
+    repair.click();
+    await vi.waitFor(() => expect(document.querySelector('.issues-table.disabled')).not.toBeNull());
+    expect(expandAllControl('Expand all').getAttribute('aria-disabled')).toBe('true');
+    expect(expandAllControl('Collapse all').getAttribute('aria-disabled')).toBe('true');
+    await captureApp('repair-results-repairing');
+  });
+
+  it('results with the warning popup open on focus (not hover alone)', async () => {
+    // The popup is display:none until :hover or :focus-within, and only the pointer used to reach it.
+    // Focusing the marker is the whole fix, so the shot is taken with focus on it and the pointer
+    // parked elsewhere: what it shows is what the keyboard now reveals.
+    await mount();
+    await scan();
+    const marker = document.querySelector<HTMLElement>('.warning-icon')!;
+    marker.focus();
+    expect(document.activeElement).toBe(marker);
+    const popup = document.querySelector<HTMLElement>('.warning-popup')!;
+    await vi.waitFor(() => expect(getComputedStyle(popup).display).toBe('flex'));
+    await captureApp('repair-results-warning');
   });
 });
