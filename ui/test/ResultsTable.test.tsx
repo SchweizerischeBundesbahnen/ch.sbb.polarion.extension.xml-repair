@@ -73,11 +73,13 @@ function Harness({
   hideValid = false,
   initialExpanded = [],
   terms,
+  batchRepairing = false,
 }: {
   result: ScanResult;
   hideValid?: boolean;
   initialExpanded?: string[];
   terms?: ResultsTerms;
+  batchRepairing?: boolean;
 }) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set(initialExpanded));
   const [hiddenRepairers, setHiddenRepairers] = useState<Set<string>>(new Set());
@@ -98,7 +100,7 @@ function Harness({
       selectedIssues={new Map()}
       expandedRows={expandedRows}
       repairingEntity={null}
-      batchRepairing={false}
+      batchRepairing={batchRepairing}
       onToggleEntitySelection={() => {}}
       onToggleCollectionSelection={() => {}}
       onToggleIssueSelection={() => {}}
@@ -192,6 +194,61 @@ describe('ResultsTable collections', () => {
 
     byTitle('Collapse all')!.click();
     await vi.waitFor(() => expect(document.querySelectorAll('.expand-row').length).toBe(0));
+  });
+});
+
+describe('ResultsTable warning markers', () => {
+  it('points the marker at a popup that exists, even where the entity name holds a blank', async () => {
+    // aria-describedby is a blank-separated list of ids, and a Polarion document name routinely holds
+    // a blank, so an id built from the entity key would resolve to nothing at all.
+    const RESULT = {
+      report: 'Scanned 1 document',
+      items: [sub('Catalog Specification', { space: 'Specification', warnings: ['an outdated attribute'] })],
+    } as ScanResult;
+    render(<Harness result={RESULT} />);
+    await vi.waitFor(() => expect(document.querySelector('.warning-icon')).not.toBeNull());
+
+    const marker = document.querySelector('.warning-icon')!;
+    const described = marker.getAttribute('aria-describedby')!;
+    expect(described).not.toContain(' ');
+    expect(document.getElementById(described)).not.toBeNull();
+    expect(document.getElementById(described)!.textContent).toContain('an outdated attribute');
+  });
+});
+
+describe('ResultsTable expand-all controls', () => {
+  const expandAll = () =>
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.expand-all-btn')).find(
+      (b) => b.getAttribute('aria-label') === 'Expand all',
+    )!;
+
+  it('refuses to expand while a batch repair holds the table, which pointer-events alone never did', async () => {
+    render(<Harness result={COLLECTION_RESULT} batchRepairing />);
+    await vi.waitFor(() => expect(expandAll()).not.toBeUndefined());
+    expect(expandAll().getAttribute('aria-disabled')).toBe('true');
+
+    expandAll().click();
+    expect(document.querySelectorAll('tr.subitem-row').length).toBe(0);
+  });
+
+  it('keeps the control focusable once it has nothing left to do, rather than dropping focus to body', async () => {
+    render(<Harness result={COLLECTION_RESULT} initialExpanded={[COLLECTION_KEY]} />);
+    await vi.waitFor(() => expect(subitemRows()).toBe(4));
+    // A real `disabled` here would have handed focus back to <body> in the same render as the click.
+    expandAll().focus();
+    expect(document.activeElement).toBe(expandAll());
+  });
+
+  it('refuses the per-row arrow too, so a frozen table has no keyboard way in at all', async () => {
+    // The arrows are buttons now, which took them out of reach of `pointer-events: none`. Without
+    // their own guard they were the last operable tab stops in a table nothing else can touch.
+    render(<Harness result={COLLECTION_RESULT} batchRepairing />);
+    const arrow = () => document.querySelector<HTMLButtonElement>('.expand-arrow.clickable')!;
+    await vi.waitFor(() => expect(arrow()).not.toBeNull());
+    expect(arrow().getAttribute('aria-disabled')).toBe('true');
+
+    arrow().click();
+    expect(subitemRows()).toBe(0);
   });
 });
 
