@@ -238,6 +238,18 @@ describe('ResultsTable expand-all controls', () => {
     expandAll().focus();
     expect(document.activeElement).toBe(expandAll());
   });
+
+  it('refuses the per-row arrow too, so a frozen table has no keyboard way in at all', async () => {
+    // The arrows are buttons now, which took them out of reach of `pointer-events: none`. Without
+    // their own guard they were the last operable tab stops in a table nothing else can touch.
+    render(<Harness result={COLLECTION_RESULT} batchRepairing />);
+    const arrow = () => document.querySelector<HTMLButtonElement>('.expand-arrow.clickable')!;
+    await vi.waitFor(() => expect(arrow()).not.toBeNull());
+    expect(arrow().getAttribute('aria-disabled')).toBe('true');
+
+    arrow().click();
+    expect(subitemRows()).toBe(0);
+  });
 });
 
 describe('ResultsTable selection checkbox names', () => {

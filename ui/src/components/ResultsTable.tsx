@@ -333,7 +333,10 @@ export default function ResultsTable({
                           title={isExpanded ? 'Collapse' : 'Expand'}
                           aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.entityId}`}
                           aria-expanded={isExpanded}
-                          onClick={() => onToggleExpanded(entityKey)}
+                          aria-disabled={batchRepairing}
+                          onClick={() => {
+                            if (!batchRepairing) onToggleExpanded(entityKey);
+                          }}
                         >
                           {isExpanded ? '\u25B4' : '\u25BE'}
                         </button>
@@ -437,7 +440,10 @@ export default function ResultsTable({
                                   title={subIsExpanded ? 'Collapse' : 'Expand'}
                                   aria-label={`${subIsExpanded ? 'Collapse' : 'Expand'} ${sub.entityId}`}
                                   aria-expanded={subIsExpanded}
-                                  onClick={() => onToggleExpanded(subKey)}
+                                  aria-disabled={batchRepairing}
+                                  onClick={() => {
+                                    if (!batchRepairing) onToggleExpanded(subKey);
+                                  }}
                                 >
                                   {subIsExpanded ? '\u25B4' : '\u25BE'}
                                 </button>
