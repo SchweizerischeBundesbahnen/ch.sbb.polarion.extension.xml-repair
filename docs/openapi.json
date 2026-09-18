@@ -232,6 +232,41 @@
         ]
       }
     },
+    "/api/link-roles": {
+      "get": {
+        "operationId": "listLinkRoles",
+        "parameters": [
+          {
+            "description": "Project ID",
+            "in": "query",
+            "name": "projectId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TypeInfo"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successfully retrieved the list of link roles"
+          }
+        },
+        "summary": "Get list of work item link roles for the specified project",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
     "/api/readme": {
       "get": {
         "operationId": "getDocumentation",

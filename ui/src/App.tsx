@@ -6,9 +6,9 @@ import Landing from './pages/Landing';
 /**
  * Top-level feature router. There is a single index.html / bundle; the page to show is chosen from the
  * `feature` query parameter, e.g. `?feature=general-checks`. Every product surface has an explicit feature id:
- * XmlRepairNavigationExtender opens the node's entry page as `?feature=home&projectId=<id>` and its two root
- * nodes open `?feature=general-checks` / `?feature=purge-outdated-data`, while hivemodule.xml points the admin
- * extenders at `?feature=about` / `?feature=authorization`.
+ * XmlRepairNavigationExtender opens the node's entry page as `?feature=home&projectId=<id>` and its root nodes
+ * open `?feature=general-checks` / `?feature=structural-link` / `?feature=purge-outdated-data`, while
+ * hivemodule.xml points the admin extenders at `?feature=about` / `?feature=authorization`.
  *
  * A missing or unknown feature (including the bare root `/`) renders the dev-only Landing stub - a scope
  * picker plus links to every feature - so the whole app can be exercised in `vite dev` without Polarion.

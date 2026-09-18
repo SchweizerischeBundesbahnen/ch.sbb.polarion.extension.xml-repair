@@ -4,6 +4,7 @@ import ch.sbb.polarion.extension.xml_repair.repairers.IRepairer;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,6 +49,16 @@ public record UserConfigs(Map<String, Object> configs) {
      */
     public <T extends IRepairer> boolean getBoolean(Class<T> repairerClass, String paramId) {
         return configs.get(repairerClass.getSimpleName()) instanceof Map<?, ?> repairerConfig && Boolean.TRUE.equals(repairerConfig.get(paramId));
+    }
+
+    /**
+     * @return the string the repairer is configured with for the given parameter, or null when the parameter is
+     * absent or holds anything but a string. The map is deserialized from an unvalidated request body, so any
+     * key may hold any JSON value.
+     */
+    public <T extends IRepairer> @Nullable String getString(Class<T> repairerClass, String paramId) {
+        return configs.get(repairerClass.getSimpleName()) instanceof Map<?, ?> repairerConfig
+                && repairerConfig.get(paramId) instanceof String value ? value : null;
     }
 
     /**
