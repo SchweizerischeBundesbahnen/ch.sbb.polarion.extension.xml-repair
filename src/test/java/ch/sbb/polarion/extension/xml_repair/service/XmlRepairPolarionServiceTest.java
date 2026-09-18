@@ -16,6 +16,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.repairers.BaseRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.BrokenLinkedWorkItemsRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.IRepairer;
+import ch.sbb.polarion.extension.xml_repair.repairers.ModuleStructureLinkRoleRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.OutdatedCustomFieldsRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
@@ -49,6 +50,7 @@ import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransact
 import com.polarion.alm.shared.api.utils.collections.IterableWithSize;
 import com.polarion.alm.shared.api.utils.internal.InternalPolarionUtils;
 import com.polarion.alm.tracker.ITrackerService;
+import com.polarion.platform.persistence.IDataService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
 import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
@@ -526,8 +528,43 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(14, repairers.size());
+        // One more than a collection: only a document carries a structure link role.
+        assertEquals(15, repairers.size());
         assertTrue(containsPurgeRepairer(repairers));
+        assertTrue(repairers.stream().anyMatch(ModuleStructureLinkRoleRepairer.class::isInstance));
+    }
+
+    // ---- clearStaleCaches ----
+
+    @Test
+    void testClearStaleCachesDoesNothingWhenNothingIsStale() {
+        IDataService dataService = mock(IDataService.class);
+        lenient().when(trackerService.getDataService()).thenReturn(dataService);
+
+        // A failed repair, and a successful one that reported nothing stale.
+        polarionService.clearStaleCaches(List.of(repairResult(false), repairResult(true)));
+
+        verify(dataService, never()).clearCaches(anyCollection());
+    }
+
+    @Test
+    void testClearStaleCachesSkipsFailedRepairs() {
+        IDataService dataService = mock(IDataService.class);
+        lenient().when(trackerService.getDataService()).thenReturn(dataService);
+
+        // Whatever a failed repair collected before it gave up must not be acted on.
+        RepairResult failed = repairResult(false);
+        failed.getStaleCacheUris().add(null);
+
+        polarionService.clearStaleCaches(List.of(failed));
+
+        verify(dataService, never()).clearCaches(anyCollection());
+    }
+
+    private static RepairResult repairResult(boolean success) {
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.serialize()).thenReturn("meta");
+        return new RepairResult(metaInfo, success);
     }
 
     @Test

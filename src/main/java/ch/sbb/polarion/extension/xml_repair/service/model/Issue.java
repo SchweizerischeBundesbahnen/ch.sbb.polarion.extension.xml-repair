@@ -24,17 +24,29 @@ public class Issue {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private final String group;
+    /**
+     * A short value the results list shows in place of the issue count, for a page where counting says
+     * nothing. ModuleStructureLinkRoleRepairer sets it to the role the document currently uses, because a
+     * document either uses the selected role or does not - the count is always one.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private final String label;
     private final List<String> warnings = new ArrayList<>();
 
     public <T extends BaseRepairer> Issue(@NotNull IssueMetaInfo metaInfo, @NotNull T repairer, @NotNull String description) {
-        this(metaInfo, repairer, description, null);
+        this(metaInfo, repairer, description, null, null);
     }
 
     public <T extends BaseRepairer> Issue(@NotNull IssueMetaInfo metaInfo, @NotNull T repairer, @NotNull String description, @Nullable String group) {
+        this(metaInfo, repairer, description, group, null);
+    }
+
+    public <T extends BaseRepairer> Issue(@NotNull IssueMetaInfo metaInfo, @NotNull T repairer, @NotNull String description, @Nullable String group, @Nullable String label) {
         this.metaInfo = metaInfo;
         this.repairer = repairer.getRepairerId();
         this.description = description;
         this.group = group;
+        this.label = label;
         this.metaInfo.set(IssueMetaInfo.REPAIRER, repairer.getRepairerId());
     }
 

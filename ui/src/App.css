@@ -247,6 +247,47 @@
   margin-bottom: 16px;
 }
 
+/* Plain weight: the boxed role below carries the emphasis. */
+.existing-links-title {
+  margin-bottom: 8px;
+}
+
+/* `--sbb-control-text` rather than black: pure black reads as a second shade next to the title. */
+.existing-links-role {
+  padding: 1px 5px;
+  margin: 0 2px;
+  border: 1px solid var(--sbb-control-text);
+  border-radius: 3px;
+  background: #fff;
+  font-weight: 700;
+}
+
+/* Deliberately not `.form-row`: that rule styles every non-checkbox input as a text field, which would
+   square off the radio the shared stylesheet draws round. */
+.existing-links-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.existing-links-row:last-child {
+  margin-bottom: 0;
+}
+
+.existing-links-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.existing-links-row .searchable-dropdown {
+  flex: 1;
+  width: auto;
+}
+
 .btn {
   padding: 5px 16px;
   border: 1px solid var(--sbb-accent);
@@ -346,10 +387,16 @@
 .issues-table .col-issues {
   width: 35px;
   text-align: center;
+  /* The width above suits a count; a page showing a word there wraps its header on an empty table. */
+  white-space: nowrap;
 }
 
 .issues-table .row-fixed {
   background: #d1e7dd;
+}
+
+.issues-table .row-failed {
+  background: #ffac63;
 }
 
 .issues-table .row-repairing {

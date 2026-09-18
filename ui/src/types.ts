@@ -12,6 +12,10 @@ export interface Issue {
   // the attribute id, which is what lets the Purge page group, filter and count per attribute. Read it through
   // `issueGroup` rather than directly, so the fallback to `repairer` stays in one place.
   group?: string;
+  // Short value the results list shows in place of the issue count, absent unless the repairer sets one.
+  // ModuleStructureLinkRoleRepairer sets it to the role the document currently uses, because a document
+  // either uses the selected role or does not - the count is always one.
+  label?: string;
   warnings: string[];
   // Client-side annotation after repair
   repairResult?: RepairIssueResult;
@@ -48,6 +52,10 @@ export interface EntityRef {
 // entities (documents, collections) or a raw Lucene query. Work items only support the query.
 export type FilterMode = 'SELECTION' | 'QUERY';
 
+// Mirrors: ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs. Booleans are what the General
+// checks repairer settings send; the Structural link page sends the target role id as a string.
+export type RepairerConfigValues = Record<string, Record<string, boolean | string>>;
+
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams
 export interface ScanParams {
   projectId: string;
@@ -61,7 +69,7 @@ export interface ScanParams {
   timeout: number;
   repairers: string[];
   hideValid: boolean;
-  configs: Record<string, Record<string, boolean>>;
+  configs: RepairerConfigValues;
 }
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.BaselineInfo
@@ -73,7 +81,7 @@ export interface BaselineInfo {
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams
 export interface RepairParams {
   issueMetaInfos: string[];
-  configs: Record<string, Record<string, boolean>>;
+  configs: RepairerConfigValues;
 }
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult
@@ -112,6 +120,13 @@ export type IconSelectOption = SelectOption;
 
 // Entity subtype from Polarion enumeration API
 export interface EntitySubtype {
+  id: string;
+  name: string;
+  iconURL?: string;
+}
+
+// Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.TypeInfo, as returned by /link-roles.
+export interface LinkRole {
   id: string;
   name: string;
   iconURL?: string;

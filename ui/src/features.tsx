@@ -1,10 +1,11 @@
 import { type ComponentType, useMemo } from 'react';
 import { AuthorizationSettings, createAuthorizationService } from '@sbb-polarion/react-sbb-polarion';
-import { EXTENSION_LABEL, GENERAL_CHECKS, HOME, PURGE_OUTDATED_DATA } from './navigation';
+import { EXTENSION_LABEL, GENERAL_CHECKS, HOME, PURGE_OUTDATED_DATA, STRUCTURAL_LINK } from './navigation';
 import About from './pages/About';
 import Home from './pages/Home';
 import Purge from './pages/Purge';
 import Repair from './pages/Repair';
+import StructuralLink from './pages/StructuralLink';
 import useRemote from './services/useRemote';
 
 /** The named-settings feature the repair permissions are stored under. */
@@ -46,8 +47,8 @@ const LEGACY_FEATURE_IDS: Record<string, string> = { repair: GENERAL_CHECKS };
 /**
  * A single navigable page of the app. The `id` is what appears in the URL as `?feature=<id>` and is
  * what `hivemodule.xml` / the navigation extender point at. Keep the ids stable and aligned with the
- * extender ids: `home`, `general-checks` and `purge-outdated-data` (XmlRepairNavigationExtender and its
- * root nodes), `about` and `authorization` (hivemodule.xml).
+ * extender ids: `home`, `general-checks`, `structural-link` and `purge-outdated-data`
+ * (XmlRepairNavigationExtender and its root nodes), `about` and `authorization` (hivemodule.xml).
  * A URL that matches none of these falls back to the dev Landing (see App.tsx / findFeature).
  *
  * The three optional breadcrumb fields override what the app header shows. Only the pages that hang below the
@@ -78,6 +79,15 @@ export const FEATURES: Feature[] = [
     breadcrumbTitle: 'General checks',
     breadcrumbParent: EXTENSION_LABEL,
     breadcrumbIcon: '/polarion/xml-repair-app/ui/images/menu/16x16/general_checks.svg',
+  },
+  {
+    id: STRUCTURAL_LINK,
+    label: 'Structural link',
+    description: 'Find documents whose structure link role differs from the selected one, and change it.',
+    component: StructuralLink,
+    breadcrumbTitle: 'Structural link',
+    breadcrumbParent: EXTENSION_LABEL,
+    breadcrumbIcon: '/polarion/xml-repair-app/ui/images/menu/16x16/structural_link.svg',
   },
   {
     id: PURGE_OUTDATED_DATA,

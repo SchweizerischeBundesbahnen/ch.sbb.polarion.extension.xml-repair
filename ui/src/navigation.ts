@@ -8,13 +8,15 @@
 
 /**
  * Each id is both a `?feature=` value of this bundle and a node id on the Java side
- * (`XmlRepairNavigationExtender.HOME_FEATURE`, `.GENERAL_CHECKS` and `.PURGE_OUTDATED_DATA`). A node's
+ * (`XmlRepairNavigationExtender.HOME_FEATURE`, `.GENERAL_CHECKS`, `.STRUCTURAL_LINK` and
+ * `.PURGE_OUTDATED_DATA`). A node's
  * `getPageUrl()` puts its own id into the URL it opens, and the Home page appends one to the portal's topic path
  * to select that node in the navigation tree. The two sides therefore have to agree: `test/navigation.test.ts`
  * and `XmlRepairNavigationExtenderTest` pin the same literals from either end, so renaming one alone fails.
  */
 export const HOME = 'home';
 export const GENERAL_CHECKS = 'general-checks';
+export const STRUCTURAL_LINK = 'structural-link';
 export const PURGE_OUTDATED_DATA = 'purge-outdated-data';
 
 /**

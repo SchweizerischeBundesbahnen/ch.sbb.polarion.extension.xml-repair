@@ -1,6 +1,6 @@
 import React, { memo, useId, useState } from 'react';
 import { hasSubitems, issueGroup, itemKey, subitemKey } from '../services/scanEntities';
-import type { Repairer, ScanEntity, ScanResult } from '../types';
+import type { Issue, Repairer, ScanEntity, ScanResult } from '../types';
 import IssueList from './IssueList';
 import RepairerBreakdownTable from './RepairerBreakdownTable';
 
@@ -19,6 +19,11 @@ export interface ResultsTerms {
   issueSingular: string;
   issuePlural: string;
   issueColumn: string;
+  /**
+   * What the breakdown's own column is called. It always counts, so a page whose `issueColumn` shows something
+   * other than a count names the count here. Defaults to `issueColumn`.
+   */
+  countColumn?: string;
   emptyMessage: string;
   groupColumn: string;
   /** What ticking a row queues it for. Used in the accessible names of the selection checkboxes. */
@@ -41,6 +46,12 @@ interface ResultsTableProps {
   onToggleRepairer: (id: string) => void;
   repairers: Repairer[];
   terms?: ResultsTerms;
+  /**
+   * What the issue column shows for an entity, when the count says nothing. Given every issue of the entity,
+   * including the ones a group filter hides: the cell describes the entity, while the filter only decides
+   * whether the row counts as a finding. Returning null falls back to the count.
+   */
+  issueCell?: (issues: Issue[]) => React.ReactNode;
   selectedIssues: Map<string, Set<number>>;
   expandedRows: Set<string>;
   repairingEntity: string | null;
@@ -76,6 +87,7 @@ export default function ResultsTable({
   allItemsSelected,
   someItemsSelected,
   terms = DEFAULT_RESULTS_TERMS,
+  issueCell,
 }: ResultsTableProps) {
   // The prefix for the warning-popup ids. Not built from the entity key: that is
   // `${projectId}-${space}-${entityId}`, and a Polarion document name routinely holds a blank, while
@@ -90,6 +102,19 @@ export default function ResultsTable({
       if (!hiddenRepairers.has(issueGroup(iss))) out.push(i);
     });
     return out;
+  };
+  const renderIssueCell = (entity: ScanEntity, count: number): React.ReactNode =>
+    issueCell ? (issueCell(entity.issues) ?? count) : count;
+  /**
+   * How a row reports what a repair did to it. `repaired` already records that every issue succeeded; this
+   * adds the failed case, because otherwise a failure is indistinguishable from an untouched row, and a batch
+   * over several entities does not say which ones need a second look.
+   */
+  const outcomeClass = (entity: ScanEntity): string => {
+    if (entity.repaired) {
+      return 'row-fixed';
+    }
+    return entity.issues.some((issue) => issue.repairResult && !issue.repairResult.success) ? 'row-failed' : '';
   };
   const visibleIssuesInItem = (item: ScanEntity): number =>
     hasSubitems(item) ? item.subitems.reduce((sum, sub) => sum + visibleIssueCount(sub), 0) : visibleIssueCount(item);
@@ -161,7 +186,7 @@ export default function ResultsTable({
           hiddenRepairers={hiddenRepairers}
           onToggleRepairer={onToggleRepairer}
           groupColumnLabel={terms.groupColumn}
-          countColumnLabel={terms.issueColumn}
+          countColumnLabel={terms.countColumn ?? terms.issueColumn}
         />
       )}
 
@@ -277,7 +302,7 @@ export default function ResultsTable({
 
               return (
                 <React.Fragment key={entityKey}>
-                  <tr className={`${item.repaired ? 'row-fixed' : ''}${isRepairing ? ' row-repairing' : ''}`}>
+                  <tr className={`${outcomeClass(item)}${isRepairing ? ' row-repairing' : ''}`}>
                     <td className="col-checkbox">
                       {!item.repaired && (
                         <input
@@ -304,7 +329,7 @@ export default function ResultsTable({
                       title={hasIssues ? (isExpanded ? 'Hide details' : 'Click to see details') : ''}
                       onClick={() => hasIssues && onToggleExpanded(entityKey)}
                     >
-                      {issueCount}
+                      {isCollection ? issueCount : renderIssueCell(item, issueCount)}
                       {item.warnings && item.warnings.length > 0 && (
                         <span
                           className="warning-icon"
@@ -382,9 +407,7 @@ export default function ResultsTable({
 
                       return (
                         <React.Fragment key={subKey}>
-                          <tr
-                            className={`subitem-row${sub.repaired ? ' row-fixed' : ''}${subIsRepairing ? ' row-repairing' : ''}`}
-                          >
+                          <tr className={`subitem-row ${outcomeClass(sub)}${subIsRepairing ? ' row-repairing' : ''}`}>
                             <td className="col-checkbox">
                               {!sub.repaired && (
                                 <input
@@ -407,7 +430,7 @@ export default function ResultsTable({
                               title={subHasIssues ? (subIsExpanded ? 'Hide details' : 'Click to see details') : ''}
                               onClick={() => subHasIssues && onToggleExpanded(subKey)}
                             >
-                              {subVisibleCount}
+                              {renderIssueCell(sub, subVisibleCount)}
                               {sub.warnings && sub.warnings.length > 0 && (
                                 <span
                                   className="warning-icon"

@@ -415,3 +415,103 @@ export const PURGE_SCAN_RESULT: ScanResult = {
     },
   ],
 };
+
+// ---------------------------------------------------------------------------------------------------
+// Structural link page fixtures: the project's link roles, and what POST /scan returns when asked for
+// ModuleStructureLinkRoleRepairer alone. One document per differing role, the second one additionally
+// warning about the links the switch would delete (see ModuleStructureLinkRoleRepairer#scan), and a third
+// one already on the selected role - which only reaches the response with "different role only" unticked.
+// ---------------------------------------------------------------------------------------------------
+export const LINK_ROLES = [
+  { id: 'parent', name: 'has parent' },
+  { id: 'relates_to', name: 'relates to' },
+  { id: 'verifies', name: 'verifies' },
+];
+
+const structureLinkIssue = (metaInfo: string, moduleName: string, usedRole: string, warnings: string[] = []) => ({
+  metaInfo,
+  repairer: 'ModuleStructureLinkRoleRepairer',
+  // The role column of the results list reads this, not the issue count.
+  label: usedRole,
+  description: `Document '${moduleName}' uses structure link role '${usedRole}' instead of 'parent'`,
+  warnings,
+});
+
+/**
+ * The collision warning as ModuleStructureLinkRoleRepairer#collisionWarning formats it, for the target role
+ * 'parent'. Kept as a function so a fixture can vary the number of links without the text drifting.
+ */
+export const structureLinkCollisionWarning = (links: string[]): string =>
+  `Link role 'parent' is already used by ${links.length} ${links.length === 1 ? 'link' : 'links'} in this ` +
+  `document: ${links.join(', ')}. Choose what happens to ${links.length === 1 ? 'it' : 'them'} under ` +
+  `'Existing parent links'.`;
+
+/** One document reporting the collision, which is what an interrupted change is captured on. */
+export const structureLinkCollisionScan = (links: string[]): ScanResult => ({
+  report: 'Scanned 1 document in 0.2s',
+  items: [
+    {
+      entityType: 'DOCUMENT',
+      projectId: 'elibrary',
+      space: 'spaceB',
+      entityId: 'Test Link Duplicates 002',
+      revision: null,
+      issues: [
+        structureLinkIssue('sl-collision', 'Test Link Duplicates 002', 'duplicates', [
+          structureLinkCollisionWarning(links),
+        ]),
+      ],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+  ],
+});
+
+/** What POST /repair answers while 'Interrupt modification' is chosen: no change, one warning saying why. */
+export const structureLinkCollisionRepair = (links: string[]) => [
+  { issueMetaInfo: 'sl-collision', success: false, warnings: [structureLinkCollisionWarning(links)] },
+];
+
+export const STRUCTURE_LINK_SCAN_RESULT: ScanResult = {
+  report: 'Scanned 2 documents in 0.3s',
+  items: [
+    {
+      entityType: 'DOCUMENT',
+      projectId: 'elibrary',
+      space: 'spaceA',
+      entityId: 'DOC-1',
+      revision: null,
+      issues: [structureLinkIssue('sl-1', 'DOC-1', 'relates_to')],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+    {
+      entityType: 'DOCUMENT',
+      projectId: 'elibrary',
+      space: 'spaceB',
+      entityId: 'DOC-2',
+      revision: null,
+      issues: [
+        structureLinkIssue('sl-2', 'DOC-2', 'verifies', [
+          "Link role 'parent' is already used by 2 links in this document: EL-1 -> EL-2, EL-3 -> EL-4. Choose what happens to them under 'Existing parent links'.",
+        ]),
+      ],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+    {
+      entityType: 'DOCUMENT',
+      projectId: 'elibrary',
+      space: 'spaceB',
+      entityId: 'DOC-3',
+      revision: null,
+      issues: [],
+      fields: {},
+      subitems: [],
+      warnings: [],
+    },
+  ],
+};

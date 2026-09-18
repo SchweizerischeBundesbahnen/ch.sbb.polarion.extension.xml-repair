@@ -52,6 +52,7 @@ import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
+import com.polarion.subterra.base.SubterraURI;
 import com.polarion.subterra.base.data.model.IType;
 import com.polarion.subterra.base.location.Location;
 import org.apache.commons.lang3.time.StopWatch;
@@ -77,6 +78,7 @@ public class XmlRepairPolarionService extends PolarionService {
     // Enumeration ids as resolved by Polarion's REST v1 enumerations endpoint (see EnumerationResourceReference#enumId)
     private static final String WORK_ITEM_TYPE_ENUM_ID = "work-item-type";
     private static final String DOCUMENT_TYPE_ENUM_ID = "documents/document-type";
+    private static final String LINK_ROLE_ENUM_ID = ModuleStructureLinkRoleRepairer.LINK_ROLE_ENUM_ID;
 
     public static final Map<EntityType, List<IRepairer>> REPAIRERS = Map.of(
             EntityType.COLLECTION, List.of(
@@ -129,6 +131,18 @@ public class XmlRepairPolarionService extends PolarionService {
             EntityType.DOCUMENT, List.of(new OutdatedCustomFieldsRepairer()),
             EntityType.WORKITEM, List.of(new OutdatedCustomFieldsRepairer())
     );
+
+    /**
+     * The repairers behind the "Structural link" page, kept apart from {@link #REPAIRERS} for the same reason
+     * the purge ones are: the page drives them alone, and changing a document's structure link role must stay
+     * out of the General checks run. Only documents carry a structure link role, so the other two entity types
+     * offer nothing here.
+     */
+    public static final Map<EntityType, List<IRepairer>> STRUCTURE_LINK_REPAIRERS = Map.of(
+            EntityType.COLLECTION, List.of(),
+            EntityType.DOCUMENT, List.of(new ModuleStructureLinkRoleRepairer()),
+            EntityType.WORKITEM, List.of()
+    );
     private static final int DEFAULT_LIMIT = 100;
     // Upper bound for the selectable entity list of a project. Big enough for any real project, small
     // enough to keep the response and the client-side dropdown filtering fast. Same number as the bound
@@ -173,6 +187,24 @@ public class XmlRepairPolarionService extends PolarionService {
             }
         }
         return results;
+    }
+
+    /**
+     * Drops from Polarion's caches whatever the given repairs left stale, in one call.
+     * <p>
+     * Must run after the write transaction is committed, never inside it: the repair becomes a single SVN
+     * commit at the end of the transaction, so an earlier invalidation would let a concurrent read put the
+     * pre-repair state straight back. One call rather than one per URI, because the invalidator walks every
+     * persistence module and document storage each time it is called.
+     */
+    public void clearStaleCaches(@NotNull List<RepairResult> results) {
+        Set<SubterraURI> uris = results.stream()
+                .filter(RepairResult::isSuccess)
+                .flatMap(result -> result.getStaleCacheUris().stream())
+                .collect(Collectors.toSet());
+        if (!uris.isEmpty()) {
+            trackerService.getDataService().clearCaches(uris);
+        }
     }
 
     public RepairResult repairEntity(@NotNull IUniqueObject entity, @NotNull RepairContext context) {
@@ -474,7 +506,8 @@ public class XmlRepairPolarionService extends PolarionService {
     @VisibleForTesting
     List<IRepairer> getRepairersForEntity(IUniqueObject entity) {
         EntityType entityType = EntityType.fromPrototype(entity.getPrototype());
-        return Stream.concat(REPAIRERS.get(entityType).stream(), PURGE_REPAIRERS.get(entityType).stream()).toList();
+        return Stream.of(REPAIRERS, PURGE_REPAIRERS, STRUCTURE_LINK_REPAIRERS)
+                .flatMap(registry -> registry.get(entityType).stream()).toList();
     }
 
     @VisibleForTesting
@@ -486,7 +519,8 @@ public class XmlRepairPolarionService extends PolarionService {
         if (countByRepairer.isEmpty()) {
             return;
         }
-        Map<String, String> repairerNames = Stream.concat(REPAIRERS.values().stream(), PURGE_REPAIRERS.values().stream())
+        Map<String, String> repairerNames = Stream.of(REPAIRERS, PURGE_REPAIRERS, STRUCTURE_LINK_REPAIRERS)
+                .flatMap(registry -> registry.values().stream())
                 .flatMap(List::stream)
                 .collect(Collectors.toMap(IRepairer::getRepairerId, IRepairer::getDisplayName, (a, b) -> a));
         StringBuilder sb = new StringBuilder("Issues by repairer:");
@@ -533,6 +567,11 @@ public class XmlRepairPolarionService extends PolarionService {
 
     public List<TypeInfo> getDocumentTypes(@NotNull String projectId) {
         return getEnumerationTypes(projectId, DOCUMENT_TYPE_ENUM_ID);
+    }
+
+    /** The work item link roles of a project, which is what the "Structural link" page offers as target role. */
+    public List<TypeInfo> getLinkRoles(@NotNull String projectId) {
+        return getEnumerationTypes(projectId, LINK_ROLE_ENUM_ID);
     }
 
     private List<TypeInfo> getEnumerationTypes(@NotNull String projectId, @NotNull String enumId) {
