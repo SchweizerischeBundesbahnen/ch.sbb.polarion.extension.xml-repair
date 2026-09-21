@@ -208,7 +208,28 @@ class ModuleStructureLinkRoleRepairerTest {
         assertEquals("INTERRUPT", repairer.existingLinksPolicy(new UserConfigs()));
         assertEquals("INTERRUPT", repairer.existingLinksPolicy(existingLinksConfigs("NONSENSE", null)));
         assertEquals("CHANGE", repairer.existingLinksPolicy(existingLinksConfigs("CHANGE", "relates_to")));
+        assertEquals("IGNORE", repairer.existingLinksPolicy(existingLinksConfigs("IGNORE", null)));
         assertEquals("DELETE", repairer.existingLinksPolicy(existingLinksConfigs("DELETE", null)));
+    }
+
+    @Test
+    void testRepairIgnoresCollidingLinksAndSwitchesAnyway() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem source = link("PRJ-1", "PRJ-2", "parent");
+        containWorkItems(module, source);
+        ILinkRoleOpt parent = mockRole("parent");
+        mockRoleEnumeration(module, parent);
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("IGNORE", null)));
+
+        assertTrue(result.isSuccess());
+        verify(spy).setStructureLinkRole(module, parent);
+        // The links are left exactly as they were, and the result is the only record that they were.
+        verify(source, never()).removeLinkedItem(any(), any());
+        verify(source, never()).save();
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Left 1 link of role 'parent' in place")),
+                result.getWarnings().toString());
     }
 
     @Test

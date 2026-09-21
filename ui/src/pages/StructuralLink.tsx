@@ -40,10 +40,15 @@ const DEFAULT_TARGET_ROLE = 'parent';
  * What the repair does with the links a document already holds under the selected role. Mirrors the
  * EXISTING_LINKS_* constants of ModuleStructureLinkRoleRepairer, which reads them from the repairer configs.
  */
-type ExistingLinks = 'INTERRUPT' | 'CHANGE' | 'DELETE';
+type ExistingLinks = 'INTERRUPT' | 'CHANGE' | 'IGNORE' | 'DELETE';
 
-const EXISTING_LINKS_OPTIONS: { id: ExistingLinks; label: string }[] = [
+const IGNORE_HELP =
+  'These links stay in place now, but Polarion removes them the next time each work item is saved. After the ' +
+  'change it cannot tell them apart from the links the document derives from its own structure.';
+
+const EXISTING_LINKS_OPTIONS: { id: ExistingLinks; label: string; help?: string }[] = [
   { id: 'INTERRUPT', label: 'Interrupt modification' },
+  { id: 'IGNORE', label: 'Ignore', help: IGNORE_HELP },
   { id: 'CHANGE', label: 'Change link to' },
   { id: 'DELETE', label: 'Delete link' },
 ];
@@ -431,6 +436,12 @@ export default function StructuralLink() {
                     />
                     <span>{option.label}</span>
                   </label>
+                  {/* Outside the label, so clicking the icon does not pick the answer it explains. */}
+                  {option.help && (
+                    <span className="help-icon" title={option.help}>
+                      ?
+                    </span>
+                  )}
                   {option.id === 'CHANGE' && (
                     <SearchableSelect
                       value={existingLinksRole}

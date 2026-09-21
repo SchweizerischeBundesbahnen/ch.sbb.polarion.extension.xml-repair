@@ -58,6 +58,8 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
     public static final String EXISTING_LINKS_INTERRUPT = "INTERRUPT";
     /** Move those links to {@link #EXISTING_LINKS_ROLE}, then switch the document. */
     public static final String EXISTING_LINKS_CHANGE = "CHANGE";
+    /** Switch the document and leave those links untouched, accepting that Polarion drops them later. */
+    public static final String EXISTING_LINKS_IGNORE = "IGNORE";
     /** Remove those links, then switch the document. */
     public static final String EXISTING_LINKS_DELETE = "DELETE";
 
@@ -180,6 +182,13 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
             return false;
         }
 
+        if (EXISTING_LINKS_IGNORE.equals(policy)) {
+            // Still reported, because the switch is what seals their fate and this is the only record of it.
+            result.getWarnings().add("Left %d %s of role '%s' in place: %s. Polarion drops such a link when its work item is next saved."
+                    .formatted(collisions.size(), collisions.size() == 1 ? "link" : "links", targetRole, listed(collisions)));
+            return true;
+        }
+
         ILinkRoleOpt replacement = null;
         if (EXISTING_LINKS_CHANGE.equals(policy)) {
             String replacementRole = configs.getString(getClass(), EXISTING_LINKS_ROLE);
@@ -220,7 +229,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
     String existingLinksPolicy(@NotNull UserConfigs configs) {
         String configured = configs.getString(getClass(), EXISTING_LINKS);
         return EXISTING_LINKS_CHANGE.equals(configured) || EXISTING_LINKS_DELETE.equals(configured)
-                ? configured : EXISTING_LINKS_INTERRUPT;
+                || EXISTING_LINKS_IGNORE.equals(configured) ? configured : EXISTING_LINKS_INTERRUPT;
     }
 
     /**

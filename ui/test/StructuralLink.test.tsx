@@ -176,6 +176,17 @@ describe('Structural link page', () => {
     await vi.waitFor(() => expect(replacementSelect()?.getAttribute('aria-disabled')).not.toBe('true'));
   });
 
+  it('offers the four answers, the two that write nothing first', async () => {
+    await mount();
+
+    const labels = Array.from(document.querySelectorAll('.existing-links-row label')).map((l) =>
+      (l.textContent ?? '').trim(),
+    );
+    expect(labels).toEqual(['Interrupt modification', 'Ignore', 'Change link to', 'Delete link']);
+    // Only 'Ignore' explains itself, because it is the one whose effect happens later and elsewhere.
+    expect(document.querySelectorAll('.existing-links-row .help-icon').length).toBe(1);
+  });
+
   it('sends the chosen answer for the existing links', async () => {
     const fetchMock = await mount();
     radio('DELETE').click();

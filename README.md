@@ -74,7 +74,8 @@ and is not visible afterwards, so a document created with another role looks the
 2. The results list the documents using another role, and the `Link Role` column names the role each one uses
    today. A document warns when it already holds links of the selected role.
 3. Under `Existing <role> links`, choose what happens to such a link: interrupt the change and report it (the
-   default), move the link to another role, or delete it.
+   default), move the link to another role, ignore it and accept that Polarion drops it later, or delete it
+   now.
 4. Tick the documents to switch and press `Change role`.
 
 The page scans documents only, and always on HEAD: it writes through the same path as a repair, so it obeys the
@@ -82,8 +83,8 @@ The page scans documents only, and always on HEAD: it writes through the same pa
 
 Polarion strips a structural link by role alone, never comparing it against the document tree, so a link the
 document already holds under the selected role is lost the next time its work item is saved. That is why the
-default stops rather than switching silently. The other two answers change or remove those links first, and
-report which ones they touched.
+default stops rather than switching silently. The other answers move, keep or remove those links, and report
+which ones they touched.
 
 ### Purge outdated data
 
