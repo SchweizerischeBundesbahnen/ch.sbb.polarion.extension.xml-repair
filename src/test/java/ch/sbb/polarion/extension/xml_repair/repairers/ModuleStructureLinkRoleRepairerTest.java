@@ -38,6 +38,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -253,7 +254,7 @@ class ModuleStructureLinkRoleRepairerTest {
         verify(source).removeLinkedItem(eq(target), any());
         verify(source).save();
         verify(spy).setStructureLinkRole(module, parent);
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Moved 1 link(s)")), result.getWarnings().toString());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Moved 1 link from role 'parent' to 'verifies'")), result.getWarnings().toString());
     }
 
     @Test
@@ -272,7 +273,7 @@ class ModuleStructureLinkRoleRepairerTest {
         verify(source, never()).addLinkedItem(any(), any(), any(), anyBoolean());
         verify(source).removeLinkedItem(eq(target), any());
         verify(source).save();
-        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Deleted 1 link(s)")), result.getWarnings().toString());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Deleted 1 link of role 'parent'")), result.getWarnings().toString());
     }
 
     @Test
@@ -394,6 +395,31 @@ class ModuleStructureLinkRoleRepairerTest {
         assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("'nope' does not exist in this project")),
                 result.getWarnings().toString());
         verify(spy, never()).setStructureLinkRole(any(), any());
+    }
+
+    @Test
+    void testRepairReportsALinkItCouldNotTouchAndSwitchesAnyway() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem stuck = link("PRJ-1", "PRJ-2", "parent");
+        IWorkItem fine = link("PRJ-3", "PRJ-4", "parent");
+        doThrow(new IllegalStateException("work item is locked")).when(stuck).save();
+        containWorkItems(module, stuck, fine);
+        ILinkRoleOpt parent = mockRole("parent");
+        mockRoleEnumeration(module, parent);
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("DELETE", null)));
+
+        // One stuck link does not cost the document its switch, nor the other link its deletion.
+        assertTrue(result.isSuccess());
+        verify(spy).setStructureLinkRole(module, parent);
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Could not delete PRJ-1 -> PRJ-2: work item is locked")),
+                result.getWarnings().toString());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Deleted 1 link of role 'parent': PRJ-3 -> PRJ-4")),
+                result.getWarnings().toString());
+        // The switch is what dooms the link left behind, so the result says so rather than leaving it silent.
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("That link keeps role 'parent'")),
+                result.getWarnings().toString());
     }
 
     // --- collision collection ---

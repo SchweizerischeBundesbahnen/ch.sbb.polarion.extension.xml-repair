@@ -11,6 +11,7 @@ import {
   WORK_ITEM_TYPES,
   structureLinkCollisionRepair,
   structureLinkCollisionScan,
+  structureLinkPartialRepair,
 } from './fixtures';
 import { type Route, installFetchMock } from './mockFetch';
 import { settleBeforeCapture, settleLayout } from './visualHelpers';
@@ -174,6 +175,27 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Structural link page visual', () => {
       ['EL-232 -> EL-233', 'EL-240 -> EL-241', 'EL-250 -> EL-251', 'EL-260 -> EL-261', 'EL-270 -> EL-271'],
       'structural-link-interrupted-many',
     );
+  });
+
+  it('completed change that could not touch every link', async () => {
+    const links = ['EL-232 -> EL-233', 'EL-240 -> EL-241', 'EL-250 -> EL-251'];
+    await mount(structureLinkCollisionScan(links), [
+      {
+        method: 'POST',
+        match: /\/repair$/,
+        json: structureLinkPartialRepair([links[0]], [links[1], links[2]]),
+      },
+    ]);
+    await runScan();
+
+    document.querySelector<HTMLButtonElement>('.issues-table tbody .expand-arrow.clickable')!.click();
+    document.querySelector<HTMLInputElement>('.issues-table tbody input[type="checkbox"]')!.click();
+    await vi.waitFor(() => expect(button('Change role').disabled).toBe(false));
+    button('Change role').click();
+
+    await vi.waitFor(() => expect(document.querySelectorAll('.issue-warnings li').length).toBe(4));
+    document.querySelectorAll('[data-sonner-toaster]').forEach((el) => el.remove());
+    await captureApp('structural-link-partial');
   });
 
   it('empty results table, whose Link Role header must stay on one line', async () => {

@@ -193,7 +193,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         if (EXISTING_LINKS_IGNORE.equals(policy)) {
             // Still reported, because the switch is what seals their fate and this is the only record of it.
             result.getWarnings().add("Left %d %s of role '%s' in place: %s. Polarion drops such a link when its work item is next saved."
-                    .formatted(collisions.size(), collisions.size() == 1 ? "link" : "links", targetRole, listed(collisions)));
+                    .formatted(collisions.size(), links(collisions), targetRole, listed(collisions)));
             return true;
         }
 
@@ -215,14 +215,48 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
             }
         }
 
-        for (CollidingLink collision : collisions) {
-            collision.moveTo(replacement);
-        }
-        result.getWarnings().add(replacement == null
-                ? "Deleted %d link(s) of role '%s': %s.".formatted(collisions.size(), targetRole, listed(collisions))
-                : "Moved %d link(s) from role '%s' to '%s': %s."
-                        .formatted(collisions.size(), targetRole, replacement.getId(), listed(collisions)));
+        applyToCollisions(collisions, replacement, targetRole, result);
         return true;
+    }
+
+    /**
+     * Moves or removes every colliding link, reporting each one that could not be touched instead of giving up
+     * on the document. A link left behind keeps the target role, so the switch hands it to Polarion to drop -
+     * which the closing warning says, because otherwise the failure would be silent.
+     */
+    private void applyToCollisions(@NotNull List<CollidingLink> collisions, @Nullable ILinkRoleOpt replacement,
+                                   @NotNull String targetRole, @NotNull RepairResult result) {
+        String verb = replacement == null ? "delete" : "move";
+        List<CollidingLink> done = new ArrayList<>();
+        List<CollidingLink> failed = new ArrayList<>();
+        for (CollidingLink collision : collisions) {
+            try {
+                collision.moveTo(replacement);
+                done.add(collision);
+            } catch (RuntimeException e) {
+                failed.add(collision);
+                result.getWarnings().add("Could not %s %s: %s.".formatted(verb, collision.describe(), e.getMessage()));
+            }
+        }
+
+        if (!done.isEmpty()) {
+            result.getWarnings().add(replacement == null
+                    ? "Deleted %d %s of role '%s': %s.".formatted(done.size(), links(done), targetRole, listed(done))
+                    : "Moved %d %s from role '%s' to '%s': %s."
+                            .formatted(done.size(), links(done), targetRole, replacement.getId(), listed(done)));
+        }
+        if (!failed.isEmpty()) {
+            result.getWarnings().add(failed.size() == 1
+                    ? "That link keeps role '%s', so Polarion drops it when its work item is next saved."
+                            .formatted(targetRole)
+                    : "Those links keep role '%s', so Polarion drops them when their work items are next saved."
+                            .formatted(targetRole));
+        }
+    }
+
+    @NotNull
+    private String links(@NotNull List<CollidingLink> collisions) {
+        return collisions.size() == 1 ? "link" : "links";
     }
 
     /**
@@ -329,10 +363,9 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
     @VisibleForTesting
     @NotNull
     String collisionWarning(@NotNull String targetRole, @NotNull List<CollidingLink> collisions) {
-        boolean single = collisions.size() == 1;
         return "Link role '%s' is already used by %d %s in this document: %s. Choose what happens to %s under 'Existing %s links'."
-                .formatted(targetRole, collisions.size(), single ? "link" : "links", listed(collisions),
-                        single ? "it" : "them", targetRole);
+                .formatted(targetRole, collisions.size(), links(collisions), listed(collisions),
+                        collisions.size() == 1 ? "it" : "them", targetRole);
     }
 
     @NotNull

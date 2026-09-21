@@ -468,6 +468,25 @@ export const structureLinkCollisionScan = (links: string[]): ScanResult => ({
   ],
 });
 
+/**
+ * What POST /repair answers when the switch went through but some links could not be touched: success, with
+ * one warning naming each failure, one for what did happen, and the closing line about what becomes of the
+ * links left behind. Mirrors ModuleStructureLinkRoleRepairer#applyToCollisions.
+ */
+export const structureLinkPartialRepair = (done: string[], failed: string[]) => [
+  {
+    issueMetaInfo: 'sl-collision',
+    success: true,
+    warnings: [
+      ...failed.map((l) => `Could not delete ${l}: work item is locked by another user.`),
+      `Deleted ${done.length} ${done.length === 1 ? 'link' : 'links'} of role 'parent': ${done.join(', ')}.`,
+      failed.length === 1
+        ? `That link keeps role 'parent', so Polarion drops it when its work item is next saved.`
+        : `Those links keep role 'parent', so Polarion drops them when their work items are next saved.`,
+    ],
+  },
+];
+
 /** What POST /repair answers while 'Interrupt modification' is chosen: no change, one warning saying why. */
 export const structureLinkCollisionRepair = (links: string[]) => [
   { issueMetaInfo: 'sl-collision', success: false, warnings: [structureLinkCollisionWarning(links)] },
