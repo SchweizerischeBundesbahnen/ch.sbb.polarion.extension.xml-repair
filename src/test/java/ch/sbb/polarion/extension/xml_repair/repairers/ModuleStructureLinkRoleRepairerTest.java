@@ -31,6 +31,7 @@ import java.util.Set;
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -55,6 +56,7 @@ class ModuleStructureLinkRoleRepairerTest {
     void testMetadata() {
         assertEquals("Structural link role", repairer.getDisplayName());
         assertEquals("ModuleStructureLinkRoleRepairer", repairer.getRepairerId());
+        assertTrue(repairer.getDescription().contains("link role"), repairer.getDescription());
         assertEquals("parent", ModuleStructureLinkRoleRepairer.DEFAULT_TARGET_ROLE);
         assertTrue(repairer.getConfigs().isEmpty());
     }
@@ -361,6 +363,82 @@ class ModuleStructureLinkRoleRepairerTest {
         assertFalse(result.isSuccess());
         assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("already uses")));
         verify(spy, never()).setStructureLinkRole(any(), any());
+    }
+
+    @Test
+    void testRepairIgnoresSeveralCollidingLinks() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        containWorkItems(module, link("PRJ-1", "PRJ-2", "parent"), link("PRJ-3", "PRJ-4", "parent"));
+        mockRoleEnumeration(module, mockRole("parent"));
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("IGNORE", null)));
+
+        assertTrue(result.isSuccess());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("Left 2 links of role 'parent' in place")),
+                result.getWarnings().toString());
+    }
+
+    @Test
+    void testRepairRefusesAReplacementRoleTheProjectDoesNotHave() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        containWorkItems(module, link("PRJ-1", "PRJ-2", "parent"));
+        ILinkRoleOpt phantom = mockRole("nope");
+        when(phantom.isPhantom()).thenReturn(true);
+        mockRoleEnumeration(module, mockRole("parent"), phantom);
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("CHANGE", "nope")));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("'nope' does not exist in this project")),
+                result.getWarnings().toString());
+        verify(spy, never()).setStructureLinkRole(any(), any());
+    }
+
+    // --- collision collection ---
+
+    @Test
+    void testCollidingLinksSkipsAnUnresolvableWorkItem() {
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem unresolvable = link("PRJ-1", "PRJ-2", "parent");
+        when(unresolvable.isUnresolvable()).thenReturn(true);
+        containWorkItems(module, unresolvable);
+
+        // Its links cannot be read at all, so it cannot stand in the way of the switch.
+        assertTrue(repairer.collidingLinks(module, "parent").isEmpty());
+    }
+
+    @Test
+    void testUsedRoleIsNullForADocumentWithoutOne() {
+        IModule module = mockModule("MyDoc", "relates_to");
+        when(module.getStructureLinkRole()).thenReturn(null);
+
+        assertNull(repairer.usedRole(module));
+    }
+
+    @Test
+    void testCollisionWarningCutsOffALongList() {
+        List<ModuleStructureLinkRoleRepairer.CollidingLink> collisions = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            collisions.add(collidingLink("PRJ-%d".formatted(i), "PRJ-%d".formatted(100 + i)));
+        }
+
+        String warning = repairer.collisionWarning("parent", collisions);
+
+        assertTrue(warning.contains("used by 12 links"), warning);
+        assertTrue(warning.contains("PRJ-10 -> PRJ-110"), warning);
+        // Cut off after ten, so one document cannot flood the results list.
+        assertFalse(warning.contains("PRJ-11 -> PRJ-111"), warning);
+        assertTrue(warning.contains("and 2 more"), warning);
+    }
+
+    private static ModuleStructureLinkRoleRepairer.CollidingLink collidingLink(String sourceId, String targetId) {
+        IWorkItem source = mock(IWorkItem.class);
+        lenient().when(source.getId()).thenReturn(sourceId);
+        IWorkItem target = mock(IWorkItem.class);
+        lenient().when(target.getId()).thenReturn(targetId);
+        return new ModuleStructureLinkRoleRepairer.CollidingLink(source, target, mockRole("parent"), null, false);
     }
 
     // --- fixtures ---

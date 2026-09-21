@@ -199,20 +199,8 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
 
         ILinkRoleOpt replacement = null;
         if (EXISTING_LINKS_CHANGE.equals(policy)) {
-            String replacementRole = configs.getString(getClass(), EXISTING_LINKS_ROLE);
-            if (replacementRole == null || replacementRole.isBlank() || replacementRole.equals(targetRole)) {
-                result.getWarnings().add("No link role was chosen to move those links to.");
-                return false;
-            }
-            if (replacementRole.equals(usedRole(module))) {
-                // The links move before the switch, so a save now still strips the document's current role.
-                result.getWarnings().add(("Link role '%s' is the role this document structures its content with, "
-                        + "so a link moved to it would be stripped as its work item is saved.").formatted(replacementRole));
-                return false;
-            }
-            replacement = resolveRole(module, replacementRole);
-            if (replacement == null || replacement.isPhantom()) {
-                result.getWarnings().add("Link role '%s' does not exist in this project.".formatted(replacementRole));
+            replacement = resolveReplacement(module, targetRole, configs, result);
+            if (replacement == null) {
                 return false;
             }
         }
@@ -235,6 +223,33 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
                 : "Moved %d link(s) from role '%s' to '%s': %s."
                         .formatted(collisions.size(), targetRole, replacement.getId(), listed(collisions)));
         return true;
+    }
+
+    /**
+     * The role the colliding links move to under {@link #EXISTING_LINKS_CHANGE}.
+     *
+     * @return null when no role can be used, with {@code result} carrying the reason.
+     */
+    @Nullable
+    private ILinkRoleOpt resolveReplacement(@NotNull IModule module, @NotNull String targetRole,
+                                            @NotNull UserConfigs configs, @NotNull RepairResult result) {
+        String replacementRole = configs.getString(getClass(), EXISTING_LINKS_ROLE);
+        if (replacementRole == null || replacementRole.isBlank() || replacementRole.equals(targetRole)) {
+            result.getWarnings().add("No link role was chosen to move those links to.");
+            return null;
+        }
+        if (replacementRole.equals(usedRole(module))) {
+            // The links move before the switch, so a save now still strips the document's current role.
+            result.getWarnings().add(("Link role '%s' is the role this document structures its content with, "
+                    + "so a link moved to it would be stripped as its work item is saved.").formatted(replacementRole));
+            return null;
+        }
+        ILinkRoleOpt replacement = resolveRole(module, replacementRole);
+        if (replacement == null || replacement.isPhantom()) {
+            result.getWarnings().add("Link role '%s' does not exist in this project.".formatted(replacementRole));
+            return null;
+        }
+        return replacement;
     }
 
     /** Anything unrecognized falls back to the answer that writes nothing. */
