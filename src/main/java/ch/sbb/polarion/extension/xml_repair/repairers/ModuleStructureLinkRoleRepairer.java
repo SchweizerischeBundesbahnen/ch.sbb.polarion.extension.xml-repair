@@ -104,7 +104,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         // The label feeds the role column of the results list, where a count would always say one.
         Issue issue = new Issue(IssueMetaInfo.create(module).set(TARGET_ROLE, targetRole), this,
                 "Document '%s' uses structure link role '%s' instead of '%s'"
-                        .formatted(module.getModuleName(), usedRole, targetRole),
+                        .formatted(module.getModuleName(), Objects.requireNonNullElse(usedRole, "none"), targetRole),
                 null, Objects.requireNonNullElse(usedRole, "none"));
         List<CollidingLink> collisions = collidingLinks(module, targetRole);
         if (!collisions.isEmpty()) {
@@ -131,6 +131,14 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         ILinkRoleOpt role = resolveRole(module, targetRole);
         if (role == null || role.isPhantom()) {
             result.getWarnings().add("Link role '%s' does not exist in this project.".formatted(targetRole));
+            return result;
+        }
+
+        // Settled before anything is written. The check inside setStructureLinkRole throws, the service catches
+        // per item and carries on, and the write transaction still commits - so a refusal there would leave the
+        // link changes below persisted against a document whose role never moved.
+        if (!module.can().modifyKey(IModule.KEY_STRUCTURELINKROLE)) {
+            result.getWarnings().add(XmlRepairPolarionService.MSG_NO_PERMISSIONS);
             return result;
         }
 
@@ -194,6 +202,12 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
             String replacementRole = configs.getString(getClass(), EXISTING_LINKS_ROLE);
             if (replacementRole == null || replacementRole.isBlank() || replacementRole.equals(targetRole)) {
                 result.getWarnings().add("No link role was chosen to move those links to.");
+                return false;
+            }
+            if (replacementRole.equals(usedRole(module))) {
+                // The links move before the switch, so a save now still strips the document's current role.
+                result.getWarnings().add(("Link role '%s' is the role this document structures its content with, "
+                        + "so a link moved to it would be stripped as its work item is saved.").formatted(replacementRole));
                 return false;
             }
             replacement = resolveRole(module, replacementRole);

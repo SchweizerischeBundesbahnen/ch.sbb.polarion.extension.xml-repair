@@ -14,6 +14,7 @@ import com.polarion.alm.tracker.model.ILinkRoleOpt;
 import com.polarion.alm.tracker.model.ILinkedWorkItemStruct;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.IWorkItem;
+import com.polarion.alm.tracker.model.IDocumentPermissions;
 import com.polarion.alm.tracker.model.IWorkItemPermissions;
 import com.polarion.platform.persistence.IDataService;
 import com.polarion.platform.persistence.IEnumeration;
@@ -306,6 +307,51 @@ class ModuleStructureLinkRoleRepairerTest {
     }
 
     @Test
+    void testRepairRefusesWhenTheModuleKeyCannotBeModified() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem source = link("PRJ-1", "PRJ-2", "parent");
+        containWorkItems(module, source);
+        mockRoleEnumeration(module, mockRole("parent"));
+        when(module.can().modifyKey(IModule.KEY_STRUCTURELINKROLE)).thenReturn(false);
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("DELETE", null)));
+
+        assertFalse(result.isSuccess());
+        // Settled before the links are touched, or a refusal would leave them changed for nothing.
+        verify(source, never()).save();
+        verify(spy, never()).setStructureLinkRole(any(), any());
+    }
+
+    @Test
+    void testRepairRefusesToMoveLinksToTheRoleTheDocumentStillUses() {
+        ModuleStructureLinkRoleRepairer spy = writeStubbed();
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem source = link("PRJ-1", "PRJ-2", "parent");
+        containWorkItems(module, source);
+        mockRoleEnumeration(module, mockRole("parent"));
+
+        RepairResult result = spy.repair(module, repairContext("parent", existingLinksConfigs("CHANGE", "relates_to")));
+
+        assertFalse(result.isSuccess());
+        assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("structures its content with")),
+                result.getWarnings().toString());
+        verify(source, never()).save();
+        verify(spy, never()).setStructureLinkRole(any(), any());
+    }
+
+    @Test
+    void testScanDescribesADocumentWithoutARoleAsNone() {
+        IModule module = mockModule("MyDoc", null);
+
+        List<Issue> issues = repairer.scan(module, scanContext("parent"));
+
+        // The description used to render the literal "null" while the label beside it said "none".
+        assertEquals("Document 'MyDoc' uses structure link role 'none' instead of 'parent'",
+                issues.getFirst().getDescription());
+    }
+
+    @Test
     void testRepairDoesNothingWhenTheRoleIsAlreadyTheTargetOne() {
         ModuleStructureLinkRoleRepairer spy = writeStubbed();
         IModule module = mockModule("MyDoc", "parent");
@@ -367,6 +413,9 @@ class ModuleStructureLinkRoleRepairerTest {
         // The role mock is built first: creating a mock inside when(...) leaves Mockito with an unfinished stub.
         ILinkRoleOpt role = mockRole(structureLinkRoleId);
         lenient().when(module.getStructureLinkRole()).thenReturn(role);
+        IDocumentPermissions modulePermissions = mock(IDocumentPermissions.class);
+        lenient().when(modulePermissions.modifyKey(any())).thenReturn(true);
+        lenient().when(module.can()).thenReturn(modulePermissions);
         containWorkItems(module);
         return module;
     }
