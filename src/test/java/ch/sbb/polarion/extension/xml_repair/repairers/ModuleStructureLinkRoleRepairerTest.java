@@ -1,5 +1,6 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
+import ch.sbb.polarion.extension.generic.rest.exception.UnauthorizedException;
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
@@ -17,9 +18,13 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IDocumentPermissions;
 import com.polarion.alm.tracker.model.IWorkItemPermissions;
 import com.polarion.platform.persistence.IDataService;
+import com.polarion.platform.persistence.lowlevel.ILowLevelPObject;
+import com.polarion.platform.persistence.spi.LowLevelPObjectAccessor;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.ArrayList;
@@ -27,11 +32,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiConsumer;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -41,6 +48,7 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -420,6 +428,60 @@ class ModuleStructureLinkRoleRepairerTest {
         // The switch is what dooms the link left behind, so the result says so rather than leaving it silent.
         assertTrue(result.getWarnings().stream().anyMatch(w -> w.contains("That link keeps role 'parent'")),
                 result.getWarnings().toString());
+    }
+
+    // --- the two calls into the platform ---
+
+    @Test
+    void testSetStructureLinkRoleWritesThroughTheLowLevelObject() {
+        IModule module = mockModule("MyDoc", "relates_to");
+        ILinkRoleOpt parent = mockRole("parent");
+        ILowLevelPObject lowLevel = mock(ILowLevelPObject.class);
+
+        // The accessor casts the module to a platform class a mock cannot be, so the static call is intercepted.
+        try (MockedStatic<LowLevelPObjectAccessor> accessor = mockStatic(LowLevelPObjectAccessor.class)) {
+            accessor.when(() -> LowLevelPObjectAccessor.getFor(module)).thenReturn(lowLevel);
+
+            repairer.setStructureLinkRole(module, parent);
+        }
+
+        verify(lowLevel).setValue(eq(IModule.KEY_STRUCTURELINKROLE), eq(parent), any());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testSetStructureLinkRoleRefusesAKeyTheUserCannotModify() {
+        IModule module = mockModule("MyDoc", "relates_to");
+        ILowLevelPObject lowLevel = mock(ILowLevelPObject.class);
+        ArgumentCaptor<BiConsumer<String, Object>> check = ArgumentCaptor.forClass(BiConsumer.class);
+
+        try (MockedStatic<LowLevelPObjectAccessor> accessor = mockStatic(LowLevelPObjectAccessor.class)) {
+            accessor.when(() -> LowLevelPObjectAccessor.getFor(module)).thenReturn(lowLevel);
+            repairer.setStructureLinkRole(module, mockRole("parent"));
+        }
+        verify(lowLevel).setValue(any(), any(), check.capture());
+
+        // The low-level write skips the prototype's read-only guard, so the permission check it is handed is
+        // the only one left. It is the same check IPObject.setValue would have run.
+        when(module.can().modifyKey("structureLinkRole")).thenReturn(false);
+        assertThrows(UnauthorizedException.class, () -> check.getValue().accept("structureLinkRole", null));
+    }
+
+    @Test
+    void testStaleCacheUrisSkipsAnUnresolvableWorkItem() {
+        IModule module = mockModule("MyDoc", "relates_to");
+        IWorkItem resolvable = link("PRJ-1", "PRJ-2", "parent");
+        IWorkItem unresolvable = link("PRJ-3", "PRJ-4", "parent");
+        when(unresolvable.isUnresolvable()).thenReturn(true);
+        containWorkItems(module, resolvable, unresolvable);
+
+        repairer.staleCacheUris(module);
+
+        // Asserted through the calls rather than the values: SubterraURI cannot be constructed here, because
+        // its static initializer needs Guava, which is not on the test classpath.
+        verify(module).getUri();
+        verify(resolvable).getUri();
+        verify(unresolvable, never()).getUri();
     }
 
     // --- collision collection ---
