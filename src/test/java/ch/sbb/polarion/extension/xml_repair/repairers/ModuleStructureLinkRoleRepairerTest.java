@@ -464,7 +464,8 @@ class ModuleStructureLinkRoleRepairerTest {
         // The low-level write skips the prototype's read-only guard, so the permission check it is handed is
         // the only one left. It is the same check IPObject.setValue would have run.
         when(module.can().modifyKey("structureLinkRole")).thenReturn(false);
-        assertThrows(UnauthorizedException.class, () -> check.getValue().accept("structureLinkRole", null));
+        BiConsumer<String, Object> permissionCheck = check.getValue();
+        assertThrows(UnauthorizedException.class, () -> permissionCheck.accept("structureLinkRole", null));
     }
 
     @Test
