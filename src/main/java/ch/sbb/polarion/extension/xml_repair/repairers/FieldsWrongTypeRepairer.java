@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static ch.sbb.polarion.extension.xml_repair.repairers.FieldsFormattingSymbolsRepairer.FORMATTING_SYMBOLS_REGEX;
+import static ch.sbb.polarion.extension.xml_repair.repairers.FieldsFormattingSymbolsRepairer.collapseFormattingSymbols;
 
 public class FieldsWrongTypeRepairer extends BaseRepairer {
 
@@ -50,7 +50,7 @@ public class FieldsWrongTypeRepairer extends BaseRepairer {
         Object value = entity.getValue(meta.getId());
         if (value != null && !(value instanceof String)) {
             String convertedValue = convertToString(value);
-            entity.setValue(meta.getId(), convertedValue.replaceAll(FORMATTING_SYMBOLS_REGEX, " ").trim());
+            entity.setValue(meta.getId(), collapseFormattingSymbols(convertedValue).trim());
             result.setSuccess(true);
         }
 

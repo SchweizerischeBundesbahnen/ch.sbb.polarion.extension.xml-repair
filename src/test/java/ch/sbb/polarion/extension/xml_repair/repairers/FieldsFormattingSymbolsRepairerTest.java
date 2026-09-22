@@ -18,6 +18,10 @@ import com.polarion.core.util.types.Text;
 import com.polarion.subterra.base.data.identification.IContextId;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -25,6 +29,7 @@ import org.mockito.quality.Strictness;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.mockFields;
@@ -103,6 +108,41 @@ class FieldsFormattingSymbolsRepairerTest {
 
         assertTrue(result.isSuccess());
         verify(entity).setValue("description", expected);
+    }
+
+    private static Stream<Arguments> collapseCases() {
+        return Stream.of(
+                Arguments.of("Line\nbreak", "Line break"),
+                Arguments.of("Tab\there", "Tab here"),
+                Arguments.of("Padded  \n  break", "Padded break"),
+                Arguments.of("Several\n\n\nbreaks", "Several breaks"),
+                Arguments.of("Mixed \r\n text", "Mixed text"),
+                // a whitespace run without a formatting symbol keeps its spaces
+                Arguments.of("Double  space", "Double  space"),
+                Arguments.of("Clean string", "Clean string"),
+                Arguments.of("", ""),
+                // leading and trailing runs collapse as well, the caller trims afterwards
+                Arguments.of("\n leading", " leading"),
+                Arguments.of("trailing \t", "trailing ")
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("collapseCases")
+    void testCollapseFormattingSymbols(String value, String expected) {
+        assertEquals(expected, FieldsFormattingSymbolsRepairer.collapseFormattingSymbols(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Line\nbreak", "Tab\there", "Carriage\rreturn", "\n", "trailing \t"})
+    void testContainsFormattingSymbols(String value) {
+        assertTrue(FieldsFormattingSymbolsRepairer.containsFormattingSymbols(value));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Clean string", "Double  space", "", " "})
+    void testContainsNoFormattingSymbols(String value) {
+        assertFalse(FieldsFormattingSymbolsRepairer.containsFormattingSymbols(value));
     }
 
     @Test
