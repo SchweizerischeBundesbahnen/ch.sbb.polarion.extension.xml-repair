@@ -705,7 +705,7 @@ class BrokenLinkedWorkItemsRepairerTest {
     }
 
     @Test
-    void testGetRoleOptReturnsNullWhenLinkRoleEnumMissing() {
+    void testGetRoleOptThrowsWhenLinkRoleEnumMissing() {
         BrokenLinkedWorkItemsRepairer repairer = new BrokenLinkedWorkItemsRepairer();
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
@@ -718,9 +718,9 @@ class BrokenLinkedWorkItemsRepairerTest {
 
         ScanContext context = createScanContext(polarionService);
 
-        ILinkRoleOpt result = repairer.getRoleOpt(workItem, "relates", context);
-
-        assertNull(result);
+        // Reporting an unknown role instead would delete every link of the project when 'deleteUnresolvable' is on.
+        NullPointerException exception = assertThrows(NullPointerException.class, () -> repairer.getRoleOpt(workItem, "relates", context));
+        assertTrue(exception.getMessage().contains("elibrary"));
     }
 
     @Test

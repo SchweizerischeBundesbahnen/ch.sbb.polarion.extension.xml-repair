@@ -170,10 +170,9 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     @Nullable ILinkRoleOpt getRoleOpt(@NotNull IWorkItem workItem, @NotNull String linkRoleId, @NotNull ScanContext context) {
         IEnumeration<ILinkRoleOpt> roleEnum = context.getAndCache(CACHE_LINK_ROLES_KEY_TEMPLATE.formatted(workItem.getProjectId()), () ->
                 context.polarionService().getTrackerProject(workItem.getProjectId()).getWorkItemLinkRoleEnum());
-        if (roleEnum == null) {
-            // Callers treat a missing role as an unknown link role id.
-            return null;
-        }
+        // Fail loudly: a null return would reach the caller as UNKNOWN_LINK_ROLE_ID, which deletes every
+        // link of the project once 'deleteUnresolvable' is on, although no role was checked at all.
+        Objects.requireNonNull(roleEnum, "Link role enumeration unavailable for project " + workItem.getProjectId());
         List<ILinkRoleOpt> availableOptions = roleEnum.getAvailableOptions(Objects.requireNonNull(workItem.getType()).getId());
         return availableOptions.stream().filter(o -> Objects.equals(o.getId(), linkRoleId)).findFirst().orElse(null);
     }

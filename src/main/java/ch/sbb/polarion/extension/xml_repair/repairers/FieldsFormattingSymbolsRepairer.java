@@ -19,8 +19,9 @@ import java.util.regex.Pattern;
 public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
 
     public static final String NAME = "String fields: Formatting Symbols";
-    // Equivalent to "\\s*[\\n\\r\\t]+\\s*", but with disjoint character classes so the matcher cannot backtrack.
-    public static final String FORMATTING_SYMBOLS_REGEX = "(?:[^\\S\\n\\r\\t]*[\\n\\r\\t])+[^\\S\\n\\r\\t]*";
+    // Equivalent to "\\s*[\\n\\r\\t]+\\s*": the leading class is disjoint from the following one, so the
+    // matcher cannot backtrack, and the trailing "\\s*" still consumes the rest of the whitespace run.
+    public static final String FORMATTING_SYMBOLS_REGEX = "[^\\S\\n\\r\\t]*[\\n\\r\\t]\\s*";
     private static final Pattern FORMATTING_SYMBOLS_PATTERN = Pattern.compile(FORMATTING_SYMBOLS_REGEX);
 
     @Override
