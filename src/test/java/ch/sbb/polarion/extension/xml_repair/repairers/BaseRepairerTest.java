@@ -1,5 +1,7 @@
 package ch.sbb.polarion.extension.xml_repair.repairers;
 
+import ch.sbb.polarion.extension.generic.fields.FieldType;
+import ch.sbb.polarion.extension.generic.fields.model.FieldMetadata;
 import ch.sbb.polarion.extension.xml_repair.service.XmlRepairPolarionService;
 import ch.sbb.polarion.extension.xml_repair.service.model.*;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
@@ -10,7 +12,10 @@ import ch.sbb.polarion.extension.xml_repair.util.Cache;
 import ch.sbb.polarion.extension.xml_repair.util.Report;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
+import com.polarion.subterra.base.data.identification.IContextId;
+import com.polarion.subterra.base.data.model.IType;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,9 +26,11 @@ import org.mockito.quality.Strictness;
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
 
 import java.util.List;
+import java.util.Set;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith({MockitoExtension.class, PlatformContextMockExtension.class})
@@ -221,6 +228,22 @@ class BaseRepairerTest {
         RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
 
         assertThrows(IllegalArgumentException.class, () -> repairer.repair((IUniqueObject) entity, context));
+    }
+
+    // ---- getAllFieldsUsingCache() tests ----
+
+    @Test
+    void testGetAllFieldsUsingCacheReturnsEmptySetWhenLookupYieldsNull() {
+        TestableRepairer repairer = new TestableRepairer();
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        when(polarionService.getAllFields(anyString(), any(), anyString(), anyBoolean(), any(IType[].class))).thenReturn(null);
+        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
+        IContextId contextId = mock(IContextId.class);
+
+        Set<FieldMetadata> fields = repairer.getAllFieldsUsingCache(context, IWorkItem.PROTO, contextId, "task", false, FieldType.STRING.getType());
+
+        assertTrue(fields.isEmpty());
     }
 
     // ---- Helper ----

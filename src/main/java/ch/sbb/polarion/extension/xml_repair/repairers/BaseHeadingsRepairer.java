@@ -71,7 +71,9 @@ public abstract class BaseHeadingsRepairer extends BaseRepairer {
     @SuppressWarnings("java:S5852")
         // Input is a single ModulePagePart element, not user-controlled.
     boolean isPageBreak(ModulePagePart part) {
-        return part.getElementHtml().matches("(?s)<div[^>]+name=page_break.*?</div>");
+        String html = part.getElementHtml();
+        // Testing the closing tag separately keeps the ambiguous ".*?</div>" tail, and its backtracking, out of the pattern.
+        return html.endsWith("</div>") && html.matches("(?s)<div[^>]+name=page_break.*");
     }
 
 }

@@ -44,7 +44,8 @@ class FieldsRichTextLinksRepairerTest {
         IWorkflowObject entity = mock(IWorkItem.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IModule.PROTO);
         when(entity.getProjectId()).thenReturn("elibrary");
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         Set<FieldMetadata> fields = mockFields(FieldType.TEXT, "description");
@@ -81,7 +82,8 @@ class FieldsRichTextLinksRepairerTest {
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IModule.PROTO);
         when(entity.getProjectId()).thenReturn("elibrary");
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         Set<FieldMetadata> fields = mockFields(FieldType.RICH, "custom1");

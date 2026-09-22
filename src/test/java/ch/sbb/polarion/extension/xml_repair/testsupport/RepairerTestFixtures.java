@@ -52,10 +52,12 @@ public final class RepairerTestFixtures {
     }
 
     public static ScanContext createScanContext(XmlRepairPolarionService polarionService, List<String> repairers, UserConfigs configs, Report report, Cache cache) {
-        lenient().when(polarionService.getTrackerService()).thenReturn(mock(ITrackerService.class));
+        ITrackerService trackerServiceMock = mock(ITrackerService.class);
+        lenient().when(polarionService.getTrackerService()).thenReturn(trackerServiceMock);
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
              MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(mock(InternalReadOnlyTransaction.class));
+            InternalReadOnlyTransaction transactionMock = mock(InternalReadOnlyTransaction.class);
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transactionMock);
             return new ScanContext(polarionService, repairers, configs, report, cache);
         }
     }
