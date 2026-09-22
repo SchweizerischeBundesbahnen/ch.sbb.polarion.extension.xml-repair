@@ -164,4 +164,26 @@ class FieldsFormattingSymbolsRepairerTest {
         assertFalse(result.isSuccess());
         verify(entity, never()).setValue(anyString(), any());
     }
+
+    @Test
+    void testRepairFieldIsNotAString() {
+        FieldsFormattingSymbolsRepairer repairer = new FieldsFormattingSymbolsRepairer();
+
+        IWorkflowObject entity = mock(IWorkflowObject.class);
+        IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
+        when(metaInfo.getString("fieldId")).thenReturn("description");
+        when(metaInfo.serialize()).thenReturn("serialized");
+
+        // a Text left by a field whose type was changed, FieldsWrongTypeRepairer handles that case
+        Text textValue = mock(Text.class);
+        when(entity.getValue("description")).thenReturn(textValue);
+
+        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
+        RepairContext context = new RepairContext(metaInfo, polarionService, new UserConfigs(), new Cache());
+
+        RepairResult result = repairer.repair(entity, context);
+
+        assertFalse(result.isSuccess());
+        verify(entity, never()).setValue(anyString(), any());
+    }
 }
