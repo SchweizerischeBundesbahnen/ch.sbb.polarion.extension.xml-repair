@@ -23,6 +23,7 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
      * to the portal's topic path to select the node in the tree.
      */
     public static final String GENERAL_CHECKS = "general-checks";
+    public static final String STRUCTURAL_LINK = "structural-link";
     public static final String PURGE_OUTDATED_DATA = "purge-outdated-data";
 
     private static final String MENU_ICONS = "/polarion/xml-repair-app/ui/images/menu/";
@@ -76,6 +77,7 @@ public class XmlRepairNavigationExtender extends NavigationExtender {
     public List<NavigationExtenderNode> getRootNodes(@NotNull IContextId contextId) {
         return List.of(
                 new XmlRepairNavigationNode(GENERAL_CHECKS, "General checks", MENU_ICONS + "16x16/general_checks.svg"),
+                new XmlRepairNavigationNode(STRUCTURAL_LINK, "Structural link", MENU_ICONS + "16x16/structural_link.svg"),
                 new XmlRepairNavigationNode(PURGE_OUTDATED_DATA, "Purge outdated data", MENU_ICONS + "16x16/purge.svg")
         );
     }

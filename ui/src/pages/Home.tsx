@@ -1,5 +1,5 @@
 import { PageLayout } from '@sbb-polarion/react-sbb-polarion';
-import { GENERAL_CHECKS, PURGE_OUTDATED_DATA } from '../navigation';
+import { GENERAL_CHECKS, PURGE_OUTDATED_DATA, STRUCTURAL_LINK } from '../navigation';
 import { navigateSelf, navigateShell } from '../services/shell';
 
 /** The topic path of a sub-topic: Polarion's own topic URL with the node id appended. */
@@ -16,6 +16,11 @@ export function localHref(nodeId: string): string {
 
 const PAGES = [
   { id: GENERAL_CHECKS, label: 'General checks', description: 'Scan entities for XML issues and repair them.' },
+  {
+    id: STRUCTURAL_LINK,
+    label: 'Structural link',
+    description: 'Change which link role a document uses to structure its content.',
+  },
   {
     id: PURGE_OUTDATED_DATA,
     label: 'Purge outdated data',

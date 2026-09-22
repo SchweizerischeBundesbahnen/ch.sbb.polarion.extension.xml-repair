@@ -55,14 +55,36 @@ Restart Polarion for the changes to take effect.
 6. Save changes by clicking 💾 Save.
 
 After Polarion restart, the "XML-Repair" item will appear in the project's left navigation panel. The single
-`<topic id="xml-repair"/>` entry enables it together with the two pages below it:
+`<topic id="xml-repair"/>` entry enables it together with the pages below it:
 
 | Page | What it does |
 |---|---|
 | General checks | Scans WorkItems, Documents and Collections for XML issues and repairs the selected ones. |
+| Structural link | Finds documents whose structure link role differs from the selected one, and changes it. |
 | Purge outdated data | Finds attributes which are filled on the scanned entities but no longer defined in their custom fields configuration, and clears the selected ones. |
 
-Clicking "XML-Repair" itself opens an entry page that links to both.
+Clicking "XML-Repair" itself opens an entry page that links to all of them.
+
+### Structural link
+
+A document structures its content with one link role, `parent` by default. The role is chosen at creation time
+and is not visible afterwards, so a document created with another role looks the same but behaves differently.
+
+1. Pick the role every document should use, then press `Scan`.
+2. The results list the documents using another role, and the `Link Role` column names the role each one uses
+   today. A document warns when it already holds links of the selected role.
+3. Under `Existing <role> links`, choose what happens to such a link: interrupt the change and report it (the
+   default), move the link to another role, ignore it and accept that Polarion drops it later, or delete it
+   now.
+4. Tick the documents to switch and press `Change role`.
+
+The page scans documents only, and always on HEAD: it writes through the same path as a repair, so it obeys the
+`Repair Authorization` setting below. Moving or deleting a link also saves the work item holding it.
+
+Polarion strips a structural link by role alone, never comparing it against the document tree, so a link the
+document already holds under the selected role is lost the next time its work item is saved. That is why the
+default stops rather than switching silently. The other answers move, keep or remove those links, and report
+which ones they touched.
 
 ### Purge outdated data
 

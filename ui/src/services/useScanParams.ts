@@ -9,6 +9,7 @@ import type {
   EntityType,
   FilterMode,
   IconSelectOption,
+  RepairerConfigValues,
   ScanParams,
 } from '../types';
 import { getCookie as getRawCookie, setCookie as setRawCookie } from './cookies';
@@ -50,13 +51,25 @@ interface ScanParamsOptions {
    * is writing, since the backend refuses to write anything resolved at a revision.
    */
   supportsRevision?: boolean;
+  /**
+   * The entity types the page offers, in the order the Entity Type row lists them. The default is all of them.
+   * A page restricted to one type still keeps the row, because it is also where the subtype is picked.
+   */
+  entityTypes?: EntityType[];
 }
 
 export default function useScanParams(
   cookiePrefix: string,
   sendRequest: SendRequest,
-  { defaultHideValid = false, supportsRevision = true }: ScanParamsOptions = {},
+  { defaultHideValid = false, supportsRevision = true, entityTypes }: ScanParamsOptions = {},
 ) {
+  // Frozen for the lifetime of the hook: a page declares its entity types once, and the array literal a caller
+  // writes inline would otherwise be a new value on every render.
+  const offeredTypes = useRef(entityTypes ?? ENTITY_TYPE_OPTIONS.map((option) => option.id as EntityType)).current;
+  const typeOptions = useMemo(
+    () => ENTITY_TYPE_OPTIONS.filter((option) => offeredTypes.includes(option.id as EntityType)),
+    [offeredTypes],
+  );
   const getCookie = useCallback((key: string): string | null => getRawCookie(cookiePrefix + key), [cookiePrefix]);
   const setCookie = useCallback(
     (key: string, value: string): void => setRawCookie(cookiePrefix + key, value),
@@ -65,7 +78,9 @@ export default function useScanParams(
 
   const [entityType, setEntityType] = useState<EntityType>(() => {
     const saved = getCookie('entityType');
-    return ENTITY_TYPE_OPTIONS.some((o) => o.id === saved) ? (saved as EntityType) : 'WORKITEM';
+    // A cookie naming a type this page does not offer is ignored, so a page restricted to documents cannot be
+    // put on work items by a value another page wrote.
+    return offeredTypes.includes(saved as EntityType) ? (saved as EntityType) : offeredTypes[0];
   });
   const [projectId] = useState(() => String(new URLSearchParams(window.location.search).get('projectId') || ''));
   const [filterMode, setFilterMode] = useState<FilterMode>(() =>
@@ -268,7 +283,7 @@ export default function useScanParams(
 
   const combinedEntityOptions = useMemo((): IconSelectOption[] => {
     const result: IconSelectOption[] = [];
-    for (const opt of ENTITY_TYPE_OPTIONS) {
+    for (const opt of typeOptions) {
       result.push(opt);
       const subs = allSubtypes[opt.id] || [];
       for (const sub of subs) {
@@ -276,7 +291,7 @@ export default function useScanParams(
       }
     }
     return result;
-  }, [allSubtypes]);
+  }, [allSubtypes, typeOptions]);
 
   const entityValue = entitySubtype ? `${entityType}::${entitySubtype}` : entityType;
 
@@ -331,7 +346,7 @@ export default function useScanParams(
    * The scan request body for the given repairers. Both pages POST the same shape to /scan and differ only in
    * which repairers they ask for, so the mapping from the form to the request lives here once.
    */
-  const buildScanParams = (repairers: string[], configs: Record<string, Record<string, boolean>> = {}): ScanParams => ({
+  const buildScanParams = (repairers: string[], configs: RepairerConfigValues = {}): ScanParams => ({
     projectId,
     entityType,
     entitySubtype: entitySubtype || null,

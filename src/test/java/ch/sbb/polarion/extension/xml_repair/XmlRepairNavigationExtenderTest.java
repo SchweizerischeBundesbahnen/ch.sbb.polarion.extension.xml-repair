@@ -56,7 +56,8 @@ class XmlRepairNavigationExtenderTest {
     void testGetRootNodes() {
         List<NavigationExtenderNode> rootNodes = extender.getRootNodes(contextId("myProject"));
 
-        assertEquals(List.of("general-checks", "purge-outdated-data"), rootNodes.stream().map(NavigationExtenderNode::getId).toList());
+        assertEquals(List.of("general-checks", "structural-link", "purge-outdated-data"),
+                rootNodes.stream().map(NavigationExtenderNode::getId).toList());
     }
 
     /**
@@ -66,7 +67,8 @@ class XmlRepairNavigationExtenderTest {
     @ParameterizedTest
     @CsvSource({
             "0, general-checks, General checks, general_checks.svg",
-            "1, purge-outdated-data, Purge outdated data, purge.svg"
+            "1, structural-link, Structural link, structural_link.svg",
+            "2, purge-outdated-data, Purge outdated data, purge.svg"
     })
     void testRootNode(int index, String expectedId, String expectedLabel, String expectedIconFile) {
         NavigationExtenderNode node = extender.getRootNodes(contextId("myProject")).get(index);

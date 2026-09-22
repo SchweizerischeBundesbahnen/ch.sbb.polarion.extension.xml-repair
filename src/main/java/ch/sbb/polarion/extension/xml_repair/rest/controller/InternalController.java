@@ -7,6 +7,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.EntityInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.EntityType;
 import ch.sbb.polarion.extension.xml_repair.service.model.TypeInfo;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
+import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import com.polarion.alm.shared.api.transaction.TransactionalExecutor;
@@ -30,6 +31,9 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+
+import java.util.List;
+import java.util.Objects;
 
 
 @Singleton
@@ -100,6 +104,21 @@ public class InternalController {
     }
 
     @GET
+    @Path("/link-roles")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Operation(summary = "Get list of work item link roles for the specified project",
+            responses = {
+                    @ApiResponse(responseCode = "200",
+                            description = "Successfully retrieved the list of link roles",
+                            content = @Content(array = @ArraySchema(schema = @Schema(implementation = TypeInfo.class)))
+                    )
+            })
+    public Response listLinkRoles(@Parameter(description = "Project ID", required = true) @QueryParam("projectId") String projectId) {
+        return Response.ok().entity(TransactionalExecutor.executeInReadOnlyTransaction(
+                transaction -> polarionService.getLinkRoles(projectId))).build();
+    }
+
+    @GET
     @Path("/entities")
     @Produces(MediaType.APPLICATION_JSON)
     @Operation(summary = "Get list of entities of the specified type which can be selected for scanning. Not supported for work items",
@@ -141,8 +160,12 @@ public class InternalController {
                     )
             })
     public Response repair(RepairParams repairParams) {
-        return Response.ok().entity(TransactionalExecutor.executeInWriteTransaction(
-                transaction -> polarionService.repair(repairParams))).build();
+        // executeInWriteTransaction is declared @Nullable, though repair never returns null.
+        List<RepairResult> results = Objects.requireNonNullElse(TransactionalExecutor.executeInWriteTransaction(
+                transaction -> polarionService.repair(repairParams)), List.of());
+        // Deliberately outside the transaction: see XmlRepairPolarionService.clearStaleCaches.
+        polarionService.clearStaleCaches(results);
+        return Response.ok().entity(results).build();
     }
 
     @POST
