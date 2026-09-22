@@ -15,14 +15,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
-@SuppressWarnings("java:S5852") // Regex is fine here.
 public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
 
     public static final String NAME = "String fields: Formatting Symbols";
-    // Equivalent to "\\s*[\\n\\r\\t]+\\s*": the leading class is disjoint from the following one, so the
-    // matcher cannot backtrack, and the trailing "\\s*" still consumes the rest of the whitespace run.
-    public static final String FORMATTING_SYMBOLS_REGEX = "[^\\S\\n\\r\\t]*[\\n\\r\\t]\\s*";
-    private static final Pattern FORMATTING_SYMBOLS_PATTERN = Pattern.compile(FORMATTING_SYMBOLS_REGEX);
+    private static final String FORMATTING_SYMBOLS = "\n\r\t";
+    // A single quantifier with nothing around it cannot backtrack. Describing "whitespace run containing a
+    // formatting symbol" in the pattern instead needs a leading quantifier, which scans in quadratic time.
+    private static final Pattern WHITESPACE_RUN = Pattern.compile("\\s+");
 
     @Override
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
@@ -32,7 +31,7 @@ public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
         for (FieldMetadata meta : getAllFieldsUsingCache(context, proto, entity.getContextId(),
                 Objects.requireNonNull(entity.getType()).getId(), false, FieldType.STRING.getType())) {
             Object value = entity.getValue(meta.getId());
-            if (value instanceof String stringValue && FORMATTING_SYMBOLS_PATTERN.matcher(stringValue).find()) {
+            if (value instanceof String stringValue && containsFormattingSymbols(stringValue)) {
                 issues.add(new Issue(IssueMetaInfo.create(entity).set(FIELD_ID, meta.getId()), this,
                         "String field contains formatting symbols."));
             }
@@ -44,12 +43,21 @@ public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
     protected @NotNull RepairResult repair(IWorkflowObject entity, RepairContext context) {
         String fieldId = context.issueMetaInfo().getString(FIELD_ID);
         Object value = entity.getValue(fieldId);
-        if (value instanceof String stringValue && FORMATTING_SYMBOLS_PATTERN.matcher(stringValue).find()) {
-            entity.setValue(fieldId, stringValue.replaceAll(FORMATTING_SYMBOLS_REGEX, " ").trim());
+        if (value instanceof String stringValue && containsFormattingSymbols(stringValue)) {
+            entity.setValue(fieldId, collapseFormattingSymbols(stringValue).trim());
             return new RepairResult(context.issueMetaInfo(), true);
         } else {
             return new RepairResult(context.issueMetaInfo(), false, "Issue does not exist anymore, possibly it was already fixed or the content was changed since the scan.");
         }
+    }
+
+    public static boolean containsFormattingSymbols(@NotNull String value) {
+        return value.chars().anyMatch(character -> FORMATTING_SYMBOLS.indexOf(character) >= 0);
+    }
+
+    // Collapses every whitespace run which contains a formatting symbol into a single space, leaving the others as they are.
+    public static @NotNull String collapseFormattingSymbols(@NotNull String value) {
+        return WHITESPACE_RUN.matcher(value).replaceAll(match -> containsFormattingSymbols(match.group()) ? " " : match.group());
     }
 
     public String getDisplayName() {
