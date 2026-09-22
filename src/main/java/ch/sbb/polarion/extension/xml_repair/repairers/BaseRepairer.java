@@ -66,9 +66,11 @@ public abstract class BaseRepairer implements IRepairer {
         return module.getContainedWorkItems().stream().filter(w -> !w.isUnresolvable() && w.getType() != null && !w.getType().getId().equals(TYPE_HEADING));
     }
 
-    Set<FieldMetadata> getAllFieldsUsingCache(@NotNull IContext context, @NotNull String proto, @NotNull IContextId contextId, @NotNull String typeId, boolean compareTypeClass, @NotNull IType... fieldTypes) {
+    @NotNull Set<FieldMetadata> getAllFieldsUsingCache(@NotNull IContext context, @NotNull String proto, @NotNull IContextId contextId, @NotNull String typeId, boolean compareTypeClass, @NotNull IType... fieldTypes) {
         String key = CACHE_ALL_FIELDS_KEY_TEMPLATE.formatted(proto, contextId, typeId, compareTypeClass, Arrays.toString(fieldTypes));
-        return context.getAndCache(key, () -> context.polarionService().getAllFields(proto, contextId, typeId, compareTypeClass, fieldTypes));
+        // The cache contract allows a null value, callers iterate the result directly.
+        Set<FieldMetadata> fields = context.getAndCache(key, () -> context.polarionService().getAllFields(proto, contextId, typeId, compareTypeClass, fieldTypes));
+        return fields == null ? Set.of() : fields;
     }
 
 }

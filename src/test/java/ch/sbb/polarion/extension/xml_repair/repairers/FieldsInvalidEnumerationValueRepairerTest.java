@@ -1922,7 +1922,8 @@ class FieldsInvalidEnumerationValueRepairerTest {
         setupFieldsForEntity(meta);
 
         try (MockedStatic<ValueHelper> valueHelperMock = mockStatic(ValueHelper.class)) {
-            valueHelperMock.when(() -> ValueHelper.wrapCustomField(eq(pEntity), isNull(), eq(enumType), any())).thenReturn(mock(IEnumOption.class));
+            IEnumOption enumOptionMock = mock(IEnumOption.class);
+            valueHelperMock.when(() -> ValueHelper.wrapCustomField(eq(pEntity), isNull(), eq(enumType), any())).thenReturn(enumOptionMock);
 
             List<Issue> issues = repairer.scan((IWorkflowObject) pEntity, contextNoFix);
 

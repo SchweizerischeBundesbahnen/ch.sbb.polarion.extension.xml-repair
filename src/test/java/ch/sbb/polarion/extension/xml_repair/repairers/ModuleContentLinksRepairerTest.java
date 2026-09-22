@@ -37,7 +37,8 @@ class ModuleContentLinksRepairerTest {
                 <span class="polarion-rte-link" data-type="workItem" data-item-id="EL-3" data-custom-label="EL-3" data-scope="elibrary" data-option-id="long"></span>
                 <span class="polarion-rte-link" data-type="workItem" data-item-id="EL-4" data-custom-label="EL-4" data-option-id="long"></span>
                 """);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists(eq("drivepilot"), anyString(), isNull())).thenReturn(false);
@@ -64,7 +65,8 @@ class ModuleContentLinksRepairerTest {
                 <span class="polarion-rte-link" data-type="workItem" data-item-id="EL-1" data-custom-label="EL-1" data-scope="elibrary" data-option-id="long"></span>
                 <span class="polarion-rte-link" data-type="workItem" data-item-id="EL-2" data-custom-label="EL-2" data-option-id="long"></span>
                 """);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
         when(polarionService.isWorkItemExists(eq("elibrary"), anyString(), isNull())).thenReturn(true);

@@ -41,7 +41,8 @@ class FieldsFormattingSymbolsRepairerTest {
 
         IWorkflowObject entity = mock(IWorkItem.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IModule.PROTO);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
         when(Objects.requireNonNull(entity.getType()).getId()).thenReturn("testType");
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
@@ -64,7 +65,8 @@ class FieldsFormattingSymbolsRepairerTest {
 
         IWorkflowObject entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IModule.PROTO);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
         when(Objects.requireNonNull(entity.getType()).getId()).thenReturn("testType");
 
         XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);

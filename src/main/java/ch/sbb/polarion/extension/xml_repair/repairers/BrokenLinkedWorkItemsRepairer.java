@@ -18,6 +18,7 @@ import com.polarion.platform.persistence.IEnumOption;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.ArrayList;
@@ -166,9 +167,13 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
     }
 
     @VisibleForTesting
-    ILinkRoleOpt getRoleOpt(@NotNull IWorkItem workItem, @NotNull String linkRoleId, @NotNull ScanContext context) {
+    @Nullable ILinkRoleOpt getRoleOpt(@NotNull IWorkItem workItem, @NotNull String linkRoleId, @NotNull ScanContext context) {
         IEnumeration<ILinkRoleOpt> roleEnum = context.getAndCache(CACHE_LINK_ROLES_KEY_TEMPLATE.formatted(workItem.getProjectId()), () ->
                 context.polarionService().getTrackerProject(workItem.getProjectId()).getWorkItemLinkRoleEnum());
+        if (roleEnum == null) {
+            // Callers treat a missing role as an unknown link role id.
+            return null;
+        }
         List<ILinkRoleOpt> availableOptions = roleEnum.getAvailableOptions(Objects.requireNonNull(workItem.getType()).getId());
         return availableOptions.stream().filter(o -> Objects.equals(o.getId(), linkRoleId)).findFirst().orElse(null);
     }

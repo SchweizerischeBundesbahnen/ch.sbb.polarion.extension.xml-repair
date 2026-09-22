@@ -58,7 +58,8 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             String providedProjectId = regexEngine.group(GROUP_PROJECT_ID);
             String workItemRevision = regexEngine.group(GROUP_REVISION);
             // 'polarion' links have no 'data-item-id'; their id lives in the 'data-url' 'selection' parameter
-            String workItemId = regexEngine.group(GROUP_WORK_ITEM_ID) != null ? regexEngine.group(GROUP_WORK_ITEM_ID) : regexEngine.group(GROUP_SELECTION_ID);
+            String dataItemId = regexEngine.group(GROUP_WORK_ITEM_ID);
+            String workItemId = dataItemId != null ? dataItemId : regexEngine.group(GROUP_SELECTION_ID);
             if (workItemId == null) {
                 return; // a 'polarion-rte-link' span without an identifiable work item id - nothing to check
             }

@@ -29,7 +29,8 @@ class EntityRendererTest {
             EntityRenderer entityRenderer = new EntityRenderer(transaction, trackerService);
 
             ModelObject modelObject = mock(ModelObject.class);
-            when(modelObject.getOldApi()).thenReturn(mock(IWorkItem.class));
+            IWorkItem workItemMock = mock(IWorkItem.class);
+            when(modelObject.getOldApi()).thenReturn(workItemMock);
 
             Map<String, Map<String, String>> result = entityRenderer.renderEntity(modelObject);
 
@@ -54,7 +55,8 @@ class EntityRendererTest {
             EntityRenderer entityRenderer = new EntityRenderer(transaction, trackerService);
 
             ModelObject modelObject = mock(ModelObject.class);
-            when(modelObject.getOldApi()).thenReturn(mock(IModule.class));
+            IModule moduleMock = mock(IModule.class);
+            when(modelObject.getOldApi()).thenReturn(moduleMock);
 
             Map<String, Map<String, String>> result = entityRenderer.renderEntity(modelObject);
 
@@ -79,7 +81,8 @@ class EntityRendererTest {
             EntityRenderer entityRenderer = new EntityRenderer(transaction, trackerService);
 
             ModelObject modelObject = mock(ModelObject.class);
-            when(modelObject.getOldApi()).thenReturn(mock(IBaselineCollection.class));
+            IBaselineCollection baselineCollectionMock = mock(IBaselineCollection.class);
+            when(modelObject.getOldApi()).thenReturn(baselineCollectionMock);
 
             Map<String, Map<String, String>> result = entityRenderer.renderEntity(modelObject);
 

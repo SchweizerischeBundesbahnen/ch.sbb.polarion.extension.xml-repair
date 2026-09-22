@@ -147,7 +147,8 @@ class FieldsWrongTypeRepairerTest {
     private IWorkflowObject createMockEntity() {
         IWorkflowObject entity = mock(IWorkItem.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IModule.PROTO);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextIdMock = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextIdMock);
         ITypeOpt typeOpt = mock(ITypeOpt.class);
         when(typeOpt.getId()).thenReturn("testType");
         when(entity.getType()).thenReturn(typeOpt);

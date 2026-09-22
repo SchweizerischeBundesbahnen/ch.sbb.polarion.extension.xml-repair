@@ -367,7 +367,8 @@ class XmlRepairPolarionServiceTest {
 
     @Test
     void testIsWorkItemExists() {
-        when(polarionService.getWorkItem("elibrary", "EL-1", null)).thenReturn(mock(IWorkItem.class));
+        IWorkItem workItemMock = mock(IWorkItem.class);
+        when(polarionService.getWorkItem("elibrary", "EL-1", null)).thenReturn(workItemMock);
         when(polarionService.getWorkItem("elibrary", "EL-2", null)).thenThrow(ObjectNotFoundException.class);
         assertTrue(polarionService.isWorkItemExists("elibrary", "EL-1", null));
         assertFalse(polarionService.isWorkItemExists("elibrary", "EL-2", null));
@@ -747,7 +748,8 @@ class XmlRepairPolarionServiceTest {
             when(entity.getReferencePath()).thenReturn("proj/WI-1");
             when(entity.getProjectId()).thenReturn("proj");
             when(entity.getId()).thenReturn("WI-1");
-            when(((IWorkflowObject) entity).getType()).thenReturn(mock(ITypeOpt.class));
+            ITypeOpt typeOptMock = mock(ITypeOpt.class);
+            when(((IWorkflowObject) entity).getType()).thenReturn(typeOptMock);
 
             ScanEntity scanEntity = ScanEntity.from(entity);
             ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report(), new Cache());
@@ -795,7 +797,8 @@ class XmlRepairPolarionServiceTest {
 
             // submodule will trigger scanEntity recursively, which will hit the non-collection branch
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
-            when(((IWorkflowObject) module).getType()).thenReturn(mock(ITypeOpt.class));
+            ITypeOpt typeOptMock = mock(ITypeOpt.class);
+            when(((IWorkflowObject) module).getType()).thenReturn(typeOptMock);
 
             // DocumentSelector inherits revision() from ModelObjectSelector<T, S, R>; Mockito's deep-stub
             // cannot resolve S, so revision() returns a ModelObjectSelector mock and the bytecode cast
@@ -1897,7 +1900,8 @@ class XmlRepairPolarionServiceTest {
         when(entity.getReferencePath()).thenReturn("proj/" + id);
         when(entity.getProjectId()).thenReturn("proj");
         when(entity.getId()).thenReturn(id);
-        when(((IWorkflowObject) entity).getType()).thenReturn(mock(ITypeOpt.class));
+        ITypeOpt typeOptMock = mock(ITypeOpt.class);
+        when(((IWorkflowObject) entity).getType()).thenReturn(typeOptMock);
         when(modelObject.getOldApi()).thenReturn(entity);
         return modelObject;
     }
