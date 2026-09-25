@@ -334,6 +334,8 @@ export default function ResultsTable({
                         <button
                           type="button"
                           className="warning-icon"
+                          // Informational only: without this, activating the marker would toggle the row through the cell.
+                          onClick={(e) => e.stopPropagation()}
                           aria-label={`Warnings for ${item.entityId}`}
                           aria-describedby={`${tableId}-warn-${itemIndex}`}
                         >
@@ -435,6 +437,7 @@ export default function ResultsTable({
                                 <button
                                   type="button"
                                   className="warning-icon"
+                                  onClick={(e) => e.stopPropagation()}
                                   aria-label={`Warnings for ${sub.entityId}`}
                                   aria-describedby={`${tableId}-warn-${itemIndex}-${subIndex}`}
                                 >
