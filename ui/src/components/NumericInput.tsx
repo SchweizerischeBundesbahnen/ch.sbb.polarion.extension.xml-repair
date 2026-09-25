@@ -6,6 +6,7 @@ export interface NumericInputHint {
 }
 
 interface NumericInputProps {
+  id?: string;
   value: number;
   defaultValue: number;
   onChange: (val: number) => void;
@@ -18,6 +19,7 @@ interface NumericInputProps {
 // on a blank blur/Enter unless `allowEmpty`. Kept identical across the React SPAs (no vanilla core to
 // share, so it stays an aligned copy rather than a generic module).
 export default function NumericInput({
+  id,
   value,
   defaultValue,
   onChange,
@@ -50,6 +52,7 @@ export default function NumericInput({
 
   return (
     <input
+      id={id}
       type="text"
       inputMode="numeric"
       value={value || ''}

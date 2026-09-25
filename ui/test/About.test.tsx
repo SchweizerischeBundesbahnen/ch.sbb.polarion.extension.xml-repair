@@ -1,3 +1,4 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
@@ -46,5 +47,16 @@ describe('About page (wrapper)', () => {
     setUrl('?feature=about&embedded=true');
     render(<App />);
     await vi.waitFor(() => expect(document.querySelector('.alert-error')).not.toBeNull());
+  });
+});
+
+describe('About page, accessibility', () => {
+  it('has no WCAG A/AA violations', async () => {
+    installFetchMock(aboutRoutes());
+    setUrl('?feature=about&embedded=true');
+    render(<App />);
+    await vi.waitFor(() => expect(document.querySelector('.about-page .app-icon')).not.toBeNull());
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Readme'));
+    expect(await pageViolations()).toEqual([]);
   });
 });

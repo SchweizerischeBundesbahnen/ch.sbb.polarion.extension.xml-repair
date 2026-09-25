@@ -50,12 +50,12 @@ export default function OutdatedAttributesPanel({
                 <div key={attribute} className={`repairer-card ${isSelected ? 'active' : ''}`}>
                   <label className="repairer-header">
                     <input type="checkbox" checked={isSelected} onChange={() => onToggleAttribute(attribute)} />
-                    <div className="repairer-info">
+                    <span className="repairer-info">
                       <span className="repairer-name">{attribute}</span>
                       <span className="repairer-desc">
                         filled in {count} {count === 1 ? 'item' : 'items'}
                       </span>
-                    </div>
+                    </span>
                   </label>
                 </div>
               );

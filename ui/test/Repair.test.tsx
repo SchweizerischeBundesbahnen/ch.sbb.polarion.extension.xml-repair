@@ -1,6 +1,7 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
-import { userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import App from '../src/App';
 import {
   BASELINES,
@@ -258,13 +259,17 @@ describe('Scan & Repair page', () => {
       expect(sortInput.value).toBe('created');
     }
 
-    // Revision is an editable numeric SearchableInput (placeholder HEAD); typing drives its value sync.
-    const revInput = Array.from(document.querySelectorAll<HTMLInputElement>('.advanced-fields input')).find(
-      (i) => i.placeholder === 'HEAD' && !i.readOnly,
+    // Revision is an editable numeric SearchableInput (placeholder HEAD). The user types into its trigger:
+    // the wrapped <input> is out of the Tab order and hands any focus to the trigger. Enter commits the
+    // value to the wrapped <input>, whose React onChange puts it into the scan parameters.
+    const revTrigger = document.querySelector<HTMLInputElement>(
+      '.advanced-fields input.sd-trigger[placeholder="HEAD"]',
     );
-    if (revInput) {
-      await userEvent.fill(revInput, '4321');
-      expect(revInput.value).toBe('4321');
+    if (revTrigger) {
+      await userEvent.fill(revTrigger, '4321');
+      await userEvent.keyboard('{Enter}');
+      const revInput = revTrigger.closest('.searchable-dropdown')!.previousElementSibling as HTMLInputElement;
+      await vi.waitFor(() => expect(revInput.value).toBe('4321'));
     }
 
     const hideValid = document.querySelector<HTMLInputElement>('#hide-valid')!;
@@ -600,6 +605,98 @@ describe('Scan & Repair page', () => {
         (b.textContent ?? '').startsWith('Repair'),
       );
       expect(repairBtn && !repairBtn.disabled).toBe(true);
+    });
+  });
+
+  describe('accessibility', () => {
+    // axe accepts a placeholder as the name, so a control that lost its label still passes the scans below.
+    it('names every scan control after its label', async () => {
+      await mountRepair();
+      document.querySelector<HTMLDetailsElement>('.advanced-section')!.open = true;
+      expect(page.getByRole('combobox', { name: 'Entity Type' }).element()).toBeVisible();
+      expect(page.getByRole('textbox', { name: 'Query' }).element()).toBeVisible();
+      expect(page.getByRole('combobox', { name: /^Revision\/Baseline/ }).element()).toBeVisible();
+      expect(page.getByRole('textbox', { name: 'Sort By' }).element()).toBeVisible();
+      expect(page.getByRole('textbox', { name: 'Show Top Rows' }).element()).toBeVisible();
+      expect(page.getByRole('textbox', { name: 'Scan time limit, seconds' }).element()).toBeVisible();
+
+      await selectEntityType('DOCUMENT');
+      expect(page.getByRole('combobox', { name: 'Documents' }).element()).toBeVisible();
+    });
+
+    it('has no WCAG A/AA violations on the form', async () => {
+      await mountRepair();
+      document.querySelector<HTMLDetailsElement>('.advanced-section')!.open = true;
+      expect(await pageViolations()).toEqual([]);
+    });
+
+    it('has no WCAG A/AA violations with the document selection', async () => {
+      await mountRepair();
+      await selectEntityType('DOCUMENT');
+      pickEntities('_default/specification');
+      await vi.waitFor(() => expect(document.querySelectorAll('.sd-chip').length).toBe(1));
+      expect(await pageViolations()).toEqual([]);
+    });
+
+    it('has no WCAG A/AA violations with the results expanded', async () => {
+      await mountRepair();
+      await runScan();
+      document.querySelector<HTMLButtonElement>('.breakdown-toggle')!.click();
+      await vi.waitFor(() => expect(document.querySelector('.breakdown-table')).not.toBeNull());
+      const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.issues-table tbody tr'));
+      rows
+        .find((r) => (r.textContent ?? '').includes('EL-100'))!
+        .querySelector<HTMLElement>('.col-issues')!
+        .click();
+      rows
+        .find((r) => (r.textContent ?? '').includes('COLL-1'))!
+        .querySelector<HTMLElement>('.col-issues')!
+        .click();
+      await vi.waitFor(() => expect(document.querySelector('.subitem-row')).not.toBeNull());
+      document.querySelector<HTMLElement>('.subitem-row .col-issues.clickable')!.click();
+      await vi.waitFor(() => expect(document.body.textContent).toContain('Bad enum in DOC-1'));
+      expect(await pageViolations()).toEqual([]);
+    });
+
+    it('has no WCAG A/AA violations after a partial repair', async () => {
+      const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('repair')));
+      routes.push({
+        method: 'POST',
+        match: /\/repair$/,
+        respond: (_url, init) => {
+          const body = JSON.parse(String(init?.body));
+          return jsonResponse(
+            (body.issueMetaInfos as string[]).map((m) =>
+              m === 'meta-1'
+                ? { issueMetaInfo: m, success: false, warnings: [] }
+                : { issueMetaInfo: m, success: true, warnings: ['heads up'] },
+            ),
+          );
+        },
+      });
+      await mountRepair(routes);
+      await runScan();
+      const rows = Array.from(document.querySelectorAll<HTMLTableRowElement>('.issues-table tbody tr'));
+      const elRow = rows.find((r) => (r.textContent ?? '').includes('EL-100'))!;
+      elRow.querySelector<HTMLElement>('.col-issues.clickable')!.click();
+      await vi.waitFor(() => expect(document.querySelector('.issue-list')).not.toBeNull());
+      elRow.querySelector<HTMLInputElement>('.col-checkbox input[type="checkbox"]')!.click();
+      const repairBtn = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        (b.textContent ?? '').startsWith('Repair'),
+      )!;
+      await vi.waitFor(() => expect(repairBtn.disabled).toBe(false));
+      repairBtn.click();
+      await vi.waitFor(() => expect(document.querySelector('.issue-item.issue-failed')).not.toBeNull());
+      expect(await pageViolations()).toEqual([]);
+    });
+
+    it('has no WCAG A/AA violations with a scan error', async () => {
+      const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('scan')));
+      routes.push({ method: 'POST', match: /\/scan$/, respond: () => jsonResponse({ message: 'scan boom' }, 500) });
+      await mountRepair(routes);
+      textButton('Scan').click();
+      await vi.waitFor(() => expect(document.querySelector('.error-message')).not.toBeNull());
+      expect(await pageViolations()).toEqual([]);
     });
   });
 });

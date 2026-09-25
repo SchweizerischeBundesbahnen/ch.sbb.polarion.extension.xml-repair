@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
+import { userEvent } from 'vitest/browser';
 import ResultsTable, { type ResultsTerms } from '../src/components/ResultsTable';
 import { itemKey } from '../src/services/scanEntities';
 import type { ScanEntity, ScanResult } from '../src/types';
@@ -213,6 +214,47 @@ describe('ResultsTable warning markers', () => {
     expect(described).not.toContain(' ');
     expect(document.getElementById(described)).not.toBeNull();
     expect(document.getElementById(described)!.textContent).toContain('an outdated attribute');
+  });
+
+  // The marker sits in the clickable issues cell. Each key is checked on its own, because two toggles
+  // cancel out. The mouse steps toggle the row only through the cell, so a marker click that also
+  // toggled it would leave the row in the wrong state at the next wait.
+  async function expectMarkerLeavesRowAlone(row: () => HTMLTableRowElement) {
+    const marker = row().querySelector<HTMLButtonElement>('.warning-icon')!;
+    const cell = row().querySelector<HTMLElement>('.col-issues')!;
+    const issueList = () => document.querySelector('.issue-list');
+
+    marker.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(issueList()).toBeNull();
+    await userEvent.keyboard(' ');
+    expect(issueList()).toBeNull();
+
+    cell.click();
+    await vi.waitFor(() => expect(issueList()).not.toBeNull());
+
+    marker.click();
+    cell.click();
+    await vi.waitFor(() => expect(issueList()).toBeNull());
+  }
+
+  it('does not expand or collapse the row when the marker is activated', async () => {
+    const RESULT = { report: 'Scanned 1 item', items: [sub('EL-100', { warnings: ['heads up'] })] } as ScanResult;
+    render(<Harness result={RESULT} />);
+    await vi.waitFor(() => expect(document.querySelector('.warning-icon')).not.toBeNull());
+
+    await expectMarkerLeavesRowAlone(() => document.querySelector('.issues-table tbody tr')!);
+  });
+
+  it('does not expand or collapse a subitem row when its marker is activated', async () => {
+    const RESULT = {
+      ...COLLECTION_RESULT,
+      items: [{ ...COLLECTION_RESULT.items[0], subitems: [sub('EL-9', { warnings: ['heads up'] })] }],
+    } as ScanResult;
+    render(<Harness result={RESULT} initialExpanded={[COLLECTION_KEY]} />);
+    await vi.waitFor(() => expect(document.querySelector('tr.subitem-row .warning-icon')).not.toBeNull());
+
+    await expectMarkerLeavesRowAlone(() => document.querySelector('tr.subitem-row')!);
   });
 });
 

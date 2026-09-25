@@ -361,7 +361,7 @@ export default function StructuralLink() {
           <div className="panel-left">
             <div className="form-section">
               <div className="form-row">
-                <label>
+                <label htmlFor="structure-link-role">
                   Structure link role
                   <span
                     className="help-icon"
@@ -371,6 +371,7 @@ export default function StructuralLink() {
                   </span>
                 </label>
                 <SearchableSelect
+                  id="structure-link-role"
                   value={targetRole}
                   onChange={setTargetRole}
                   options={roleOptions}
@@ -444,6 +445,7 @@ export default function StructuralLink() {
                   )}
                   {option.id === 'CHANGE' && (
                     <SearchableSelect
+                      ariaLabel="Replacement link role"
                       value={existingLinksRole}
                       onChange={setExistingLinksRole}
                       options={replacementOptions}

@@ -43,10 +43,10 @@ export default function RepairersPanel({
             <div key={r.id} className={`repairer-card ${isSelected ? 'active' : ''}`}>
               <label className="repairer-header">
                 <input type="checkbox" checked={isSelected} onChange={() => onToggleRepairer(r.id)} />
-                <div className="repairer-info">
+                <span className="repairer-info">
                   <span className="repairer-name">{r.name}</span>
                   <span className="repairer-desc">{r.description}</span>
-                </div>
+                </span>
               </label>
               {isSelected && r.configs.length > 0 && (
                 <div className="repairer-settings">

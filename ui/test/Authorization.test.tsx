@@ -1,3 +1,4 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
@@ -119,5 +120,12 @@ describe('Repair Authorization page', () => {
 
     const { body } = await savedContent(fetchMock);
     expect(body).toEqual({ globalRoles: [], projectRoles: [] });
+  });
+});
+
+describe('Repair Authorization page, accessibility', () => {
+  it('has no WCAG A/AA violations', async () => {
+    await renderPage();
+    expect(await pageViolations()).toEqual([]);
   });
 });
