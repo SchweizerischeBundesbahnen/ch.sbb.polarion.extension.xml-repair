@@ -1,3 +1,4 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
@@ -108,5 +109,12 @@ describe('Home page', () => {
 
     await vi.waitFor(() => expect(document.querySelector('.home-page')).not.toBeNull());
     expect(linkButton('General checks')).toBeDefined();
+  });
+});
+
+describe('Home page, accessibility', () => {
+  it('has no WCAG A/AA violations', async () => {
+    await renderHome();
+    expect(await pageViolations()).toEqual([]);
   });
 });

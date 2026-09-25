@@ -1,3 +1,4 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
@@ -124,5 +125,22 @@ describe('feature router', () => {
     render(<App />);
     await vi.waitFor(() => expect(document.querySelector('.alert-error')).not.toBeNull());
     expect(document.querySelector('.alert-error')!.textContent).toContain('Could not load projects');
+  });
+});
+
+describe('dev Landing, accessibility', () => {
+  it('has no WCAG A/AA violations', async () => {
+    installFetchMock([
+      {
+        method: 'GET',
+        match: /\/polarion\/rest\/v1\/projects/,
+        json: { data: [{ id: 'elibrary', attributes: { name: 'E-Library' } }] },
+      },
+    ]);
+    setUrl('?feature=landing');
+    render(<App />);
+    await vi.waitFor(() => expect(document.querySelector('.feature-list')).not.toBeNull());
+    await vi.waitFor(() => expect(document.querySelector('.landing-scope .sd-trigger')).not.toBeNull());
+    expect(await pageViolations()).toEqual([]);
   });
 });

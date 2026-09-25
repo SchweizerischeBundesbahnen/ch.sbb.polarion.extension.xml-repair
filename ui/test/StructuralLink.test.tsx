@@ -1,5 +1,7 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
+import { page } from 'vitest/browser';
 import App from '../src/App';
 import type { ScanParams } from '../src/types';
 import { DOCUMENTS, DOCUMENT_TYPES, LINK_ROLES, STRUCTURE_LINK_SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
@@ -218,3 +220,24 @@ function bodyOfRaw(fetchMock: FetchMock): string {
   if (!call) throw new Error('no POST request to /repair');
   return String(call[1]?.body);
 }
+
+describe('Structural link page, accessibility', () => {
+  it('names both link role controls', async () => {
+    await mount();
+    expect(page.getByRole('combobox', { name: /^Structure link role/ }).element()).toBeVisible();
+    expect(page.getByRole('combobox', { name: 'Replacement link role' }).element()).toBeVisible();
+  });
+
+  it('has no WCAG A/AA violations on the form', async () => {
+    await mount();
+    radio('CHANGE').click();
+    await vi.waitFor(() => expect(replacementSelect()?.getAttribute('aria-disabled')).not.toBe('true'));
+    expect(await pageViolations()).toEqual([]);
+  });
+
+  it('has no WCAG A/AA violations with the scan results', async () => {
+    await mount();
+    await runScan();
+    expect(await pageViolations()).toEqual([]);
+  });
+});

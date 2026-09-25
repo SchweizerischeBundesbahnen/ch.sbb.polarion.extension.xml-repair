@@ -675,6 +675,10 @@
 .warning-icon {
   position: relative;
   margin-left: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
   cursor: default;
   color: #b8860b;
 }

@@ -1,4 +1,4 @@
-import type { KeyboardEvent } from 'react';
+import { type KeyboardEvent, useId } from 'react';
 import { SearchableSelect } from '@sbb-polarion/react-sbb-polarion';
 import type { EntityType, FilterMode, IconSelectOption } from '../types';
 import NumericInput from './NumericInput';
@@ -104,8 +104,12 @@ export default function ScanParamsPanel({
   // row is all there is.
   const selection = SELECTION_LABELS[entityType];
   const selectionActive = !!selection && filterMode === 'SELECTION';
+  const id = useId();
 
   return (
+    // Catches the Enter that bubbles up from the text inputs inside; the inputs are the interactive
+    // elements, so no role fits the wrapper. jsx-a11y's documented answer for event delegation.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       className="form-section"
       onKeyDown={(e: KeyboardEvent) => {
@@ -116,8 +120,9 @@ export default function ScanParamsPanel({
       }}
     >
       <div className="form-row">
-        <label>Entity Type</label>
+        <label htmlFor={`${id}-entity-type`}>Entity Type</label>
         <SearchableSelect
+          id={`${id}-entity-type`}
           value={entityValue}
           onChange={onEntityChange}
           options={combinedEntityOptions}
@@ -126,12 +131,13 @@ export default function ScanParamsPanel({
       </div>
 
       <div className="form-row">
-        <label htmlFor={selectionActive ? undefined : 'user-query'}>
+        <label htmlFor={selectionActive ? `${id}-selection` : 'user-query'}>
           {selectionActive ? selection.label : 'Query'}
         </label>
         <div className="filter-control">
           {selectionActive ? (
             <SearchableSelect
+              id={`${id}-selection`}
               multiple
               value={selectedEntities}
               onChange={onSelectedEntitiesChange}
@@ -171,7 +177,7 @@ export default function ScanParamsPanel({
         <div className="advanced-fields">
           {showRevision && entityType !== 'COLLECTION' && (
             <div className="form-row">
-              <label>
+              <label htmlFor={`${id}-revision`}>
                 Revision/Baseline
                 <span
                   className="help-icon"
@@ -181,6 +187,7 @@ export default function ScanParamsPanel({
                 </span>
               </label>
               <SearchableInput
+                id={`${id}-revision`}
                 value={revision}
                 defaultValue={0}
                 onChange={onRevisionChange}
@@ -191,8 +198,9 @@ export default function ScanParamsPanel({
             </div>
           )}
           <div className="form-row">
-            <label>Sort By</label>
+            <label htmlFor={`${id}-sort`}>Sort By</label>
             <input
+              id={`${id}-sort`}
               type="text"
               value={sort}
               onChange={(e) => onSortChange(e.target.value)}
@@ -200,12 +208,12 @@ export default function ScanParamsPanel({
             />
           </div>
           <div className="form-row">
-            <label>Show Top Rows</label>
-            <NumericInput value={limit} defaultValue={100} onChange={onLimitChange} />
+            <label htmlFor={`${id}-limit`}>Show Top Rows</label>
+            <NumericInput id={`${id}-limit`} value={limit} defaultValue={100} onChange={onLimitChange} />
           </div>
           <div className="form-row">
-            <label>Scan time limit, seconds</label>
-            <NumericInput value={timeout} defaultValue={60} onChange={onTimeoutChange} />
+            <label htmlFor={`${id}-timeout`}>Scan time limit, seconds</label>
+            <NumericInput id={`${id}-timeout`} value={timeout} defaultValue={60} onChange={onTimeoutChange} />
           </div>
           <div className="form-row">
             <label htmlFor="hide-valid">{hideValidLabel}</label>

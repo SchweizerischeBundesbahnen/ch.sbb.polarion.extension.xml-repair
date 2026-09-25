@@ -331,9 +331,9 @@ export default function ResultsTable({
                     >
                       {isCollection ? issueCount : renderIssueCell(item, issueCount)}
                       {item.warnings && item.warnings.length > 0 && (
-                        <span
+                        <button
+                          type="button"
                           className="warning-icon"
-                          tabIndex={0}
                           aria-label={`Warnings for ${item.entityId}`}
                           aria-describedby={`${tableId}-warn-${itemIndex}`}
                         >
@@ -345,7 +345,7 @@ export default function ResultsTable({
                               </span>
                             ))}
                           </span>
-                        </span>
+                        </button>
                       )}
                     </td>
                     <td className="entity-cell">
@@ -432,9 +432,9 @@ export default function ResultsTable({
                             >
                               {renderIssueCell(sub, subVisibleCount)}
                               {sub.warnings && sub.warnings.length > 0 && (
-                                <span
+                                <button
+                                  type="button"
                                   className="warning-icon"
-                                  tabIndex={0}
                                   aria-label={`Warnings for ${sub.entityId}`}
                                   aria-describedby={`${tableId}-warn-${itemIndex}-${subIndex}`}
                                 >
@@ -450,7 +450,7 @@ export default function ResultsTable({
                                       </span>
                                     ))}
                                   </span>
-                                </span>
+                                </button>
                               )}
                             </td>
                             <td className="entity-cell subitem-entity">

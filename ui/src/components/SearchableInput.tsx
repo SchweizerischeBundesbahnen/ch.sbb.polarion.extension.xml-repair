@@ -3,6 +3,7 @@ import { type SearchableDropdownInstance, createEditableSelect } from '@sbb-pola
 import type { NumericInputHint } from './NumericInput';
 
 interface SearchableInputProps {
+  id?: string;
   value: number;
   defaultValue: number;
   onChange: (val: number) => void;
@@ -16,7 +17,14 @@ interface SearchableInputProps {
 // react-sbb-polarion's bundled createEditableSelect (no runtime fetch), so it works in `vite dev` and
 // in tests. The <input> stays React-controlled; SearchableDropdown mirrors the committed value onto it
 // and fires `change`, which drives React's onChange.
-export default function SearchableInput({ value, defaultValue, onChange, hints, placeholder }: SearchableInputProps) {
+export default function SearchableInput({
+  id,
+  value,
+  defaultValue,
+  onChange,
+  hints,
+  placeholder,
+}: SearchableInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const sdRef = useRef<SearchableDropdownInstance | null>(null);
   // Latest hints, so the mount effect seeds the dropdown with whatever loaded by then - not the
@@ -34,6 +42,8 @@ export default function SearchableInput({ value, defaultValue, onChange, hints, 
         inputFilter: (v: string) => v.replace(/\D/g, ''),
         placeholder,
         items: toItems(hintsRef.current),
+        // The dropdown reads the `labels` of a wrapped <select> only, so an <input>'s label is passed in.
+        label: element.labels?.[0],
       });
     } catch {
       /* keep the native <input> */
@@ -70,6 +80,7 @@ export default function SearchableInput({ value, defaultValue, onChange, hints, 
 
   return (
     <input
+      id={id}
       ref={inputRef}
       type="text"
       inputMode="numeric"

@@ -1,3 +1,4 @@
+import { pageViolations } from '@sbb-polarion/react-sbb-polarion/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render } from 'vitest-browser-react';
 import App from '../src/App';
@@ -374,5 +375,20 @@ describe('Purge outdated data page', () => {
 
     await vi.waitFor(() => expect(document.querySelector('.results-section')).toBeNull());
     expect(attributeNames()).toEqual([]);
+  });
+});
+
+describe('Purge outdated data page, accessibility', () => {
+  it('has no WCAG A/AA violations before the first scan', async () => {
+    await mountPurge();
+    document.querySelector<HTMLDetailsElement>('.advanced-section')!.open = true;
+    expect(await pageViolations()).toEqual([]);
+  });
+
+  it('has no WCAG A/AA violations with the scan results', async () => {
+    await mountPurge();
+    await runScan();
+    await vi.waitFor(() => expect(attributeNames().length).toBeGreaterThan(0));
+    expect(await pageViolations()).toEqual([]);
   });
 });
