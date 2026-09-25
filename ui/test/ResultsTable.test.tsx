@@ -216,8 +216,9 @@ describe('ResultsTable warning markers', () => {
     expect(document.getElementById(described)!.textContent).toContain('an outdated attribute');
   });
 
-  // The marker sits in the clickable issues cell. Each step below toggles the row only through the cell,
-  // so a marker that also toggled it would leave the row in the wrong state at the next wait.
+  // The marker sits in the clickable issues cell. Each key is checked on its own, because two toggles
+  // cancel out. The mouse steps toggle the row only through the cell, so a marker click that also
+  // toggled it would leave the row in the wrong state at the next wait.
   async function expectMarkerLeavesRowAlone(row: () => HTMLTableRowElement) {
     const marker = row().querySelector<HTMLButtonElement>('.warning-icon')!;
     const cell = row().querySelector<HTMLElement>('.col-issues')!;
@@ -225,7 +226,10 @@ describe('ResultsTable warning markers', () => {
 
     marker.focus();
     await userEvent.keyboard('{Enter}');
+    expect(issueList()).toBeNull();
     await userEvent.keyboard(' ');
+    expect(issueList()).toBeNull();
+
     cell.click();
     await vi.waitFor(() => expect(issueList()).not.toBeNull());
 
