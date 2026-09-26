@@ -1,5 +1,14 @@
 # Changelog
 
+## [3.4.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.4.0...v3.4.1) (2026-09-26)
+
+
+### Bug Fixes
+
+* **deps:** update dependency prettier to v3.9.9 ([#275](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/275)) ([4eac25f](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/4eac25fcdd0f94f29fbe8f63197f0adf62156ab0))
+* **deps:** update dependency typescript-eslint to v8.70.1 ([#270](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/270)) ([247739a](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/247739aa0c352b8d103fed0407eae868c5148fd1))
+* **deps:** update slf4j monorepo to v2.0.20 ([#273](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/273)) ([d6f3edd](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d6f3edd168e8cf64bcd9ecaa4130ccf7406b2025))
+
 ## [3.4.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.3.0...v3.4.0) (2026-09-23)
 
 
