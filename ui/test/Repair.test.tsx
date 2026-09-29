@@ -277,6 +277,25 @@ describe('Scan & Repair page', () => {
     expect(hideValid.checked).toBe(true);
   });
 
+  it('scans at the revision typed into the advanced parameters (#268)', async () => {
+    await mountRepair();
+    (document.querySelector('.advanced-section summary') as HTMLElement).click();
+    const revTrigger = await vi.waitFor(() => {
+      const found = document.querySelector<HTMLInputElement>('.advanced-fields input.sd-trigger[placeholder="HEAD"]');
+      expect(found).not.toBeNull();
+      return found!;
+    });
+    await userEvent.fill(revTrigger, '4321');
+    // Enter commits the value and starts the scan by itself.
+    await userEvent.keyboard('{Enter}');
+    const scanCall = await vi.waitFor(() => {
+      const found = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/scan'));
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    expect(JSON.parse(String(scanCall[1]!.body)).revision).toBe('4321');
+  });
+
   it('scans when Enter is pressed in the query field', async () => {
     await mountRepair();
     // The Query text input (not the readonly .sd-trigger of the entity dropdown).
