@@ -1907,7 +1907,7 @@ class XmlRepairPolarionServiceTest {
         Enumeration enumeration = mock(Enumeration.class);
         when(selector.forProject("proj")).thenReturn(enumeration);
         IterableWithSize<EnumOption> iterable = mock(IterableWithSize.class);
-        when(iterable.iterator()).thenReturn(options.iterator());
+        when(iterable.toArrayList()).thenReturn(new ArrayList<>(options));
         when(enumeration.options()).thenReturn(iterable);
         return enumerations;
     }
