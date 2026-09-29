@@ -1764,8 +1764,10 @@ class XmlRepairPolarionServiceTest {
     @Test
     @SuppressWarnings("unchecked")
     void testGetBaselinesReturnsListSortedByRevisionDescending() {
+        IProject project = mock(IProject.class);
+        doReturn(project).when(polarionService).getProject("proj");
         ITrackerProject trackerProject = mock(ITrackerProject.class);
-        when(trackerService.getTrackerProject("proj")).thenReturn(trackerProject);
+        when(trackerService.getTrackerProject(project)).thenReturn(trackerProject);
 
         IInternalBaselinesManager baselinesManager = mock(IInternalBaselinesManager.class);
         when(trackerProject.getBaselinesManager()).thenReturn(baselinesManager);
@@ -1797,6 +1799,7 @@ class XmlRepairPolarionServiceTest {
         ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+            doReturn(mock(IProject.class)).when(polarionService).getProject("proj");
 
             List<EnumOption> options = List.of(
                     mockEnumOption("requirement", "Requirement", "/icons/req.gif"),
@@ -1818,6 +1821,8 @@ class XmlRepairPolarionServiceTest {
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
 
+            doReturn(mock(IProject.class)).when(polarionService).getProject("proj");
+
             mockEnumerationChain(transaction, "work-item-type",
                     List.of(mockEnumOption("requirement", "Requirement", null)));
 
@@ -1835,6 +1840,8 @@ class XmlRepairPolarionServiceTest {
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
 
+            doReturn(mock(IProject.class)).when(polarionService).getProject("proj");
+
             Enumerations enumerations = mockEnumerationChain(transaction, "documents/document-type",
                     List.of(mockEnumOption("req_specification", "Requirements Specification", "/icons/doc.gif")));
 
@@ -1851,9 +1858,25 @@ class XmlRepairPolarionServiceTest {
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
             txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
 
+            doReturn(mock(IProject.class)).when(polarionService).getProject("proj");
+
             mockEnumerationChain(transaction, "work-item-type", List.of());
 
             assertTrue(polarionService.getWorkItemTypes("proj").isEmpty());
+        }
+    }
+
+    @Test
+    void testGetTypesThrowsNotFoundWhenProjectDoesNotExist() {
+        ReadOnlyTransaction transaction = mock(ReadOnlyTransaction.class);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+            doThrow(new ObjectNotFoundException("Project 'proj' not found")).when(polarionService).getProject("proj");
+
+            assertThrows(ObjectNotFoundException.class, () -> polarionService.getWorkItemTypes("proj"));
+            assertThrows(ObjectNotFoundException.class, () -> polarionService.getDocumentTypes("proj"));
+            assertThrows(ObjectNotFoundException.class, () -> polarionService.getLinkRoles("proj"));
+            verifyNoInteractions(transaction);
         }
     }
 
@@ -1884,7 +1907,7 @@ class XmlRepairPolarionServiceTest {
         Enumeration enumeration = mock(Enumeration.class);
         when(selector.forProject("proj")).thenReturn(enumeration);
         IterableWithSize<EnumOption> iterable = mock(IterableWithSize.class);
-        when(iterable.iterator()).thenReturn(options.iterator());
+        when(iterable.toArrayList()).thenReturn(new ArrayList<>(options));
         when(enumeration.options()).thenReturn(iterable);
         return enumerations;
     }

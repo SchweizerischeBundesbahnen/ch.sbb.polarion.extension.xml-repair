@@ -32,7 +32,6 @@ import com.polarion.alm.shared.api.model.ModelObject;
 import com.polarion.alm.shared.api.model.ModelObjectsSearch;
 import com.polarion.alm.shared.api.model.PrototypeEnum;
 import com.polarion.alm.shared.api.model.document.Document;
-import com.polarion.alm.shared.api.model.eo.EnumOption;
 import com.polarion.alm.shared.api.model.eo.Enumeration;
 import com.polarion.alm.shared.api.transaction.ReadOnlyTransaction;
 import com.polarion.alm.shared.api.utils.collections.IterableWithSize;
@@ -554,7 +553,7 @@ public class XmlRepairPolarionService extends PolarionService {
     }
 
     public List<BaselineInfo> getBaselines(String projectId) {
-        IInternalBaselinesManager baselinesManager = (IInternalBaselinesManager) getTrackerService().getTrackerProject(projectId).getBaselinesManager();
+        IInternalBaselinesManager baselinesManager = (IInternalBaselinesManager) getTrackerProject(projectId).getBaselinesManager();
         IPObjectList<IBaseline> projectBaselines = baselinesManager.getBaselines();
         return projectBaselines.stream()
                 .map(b -> new BaselineInfo(b.getBaseRevision(), b.getName()))
@@ -579,12 +578,11 @@ public class XmlRepairPolarionService extends PolarionService {
         if (transaction == null) {
             throw new IllegalStateException("This method must be called within a transaction");
         }
+        getProject(projectId); // without this Polarion reports a missing project as "permission denied" on the enumeration, mapped to HTTP 500
         Enumeration enumeration = transaction.enumerations().getEnumeration(enumId).forProject(projectId);
-        List<TypeInfo> types = new ArrayList<>();
-        for (EnumOption option : enumeration.options()) {
-            types.add(new TypeInfo(option.id(), option.fields().name().get(), option.fields().iconURL().url()));
-        }
-        return types;
+        return enumeration.options().toArrayList().stream()
+                .map(option -> new TypeInfo(option.id(), option.fields().name().get(), option.fields().iconURL().url()))
+                .toList();
     }
 
 }
