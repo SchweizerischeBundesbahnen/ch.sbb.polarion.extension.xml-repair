@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.4.1](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.4.0...v3.4.1) (2026-10-02)
+
+
+### Bug Fixes
+
+* **deps:** update dependency ch.sbb.polarion.extensions:ch.sbb.polarion.extension.generic to v16.2.0 ([#283](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/283)) ([45493f5](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/45493f5ceabb87bf4abf6a448525f64a9d5d6fc8))
+* **deps:** update dependency prettier to v3.9.9 ([#275](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/275)) ([4eac25f](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/4eac25fcdd0f94f29fbe8f63197f0adf62156ab0))
+* **deps:** update dependency typescript-eslint to v8.70.1 ([#270](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/270)) ([247739a](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/247739aa0c352b8d103fed0407eae868c5148fd1))
+* **deps:** update dependency typescript-eslint to v8.71.0 ([#284](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/284)) ([c3a033c](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/c3a033c04621ff00026c91470fa8cf045cc2c133))
+* **deps:** update dependency vite to v8.3.1 ([#278](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/278)) ([f4bb470](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/f4bb470781456c200e0c5bb2d91110792ecd83a0))
+* **deps:** update npm to v12.1.0 ([#276](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/276)) ([a1cf492](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/a1cf492e67adec19040643afb3314a9442643a59))
+* **deps:** update slf4j monorepo to v2.0.20 ([#273](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/273)) ([d6f3edd](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/d6f3edd168e8cf64bcd9ecaa4130ccf7406b2025))
+* **deps:** update vitest monorepo to v5.0.2 ([#280](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/280)) ([5b255af](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/5b255af24766258bea2379dffdc74b3dbbcd2be5))
+* pass the revision scan parameter to the scan ([#281](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/281)) ([925f58e](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/commit/925f58e2f5a344c779aa45c5d2677b423e134b7f)), closes [#268](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/issues/268)
+
 ## [3.4.0](https://github.com/SchweizerischeBundesbahnen/ch.sbb.polarion.extension.xml-repair/compare/v3.3.0...v3.4.0) (2026-09-23)
 
 
