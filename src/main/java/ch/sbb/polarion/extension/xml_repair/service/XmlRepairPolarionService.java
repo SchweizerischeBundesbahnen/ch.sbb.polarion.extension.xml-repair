@@ -273,9 +273,10 @@ public class XmlRepairPolarionService extends PolarionService {
             }
             queryOffset += entities.size();
 
+            boolean topItemsLimitReached = false;
             for (ModelObject object : entities) {
                 stopReason = control.stopReason();
-                if (stopReason != null) {
+                if (stopReason != null || topItemsLimitReached) {
                     break;
                 }
                 IUniqueObject entity = (IUniqueObject) object.getOldApi();
@@ -308,7 +309,7 @@ public class XmlRepairPolarionService extends PolarionService {
 
                 if (params.isHideValid() && result.getItems().size() >= params.getLimit()) {
                     report.warn("Top items limit reached, stopping processing further items.");
-                    break;
+                    topItemsLimitReached = true;
                 }
 
                 control.reportProgress("%d %s scanned, %d with issues".formatted(
