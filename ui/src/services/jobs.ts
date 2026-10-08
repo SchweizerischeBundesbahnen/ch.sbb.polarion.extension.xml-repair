@@ -88,8 +88,9 @@ async function runJob<T>(
       await waitWhileUnreachable();
       continue;
     }
-    unreachableSince = null;
     if (status.status === 202) {
+      // only a running job resets the clock: after a 303, the result request must answer too
+      unreachableSince = null;
       const details = await status.json().catch(() => null);
       if (details?.progressMessage) {
         callbacks.onProgress?.(details.progressMessage);

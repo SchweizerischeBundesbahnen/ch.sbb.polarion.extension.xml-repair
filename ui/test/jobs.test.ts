@@ -122,6 +122,23 @@ describe('runScanJob', () => {
     }
   });
 
+  it('gives up when only the result of a finished job keeps failing', async () => {
+    const timeout = jobTiming.unreachableTimeoutMs;
+    jobTiming.unreachableTimeoutMs = 30;
+    try {
+      const sendRequest = vi.fn(async (call: Call) => {
+        if (call.method === 'POST') return started();
+        return call.url.endsWith('/result') ? new Response(null, { status: 503 }) : new Response(null, { status: 303 });
+      });
+
+      await expect(runScanJob(sendRequest, '{}', { isSuperseded: () => false })).rejects.toThrow(
+        'The scan may still be running on the server.',
+      );
+    } finally {
+      jobTiming.unreachableTimeoutMs = timeout;
+    }
+  });
+
   it('reports the message of a failed job', async () => {
     const { sendRequest } = scripted(started(), jsonResponse({ status: 'FAILED', errorMessage: 'Broken index' }, 409));
 
