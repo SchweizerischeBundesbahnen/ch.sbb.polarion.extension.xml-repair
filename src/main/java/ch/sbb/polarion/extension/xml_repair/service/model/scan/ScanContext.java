@@ -11,6 +11,7 @@ import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -74,10 +75,10 @@ public final class ScanContext implements IContext {
     }
 
     /**
-     * @return whether the caller of the scan asked it to stop. The scan itself records why, once it has stopped.
+     * @return why the caller of the scan asked it to stop, or {@code null} to go on
      */
-    public boolean stopRequested() {
-        return control.stopReason() != null;
+    public @Nullable String stopReason() {
+        return control.stopReason();
     }
 
 }

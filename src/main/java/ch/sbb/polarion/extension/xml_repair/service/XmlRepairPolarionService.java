@@ -315,6 +315,10 @@ public class XmlRepairPolarionService extends PolarionService {
                         processedItemsCount, processedItemsCount == 1 ? "item" : "items", itemsWithIssuesCount));
             }
         } while (params.isHideValid() && result.getItems().size() < params.getLimit() && stopReason == null);
+        if (stopReason == null) {
+            // a stop which cut the last entity short is not seen by the loop above
+            stopReason = control.stopReason();
+        }
 
         report.info("Scan process finished. %d items processed, %d items shown.".formatted(processedItemsCount, result.getItems().size()));
         report.info("Total execution time: %s".formatted(stopWatch.formatTime()));
@@ -345,7 +349,10 @@ public class XmlRepairPolarionService extends PolarionService {
 
         if (entity.getEntityType().equals(EntityType.COLLECTION)) {
             for (IBaselineCollectionElement element : ((IBaselineCollection) entity.getEntity()).getElements()) {
-                if (context.stopRequested()) {
+                String stopReason = context.stopReason();
+                if (stopReason != null) {
+                    // the collection itself says that some of its documents were not scanned
+                    entity.getWarnings().add(stopReason);
                     break;
                 }
                 if (element.getObjectWithRevision() instanceof IModule module) {

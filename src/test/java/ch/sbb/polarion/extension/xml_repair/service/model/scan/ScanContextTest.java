@@ -45,7 +45,7 @@ class ScanContextTest {
     void testStopNotRequestedWithoutControl() {
         ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
 
-        assertFalse(context.stopRequested());
+        assertNull(context.stopReason());
     }
 
     @Test
@@ -54,10 +54,10 @@ class ScanContextTest {
         ScanControl control = mock(ScanControl.class);
 
         assertSame(context, context.control(control));
-        assertFalse(context.stopRequested());
+        assertNull(context.stopReason());
 
         when(control.stopReason()).thenReturn("Stopped");
-        assertTrue(context.stopRequested());
+        assertEquals("Stopped", context.stopReason());
     }
 
     @Test

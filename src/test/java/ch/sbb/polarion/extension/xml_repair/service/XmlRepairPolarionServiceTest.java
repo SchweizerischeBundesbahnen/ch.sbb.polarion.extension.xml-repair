@@ -905,6 +905,34 @@ class XmlRepairPolarionServiceTest {
     }
 
     @Test
+    void testScanReportsAStopWhichCameDuringTheLastEntity() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.WORKITEM);
+            params.setLimit(10);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(createMockModelObject("WI-1")))
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
+            ScanControl control = mock(ScanControl.class);
+            // asked before the only entity, then once more after it
+            when(control.stopReason()).thenReturn(null, "Stopped by test");
+
+            ScanResult result = polarionService.scan(params, control);
+
+            assertEquals(1, result.getItems().size());
+            assertTrue(result.getReport().contains("WARN: Stopped by test"));
+        }
+    }
+
+    @Test
     void testScanWithHideValidDoesNotQueryFurtherBatchesOnceStopped() {
         InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
         try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
@@ -957,6 +985,7 @@ class XmlRepairPolarionServiceTest {
             polarionService.scanEntity(scanEntity, context);
 
             assertTrue(scanEntity.getSubitems().isEmpty());
+            assertEquals(Set.of("Stopped by test"), scanEntity.getWarnings());
             verify(element, never()).getObjectWithRevision();
         }
     }
