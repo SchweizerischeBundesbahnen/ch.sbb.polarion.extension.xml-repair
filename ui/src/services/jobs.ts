@@ -5,7 +5,12 @@ import type useRemote from './useRemote';
 type SendRequest = ReturnType<typeof useRemote>['sendRequest'];
 
 /** Mutable so the tests can poll without waiting a second per round. */
-export const jobTiming = { pollIntervalMs: 1000 };
+export const jobTiming = { pollIntervalMs: 1000, unreachableTimeoutMs: 2 * 60 * 1000 };
+
+// What a gateway or a lost connection answers (useRemote turns a network error into 503): the job runs on regardless
+const TEMPORARY_STATUSES = new Set([502, 503, 504]);
+
+type JobKind = 'scan' | 'repair';
 
 export interface JobCallbacks {
   /** True once the page no longer waits for this job. A stoppable job is then stopped; the result is dropped. */
@@ -27,18 +32,21 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
  * Runs a server job: starts it, polls it until it is over and fetches its result. A single request would outlive
  * the gateway timeout in front of Polarion on a long scan or repair.
  *
- * @param jobsUrl where the jobs of this kind are started, e.g. `/scan/jobs`
- * @param stoppable whether the job kind has a stop endpoint
+ * A poll that fails temporarily is repeated: the job goes on on the server, and the page must not offer to start
+ * another one while it does. Only a definite answer ends the wait, or no answer for `unreachableTimeoutMs`.
+ *
  * @returns the job result, or null when the job was superseded
  * @throws Error with the message to show when the job cannot start or fails
  */
 async function runJob<T>(
   sendRequest: SendRequest,
-  jobsUrl: string,
+  kind: JobKind,
   body: string,
   callbacks: JobCallbacks,
-  stoppable: boolean,
 ): Promise<T | null> {
+  const jobsUrl = `/${kind}/jobs`;
+  // only a scan has a stop endpoint
+  const stoppable = kind === 'scan';
   const start = await sendRequest({ method: 'POST', url: jobsUrl, body, contentType: 'application/json' });
   if (start.status !== 202) {
     throw new Error(await errorMessage(start));
@@ -56,6 +64,18 @@ async function runJob<T>(
     callbacks.onStarted?.(stop);
   }
 
+  let unreachableSince: number | null = null;
+  const waitWhileUnreachable = async () => {
+    unreachableSince ??= Date.now();
+    if (Date.now() - unreachableSince >= jobTiming.unreachableTimeoutMs) {
+      const minutes = Math.round(jobTiming.unreachableTimeoutMs / 60000);
+      throw new Error(
+        `Polarion did not answer for ${minutes} minutes. The ${kind} may still be running on the server.`,
+      );
+    }
+    await delay(jobTiming.pollIntervalMs);
+  };
+
   for (;;) {
     if (callbacks.isSuperseded()) {
       if (stoppable) {
@@ -64,6 +84,11 @@ async function runJob<T>(
       return null;
     }
     const status = await sendRequest({ method: 'GET', url: jobUrl, redirect: 'manual' });
+    if (TEMPORARY_STATUSES.has(status.status)) {
+      await waitWhileUnreachable();
+      continue;
+    }
+    unreachableSince = null;
     if (status.status === 202) {
       const details = await status.json().catch(() => null);
       if (details?.progressMessage) {
@@ -76,6 +101,10 @@ async function runJob<T>(
       throw new Error(await errorMessage(status));
     }
     const result = await sendRequest({ method: 'GET', url: `${jobUrl}/result` });
+    if (TEMPORARY_STATUSES.has(result.status)) {
+      await waitWhileUnreachable();
+      continue;
+    }
     if (!result.ok) {
       throw new Error(await errorMessage(result));
     }
@@ -85,11 +114,11 @@ async function runJob<T>(
 }
 
 export const runScanJob = (sendRequest: SendRequest, body: string, callbacks: JobCallbacks) =>
-  runJob<ScanResult>(sendRequest, '/scan/jobs', body, callbacks, true);
+  runJob<ScanResult>(sendRequest, 'scan', body, callbacks);
 
 /** A repair has no stop: once started it runs to its single commit, even when the page goes away. */
 export const runRepairJob = (sendRequest: SendRequest, body: string, callbacks: JobCallbacks) =>
-  runJob<RepairResult[]>(sendRequest, '/repair/jobs', body, callbacks, false);
+  runJob<RepairResult[]>(sendRequest, 'repair', body, callbacks);
 
 /** The progress and the stop control of the scan job a page runs, shown by ScanningIndicator. */
 export function useScanJobState() {

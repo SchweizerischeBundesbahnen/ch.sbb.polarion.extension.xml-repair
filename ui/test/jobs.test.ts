@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, renderHook } from 'vitest-browser-react';
-import { runRepairJob, runScanJob, useScanJobState } from '../src/services/jobs';
+import { jobTiming, runRepairJob, runScanJob, useScanJobState } from '../src/services/jobs';
 import { SCAN_RESULT } from './fixtures';
 import { jsonResponse } from './mockFetch';
 
@@ -85,6 +85,41 @@ describe('runScanJob', () => {
     await expect(runScanJob(sendRequest, '{}', { isSuperseded: () => false })).rejects.toThrow(
       'Scan job is unknown: abc',
     );
+  });
+
+  it('keeps polling through a temporary outage, until the job answers again', async () => {
+    const { sendRequest, calls } = scripted(
+      started(),
+      new Response(null, { status: 503 }),
+      new Response(null, { status: 504 }),
+      new Response(null, { status: 303 }),
+      new Response(null, { status: 502 }),
+      new Response(null, { status: 303 }),
+      jsonResponse(SCAN_RESULT),
+    );
+
+    expect(await runScanJob(sendRequest, '{}', { isSuperseded: () => false })).toEqual(SCAN_RESULT);
+    expect(calls.filter((c) => c.url.endsWith('/result'))).toHaveLength(2);
+  });
+
+  it('gives up when Polarion does not answer for the unreachable timeout', async () => {
+    const timeout = jobTiming.unreachableTimeoutMs;
+    jobTiming.unreachableTimeoutMs = 30;
+    try {
+      const repairStarted = new Response(null, {
+        status: 202,
+        headers: { Location: 'http://host/polarion/xml-repair/rest/internal/repair/jobs/r1' },
+      });
+      const sendRequest = vi.fn(async (call: Call) =>
+        call.method === 'POST' ? repairStarted : new Response(null, { status: 503 }),
+      );
+
+      await expect(runRepairJob(sendRequest, '{}', { isSuperseded: () => false })).rejects.toThrow(
+        'The repair may still be running on the server.',
+      );
+    } finally {
+      jobTiming.unreachableTimeoutMs = timeout;
+    }
   });
 
   it('reports the message of a failed job', async () => {
