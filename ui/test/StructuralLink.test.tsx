@@ -69,7 +69,8 @@ async function mount(change?: Route, scan?: Route): Promise<FetchMock> {
 
 async function runScan() {
   button('Scan').click();
-  await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull());
+  // the scan job takes a few polls; a slow CI runner needs longer than the default second
+  await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull(), { timeout: 5000 });
 }
 
 describe('Structural link page', () => {
@@ -240,21 +241,27 @@ describe('Structural link page, role change outcomes', () => {
     await mount();
     await changeFirstDocument();
 
-    await vi.waitFor(() => expect(document.body.textContent).toContain("2 document(s) switched to 'parent'"));
+    await vi.waitFor(() => expect(document.body.textContent).toContain("2 document(s) switched to 'parent'"), {
+      timeout: 5000,
+    });
   });
 
   it('reports the documents which could not be switched', async () => {
     await mount(changeOutcome(true, false));
     await changeFirstDocument();
 
-    await vi.waitFor(() => expect(document.body.textContent).toContain('1 document(s) switched, 1 failed'));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('1 document(s) switched, 1 failed'), {
+      timeout: 5000,
+    });
   });
 
   it('reports that nothing was switched', async () => {
     await mount(changeOutcome(false, false));
     await changeFirstDocument();
 
-    await vi.waitFor(() => expect(document.body.textContent).toContain('Structure link role was not changed'));
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Structure link role was not changed'), {
+      timeout: 5000,
+    });
   });
 
   it('shows the progress of the change job and locks the left panel until it is over', async () => {
