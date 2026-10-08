@@ -106,10 +106,6 @@ export default function useScanParams(
     const saved = parseInt(getCookie('limit') || '');
     return saved > 0 ? saved : 100;
   });
-  const [timeout, setTimeout] = useState(() => {
-    const saved = parseInt(getCookie('timeout') || '');
-    return saved > 0 ? saved : 60;
-  });
   const [hideValid, setHideValid] = useState(() => {
     // An absent cookie means the user never chose on this page, so the page's own default applies.
     const saved = getCookie('hideValid');
@@ -146,9 +142,6 @@ export default function useScanParams(
   useEffect(() => {
     setCookie('limit', String(limit));
   }, [limit, setCookie]);
-  useEffect(() => {
-    setCookie('timeout', String(timeout));
-  }, [timeout, setCookie]);
   useEffect(() => {
     setCookie('hideValid', String(hideValid));
   }, [hideValid, setCookie]);
@@ -357,7 +350,6 @@ export default function useScanParams(
     sort: sort || null,
     limit,
     repairers,
-    timeout: timeout * 1000,
     hideValid,
     configs,
   });
@@ -387,8 +379,6 @@ export default function useScanParams(
     onSortChange: setSort,
     limit,
     onLimitChange: setLimit,
-    timeout,
-    onTimeoutChange: setTimeout,
     hideValid,
     onHideValidChange: setHideValid,
   };
@@ -420,8 +410,6 @@ export default function useScanParams(
     setSort,
     limit,
     setLimit,
-    timeout,
-    setTimeout,
     hideValid,
     setHideValid,
     selectionActive,

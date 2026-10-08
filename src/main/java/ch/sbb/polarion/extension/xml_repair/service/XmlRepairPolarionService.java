@@ -18,6 +18,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairerMeta;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.EntityRef;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
+import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanControl;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanEntity;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanResult;
@@ -60,6 +61,7 @@ import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -71,8 +73,6 @@ public class XmlRepairPolarionService extends PolarionService {
     // permissions. They lived in RolesUtils, which the shared role code replaced.
     public static final String MSG_NOT_AUTHORIZED_BY_ADMIN = "Repair operation is restricted for current user by the Administrator.";
     public static final String MSG_NO_PERMISSIONS = "Current user is not allowed to modify the entity.";
-
-    public static final String SCAN_TIME_LIMIT_REACHED_WARNING = "Scan time limit was reached during processing, some items may remain unchecked. Please consider increasing the time limit or narrow the query.";
 
     // Enumeration ids as resolved by Polarion's REST v1 enumerations endpoint (see EnumerationResourceReference#enumId)
     private static final String WORK_ITEM_TYPE_ENUM_ID = "work-item-type";
@@ -162,9 +162,13 @@ public class XmlRepairPolarionService extends PolarionService {
         super(trackerService, projectService, securityService, platformService, repositoryService);
     }
 
-    public List<RepairResult> repair(@NotNull RepairParams params) {
+    /**
+     * @param progress receives "N of M" after each issue. Nothing is saved before the caller's transaction commits.
+     */
+    public List<RepairResult> repair(@NotNull RepairParams params, @NotNull Consumer<String> progress) {
         List<RepairResult> results = new ArrayList<>();
         Cache cache = new Cache();
+        int total = params.getIssueMetaInfos().size();
         for (String issueMetaInfo : params.getIssueMetaInfos()) {
             IssueMetaInfo metaInfo = IssueMetaInfo.fromString(issueMetaInfo);
             try {
@@ -184,6 +188,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 logger.error("Error during item repair: %s".formatted(e.getMessage()), e);
                 results.add(new RepairResult(metaInfo, false, "Error during item repair: %s".formatted(e.getMessage())));
             }
+            progress.accept("%d of %d".formatted(results.size(), total));
         }
         return results;
     }
@@ -220,30 +225,40 @@ public class XmlRepairPolarionService extends PolarionService {
         return repairer.repair(entity, context);
     }
 
+    /**
+     * Refuses scan parameters that no scan can run with. Callers that start a scan job call it first: a job loses the
+     * exception type of its failure, so a refusal from inside the job could no longer be told apart as a bad request.
+     */
+    public void validateScanParams(@NotNull ScanParams params) {
+        // The selection is bounded because it sizes both the query and the batch, and the UI can only ever pick
+        // from a list of at most MAX_ENTITIES.
+        int selectionSize = params.getEntities() == null ? 0 : params.getEntities().size();
+        if (selectionSize > ScanParams.MAX_ENTITIES) {
+            throw new IllegalArgumentException("Too many entities to scan: %d, at most %d are supported".formatted(selectionSize, ScanParams.MAX_ENTITIES));
+        }
+        if (selectionSize > 0 && buildEntitiesQuery(params.getEntityType(), params.getEntities()) == null) {
+            // Every reference was unusable (null, or without an id). Treating that as "no selection" would
+            // silently widen the scan to the whole project, which is the opposite of what the caller asked.
+            throw new IllegalArgumentException("Entity selection contains no usable entity reference");
+        }
+    }
+
     @SuppressWarnings({"java:S3776", "java:S6541"}) // Ignore cognitive complexity/"brain"-method warning, refactoring would make the code less readable
-    public ScanResult scan(@NotNull ScanParams params) {
+    public ScanResult scan(@NotNull ScanParams params, @NotNull ScanControl control) {
         StopWatch stopWatch = StopWatch.createStarted();
         Report report = new Report();
         Cache cache =  new Cache();
         ScanResult result = new ScanResult();
 
-        boolean skipScanTimeLimitReached = false;
+        String stopReason = null;
         long processedItemsCount = 0;
+        long itemsWithIssuesCount = 0;
         int queryOffset = 0;
+        validateScanParams(params);
         // An explicit selection is what the user asked to scan, so it must not be cut by the "show top
-        // rows" limit: the batch is at least as big as the selection. Which is why the selection is
-        // bounded first - it sizes both the query and the batch, and the UI can only ever pick from a
-        // list of at most MAX_ENTITIES.
+        // rows" limit: the batch is at least as big as the selection.
         int selectionSize = params.getEntities() == null ? 0 : params.getEntities().size();
-        if (selectionSize > ScanParams.MAX_ENTITIES) {
-            throw new IllegalArgumentException("Too many entities to scan: %d, at most %d are supported".formatted(selectionSize, ScanParams.MAX_ENTITIES));
-        }
         String entitiesQuery = buildEntitiesQuery(params.getEntityType(), params.getEntities());
-        if (selectionSize > 0 && entitiesQuery == null) {
-            // Every reference was unusable (null, or without an id). Treating that as "no selection" would
-            // silently widen the scan to the whole project, which is the opposite of what the caller asked.
-            throw new IllegalArgumentException("Entity selection contains no usable entity reference");
-        }
         int batchSize = Math.max(params.isHideValid() ? Math.max(params.getLimit(), DEFAULT_LIMIT) : params.getLimit(), selectionSize);
         String customQuery = combineQueries(params.getUserQuery(), entitiesQuery);
 
@@ -259,29 +274,31 @@ public class XmlRepairPolarionService extends PolarionService {
             queryOffset += entities.size();
 
             for (ModelObject object : entities) {
+                stopReason = control.stopReason();
+                if (stopReason != null) {
+                    break;
+                }
                 IUniqueObject entity = (IUniqueObject) object.getOldApi();
                 ScanEntity scanEntity = ScanEntity.from(entity);
 
                 String scanError = null;
-                if (!skipScanTimeLimitReached) {
-                    try {
-                        long remainingTimeout = Math.max(params.getTimeout() - stopWatch.getTime(), 1); // prevent putting 0 - this will mean no timeout
-                        ScanContext context = new ScanContext(this, params.getRepairers(), params.getConfigs(), report, cache);
-                        scanEntity(scanEntity, context.timeout(remainingTimeout));
-                        scanEntity.getFields().putAll(context.entityRenderer().renderEntity(object));
-                        processedItemsCount++;
-                    } catch (Exception e) {
-                        scanError = "Error during item scan: %s".formatted(e.getMessage());
-                        report.warn(scanError);
-                        scanEntity.getWarnings().add(scanError);
-                        logger.error(scanError, e);
-                    }
-                } else {
-                    scanEntity.getWarnings().add("Time limit reached, the entity scan is skipped.");
+                try {
+                    ScanContext context = new ScanContext(this, params.getRepairers(), params.getConfigs(), report, cache);
+                    scanEntity(scanEntity, context.control(control));
+                    scanEntity.getFields().putAll(context.entityRenderer().renderEntity(object));
+                    processedItemsCount++;
+                } catch (Exception e) {
+                    scanError = "Error during item scan: %s".formatted(e.getMessage());
+                    report.warn(scanError);
+                    scanEntity.getWarnings().add(scanError);
+                    logger.error(scanError, e);
                 }
 
                 boolean noIssues = scanEntity.getIssues().isEmpty()
                         && scanEntity.getSubitems().stream().allMatch(sub -> sub.getIssues().isEmpty());
+                if (!noIssues) {
+                    itemsWithIssuesCount++;
+                }
                 if (params.isHideValid() && noIssues && scanError == null) {
                     report.info("Item '%s' will be hidden".formatted(entity.getId()));
                 } else {
@@ -294,18 +311,16 @@ public class XmlRepairPolarionService extends PolarionService {
                     break;
                 }
 
-                if (!skipScanTimeLimitReached && stopWatch.getTime() > params.getTimeout()) {
-                    report.info("Time limit of %d ms reached, further items scan will be skipped.".formatted(params.getTimeout()));
-                    skipScanTimeLimitReached = true;
-                }
+                control.reportProgress("%d %s scanned, %d with issues".formatted(
+                        processedItemsCount, processedItemsCount == 1 ? "item" : "items", itemsWithIssuesCount));
             }
-        } while (params.isHideValid() && result.getItems().size() < params.getLimit() && !skipScanTimeLimitReached);
+        } while (params.isHideValid() && result.getItems().size() < params.getLimit() && stopReason == null);
 
         report.info("Scan process finished. %d items processed, %d items shown.".formatted(processedItemsCount, result.getItems().size()));
         report.info("Total execution time: %s".formatted(stopWatch.formatTime()));
         appendRepairerBreakdown(report, result);
-        if (skipScanTimeLimitReached) {
-            report.warn(SCAN_TIME_LIMIT_REACHED_WARNING);
+        if (stopReason != null) {
+            report.warn(stopReason);
         }
         result.setReport(report.toString());
         return result;
@@ -330,7 +345,7 @@ public class XmlRepairPolarionService extends PolarionService {
 
         if (entity.getEntityType().equals(EntityType.COLLECTION)) {
             for (IBaselineCollectionElement element : ((IBaselineCollection) entity.getEntity()).getElements()) {
-                if (context.timeoutReached()) {
+                if (context.stopRequested()) {
                     break;
                 }
                 if (element.getObjectWithRevision() instanceof IModule module) {

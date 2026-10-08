@@ -5,11 +5,13 @@ import OutdatedAttributesPanel from '../components/OutdatedAttributesPanel';
 import type { ResultsTerms } from '../components/ResultsTable';
 import ResultsTable from '../components/ResultsTable';
 import ScanParamsPanel from '../components/ScanParamsPanel';
+import ScanningIndicator from '../components/ScanningIndicator';
+import { runRepairJob, runScanJob, useScanJobState } from '../services/jobs';
 import { applyWriteResults, collectIssueGroupCounts, collectSelectedIssues } from '../services/scanEntities';
 import useRemote from '../services/useRemote';
 import useScanParams from '../services/useScanParams';
 import useScanSelection from '../services/useScanSelection';
-import type { RepairParams, RepairResult, Repairer, ScanResult } from '../types';
+import type { RepairParams, Repairer, ScanResult } from '../types';
 
 // Its own cookie namespace, so remembering "documents of type X" here does not change what General checks
 // would scan.
@@ -39,6 +41,11 @@ const RESULTS_TERMS: ResultsTerms = {
  */
 export default function Purge() {
   const { sendRequest } = useRemote();
+  const scanJob = useScanJobState();
+  // "N of M" while a write job runs, then "Saving..." until its single commit is done
+  const [writeProgress, setWriteProgress] = useState<string | null>(null);
+  // A write job outlives the page; only its result is dropped once the page is gone.
+  const unmountedRef = useRef(false);
 
   // An entity without an outdated attribute is noise on this page, so it hides them unless asked otherwise.
   // No revision either: purging writes, and the backend refuses to write anything resolved at a revision.
@@ -87,8 +94,12 @@ export default function Purge() {
   const selection = useScanSelection({ result, hiddenGroups, busy: purging });
 
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
+      // A scan still running belongs to nobody now: its loop stops the server job and drops the result.
+      scanRunRef.current += 1;
     };
   }, []);
 
@@ -186,35 +197,22 @@ export default function Purge() {
     timerRef.current = setInterval(() => setElapsed(Date.now() - startTime), 100);
 
     try {
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/scan',
-        body: JSON.stringify(params.buildScanParams([PURGE_REPAIRER_ID])),
-        contentType: 'application/json',
-      });
-
-      if (response.ok) {
-        const scanResult: ScanResult = await response.json();
-        if (superseded()) {
-          return;
-        }
-        // Everything found starts ticked, so the results are visible straight away; unticking narrows them.
-        const found = [...collectIssueGroupCounts(scanResult).keys()].sort((a, b) => a.localeCompare(b));
-        setAttributes(found);
-        setSelectedAttributes(new Set(found));
-        setResultHideValid(params.hideValid);
-        setResult(scanResult);
-        if (attributesRef.current) {
-          attributesRef.current.open = found.length > 0;
-        }
-      } else {
-        const errData = await response.json().catch(() => null);
-        if (superseded()) {
-          return;
-        }
-        const msg = errData?.message || `Request failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+      const scanResult = await runScanJob(
+        sendRequest,
+        JSON.stringify(params.buildScanParams([PURGE_REPAIRER_ID])),
+        scanJob.callbacks(superseded),
+      );
+      if (scanResult === null) {
+        return;
+      }
+      // Everything found starts ticked, so the results are visible straight away; unticking narrows them.
+      const found = [...collectIssueGroupCounts(scanResult).keys()].sort((a, b) => a.localeCompare(b));
+      setAttributes(found);
+      setSelectedAttributes(new Set(found));
+      setResultHideValid(params.hideValid);
+      setResult(scanResult);
+      if (attributesRef.current) {
+        attributesRef.current.open = found.length > 0;
       }
     } catch (e) {
       if (superseded()) {
@@ -229,6 +227,7 @@ export default function Purge() {
       scanInFlightRef.current = false;
       clearInterval(timerRef.current);
       setScanning(false);
+      scanJob.reset();
     }
   };
 
@@ -247,31 +246,27 @@ export default function Purge() {
     try {
       // The same write path the repairers use: the backend decodes each meta info back into an entity plus a
       // repairer, checks the Repair Authorization setting, clears the attribute and saves.
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/repair',
-        body: JSON.stringify({ issueMetaInfos, configs: {} } satisfies RepairParams),
-        contentType: 'application/json',
-      });
+      const purgeResults = await runRepairJob(
+        sendRequest,
+        JSON.stringify({ issueMetaInfos, configs: {} } satisfies RepairParams),
+        {
+          isSuperseded: () => unmountedRef.current,
+          onProgress: setWriteProgress,
+        },
+      );
+      if (purgeResults === null) {
+        return;
+      }
+      setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, purgeResults) : prev));
 
-      if (response.ok) {
-        const purgeResults: RepairResult[] = await response.json();
-        setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, purgeResults) : prev));
-
-        const successCount = purgeResults.filter((r) => r.success).length;
-        const failCount = purgeResults.length - successCount;
-        if (successCount === 0) {
-          toast.error('Purge failed');
-        } else if (failCount === 0) {
-          toast.success(`${successCount} attribute(s) purged successfully`);
-        } else {
-          toast.warning(`${successCount} attribute(s) purged, ${failCount} failed`);
-        }
+      const successCount = purgeResults.filter((r) => r.success).length;
+      const failCount = purgeResults.length - successCount;
+      if (successCount === 0) {
+        toast.error('Purge failed');
+      } else if (failCount === 0) {
+        toast.success(`${successCount} attribute(s) purged successfully`);
       } else {
-        const errData = await response.json().catch(() => null);
-        const msg = errData?.message || `Purge failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+        toast.warning(`${successCount} attribute(s) purged, ${failCount} failed`);
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -281,6 +276,7 @@ export default function Purge() {
 
     setPurgingEntity(null);
     setPurging(false);
+    setWriteProgress(null);
     selection.clearSelection();
   };
 
@@ -290,7 +286,8 @@ export default function Purge() {
     <PageLayout>
       <div className="xml-repair-app">
         <div className="layout-columns">
-          <div className="panel-left">
+          {/* Nothing on the left may change while a write job runs on what the results show. */}
+          <div className="panel-left" inert={purging}>
             <ScanParamsPanel
               {...params.panelProps}
               onEntityChange={handleEntityChange}
@@ -323,6 +320,7 @@ export default function Purge() {
                       : 'Purge'}
                 </button>
               )}
+              {purging && writeProgress && <span className="action-progress">{writeProgress}</span>}
             </div>
 
             <OutdatedAttributesPanel
@@ -341,10 +339,13 @@ export default function Purge() {
             )}
 
             {scanning && (
-              <div className="scanning-indicator">
-                <span className="spinner" />
-                <span>Scanning... {(elapsed / 1000).toFixed(1)}s</span>
-              </div>
+              <ScanningIndicator
+                elapsed={elapsed}
+                progress={scanJob.progress}
+                stopping={scanJob.stopping}
+                canStop={scanJob.canStop}
+                onStop={scanJob.stop}
+              />
             )}
 
             {error && <div className="error-message">{error}</div>}

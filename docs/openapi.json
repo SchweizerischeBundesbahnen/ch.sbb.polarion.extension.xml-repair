@@ -304,10 +304,129 @@
         },
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepairResult"
+                  },
+                  "type": "array"
+                }
+              }
+            },
             "description": "Processing completed successfully"
           }
         },
-        "summary": "Repair XML issues in the specified entity",
+        "summary": "Repair XML issues in the specified entity and wait for the result. A long repair can outlast a gateway timeout, the repair jobs endpoints avoid that",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/repair/jobs": {
+      "post": {
+        "operationId": "startRepairJob",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RepairParams"
+              }
+            }
+          },
+          "description": "Repair parameters",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Repair job is started, job URI is returned in Location header"
+          }
+        },
+        "summary": "Starts an asynchronous repair of XML issues. All issues are repaired in one transaction",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/repair/jobs/{id}": {
+      "get": {
+        "operationId": "getRepairJobStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetails"
+                }
+              }
+            },
+            "description": "Repair job is still in progress"
+          },
+          "303": {
+            "content": {
+              "application/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetails"
+                }
+              }
+            },
+            "description": "Repair job is finished, Location header contains result URL"
+          },
+          "409": {
+            "description": "Repair job failed, nothing was saved"
+          }
+        },
+        "summary": "Returns repair job status",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/repair/jobs/{id}/result": {
+      "get": {
+        "operationId": "getRepairJobResult",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepairResult"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Repair results, one per issue"
+          },
+          "204": {
+            "description": "Repair job is still in progress"
+          },
+          "409": {
+            "description": "Repair job failed, nothing was saved"
+          }
+        },
+        "summary": "Returns repair job result",
         "tags": [
           "XML Repair"
         ]
@@ -400,10 +519,147 @@
         },
         "responses": {
           "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            },
             "description": "Scan completed successfully"
           }
         },
-        "summary": "Scan a list of entities for XML issues based on the provided parameters",
+        "summary": "Scan a list of entities for XML issues based on the provided parameters and wait for the result. A long scan can outlast a gateway timeout, the scan jobs endpoints avoid that",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/scan/jobs": {
+      "post": {
+        "operationId": "startScanJob",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScanParams"
+              }
+            }
+          },
+          "description": "Scan parameters",
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Scan job is started, job URI is returned in Location header"
+          }
+        },
+        "summary": "Starts an asynchronous scan of a list of entities for XML issues based on the provided parameters",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/scan/jobs/{id}": {
+      "get": {
+        "operationId": "getScanJobStatus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetails"
+                }
+              }
+            },
+            "description": "Scan job is still in progress"
+          },
+          "303": {
+            "content": {
+              "application/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobDetails"
+                }
+              }
+            },
+            "description": "Scan job is finished, Location header contains result URL"
+          },
+          "409": {
+            "description": "Scan job failed or was cancelled before it started"
+          }
+        },
+        "summary": "Returns scan job status",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/scan/jobs/{id}/result": {
+      "get": {
+        "operationId": "getScanJobResult",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            },
+            "description": "Scan result"
+          },
+          "204": {
+            "description": "Scan job is still in progress"
+          },
+          "409": {
+            "description": "Scan job failed or was cancelled before it started"
+          }
+        },
+        "summary": "Returns scan job result",
+        "tags": [
+          "XML Repair"
+        ]
+      }
+    },
+    "/api/scan/jobs/{id}/stop": {
+      "post": {
+        "operationId": "stopScanJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Stop request accepted"
+          }
+        },
+        "summary": "Stops a running scan job. The job still finishes successfully, with the items scanned so far",
         "tags": [
           "XML Repair"
         ]
@@ -964,6 +1220,58 @@
         },
         "type": "object"
       },
+      "Issue": {
+        "description": "List of issues found in the entity",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "group": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "metaInfo": {
+            "type": "string"
+          },
+          "repairer": {
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "type": "object"
+      },
+      "JobDetails": {
+        "description": "Details of an asynchronous job: its status, its progress and the error message if it failed",
+        "properties": {
+          "errorMessage": {
+            "description": "Error message if the job failed or was cancelled",
+            "type": "string"
+          },
+          "progressMessage": {
+            "description": "What the job is doing right now, as long as it is running",
+            "type": "string"
+          },
+          "status": {
+            "description": "Status of an asynchronous job",
+            "enum": [
+              "IN_PROGRESS",
+              "SUCCESSFULLY_FINISHED",
+              "FAILED",
+              "CANCELLED"
+            ],
+            "example": "IN_PROGRESS",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
       "RepairParams": {
         "properties": {
           "configs": {
@@ -998,6 +1306,24 @@
         "required": [
           "issueMetaInfos"
         ],
+        "type": "object"
+      },
+      "RepairResult": {
+        "properties": {
+          "issueMetaInfo": {
+            "type": "string"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
         "type": "object"
       },
       "RepairerConfigMeta": {
@@ -1095,6 +1421,76 @@
         ],
         "type": "object"
       },
+      "ScanEntity": {
+        "properties": {
+          "entityId": {
+            "description": "The unique identifier of the entity",
+            "example": "elibrary",
+            "type": "string"
+          },
+          "entityType": {
+            "description": "Entity type",
+            "enum": [
+              "COLLECTION",
+              "DOCUMENT",
+              "WORKITEM"
+            ],
+            "example": "DOCUMENT",
+            "type": "string"
+          },
+          "fields": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "description": "Map of field keys and their labels + rendered values",
+                "type": "string"
+              },
+              "description": "Map of field keys and their labels + rendered values",
+              "type": "object"
+            },
+            "description": "Map of field keys and their labels + rendered values",
+            "type": "object"
+          },
+          "issues": {
+            "description": "List of issues found in the entity",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            },
+            "type": "array"
+          },
+          "projectId": {
+            "description": "The unique identifier for the project",
+            "example": "elibrary",
+            "type": "string"
+          },
+          "revision": {
+            "description": "Revision of the entity",
+            "example": "42",
+            "type": "string"
+          },
+          "space": {
+            "description": "Space (in case of document)",
+            "example": "Specification",
+            "type": "string"
+          },
+          "subitems": {
+            "description": "List of sub-items, e.g. documents in a collection",
+            "items": {
+              "$ref": "#/components/schemas/ScanEntity"
+            },
+            "type": "array"
+          },
+          "warnings": {
+            "description": "List of warnings that are not issues but might be useful to know for the user",
+            "items": {
+              "description": "List of warnings that are not issues but might be useful to know for the user",
+              "type": "string"
+            },
+            "type": "array",
+            "uniqueItems": true
+          }
+        },
+        "type": "object"
+      },
       "ScanParams": {
         "properties": {
           "configs": {
@@ -1180,15 +1576,23 @@
             "nullable": true,
             "type": "string"
           },
-          "timeout": {
-            "default": 60000,
-            "description": "Operation timeout, milliseconds",
-            "format": "int64",
-            "type": "integer"
-          },
           "userQuery": {
             "description": "Additional query to select entities for scanning, e.g. 'id:TEST-12345'",
             "nullable": true,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "ScanResult": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ScanEntity"
+            },
+            "type": "array"
+          },
+          "report": {
             "type": "string"
           }
         },

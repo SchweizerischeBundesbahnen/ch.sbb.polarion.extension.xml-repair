@@ -10,11 +10,9 @@ import com.polarion.alm.server.api.transaction.TransactionalExecutorImpl;
 import com.polarion.alm.tracker.model.IModule;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
-import org.apache.commons.lang3.time.StopWatch;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class ScanContext implements IContext {
     private final @NotNull XmlRepairPolarionService polarionService;
@@ -22,14 +20,9 @@ public final class ScanContext implements IContext {
     private final @NotNull UserConfigs configs;
     private final @NotNull Report report;
     private final @NotNull Cache cache;
-    private final Set<String> globalWarnings = new LinkedHashSet<>();
     private List<IModule> collectionDocuments;
     private final EntityRenderer entityRenderer;
-
-    private static final String TIMEOUT_REACHED_WARNING = "Operation timeout reached, some issues may not be processed fully.";
-    private final StopWatch stopWatch = StopWatch.createStarted();
-    private final AtomicBoolean timeoutReached = new AtomicBoolean(false);
-    private long timeout = 0;
+    private @NotNull ScanControl control = ScanControl.NONE;
 
     public ScanContext(@NotNull XmlRepairPolarionService polarionService, @NotNull List<String> repairers, @NotNull UserConfigs configs, @NotNull Report report, @NotNull Cache cache) {
         this.polarionService = polarionService;
@@ -60,10 +53,6 @@ public final class ScanContext implements IContext {
         return report;
     }
 
-    public @NotNull Set<String> globalWarnings() {
-        return globalWarnings;
-    }
-
     public EntityRenderer entityRenderer() {
         return entityRenderer;
     }
@@ -79,22 +68,16 @@ public final class ScanContext implements IContext {
         return collectionDocuments;
     }
 
-    public ScanContext timeout(long timeout) {
-        this.timeout = timeout;
+    public ScanContext control(@NotNull ScanControl control) {
+        this.control = control;
         return this;
     }
 
-    public boolean timeoutReached() {
-        if (timeoutReached.get()) {
-            return true;
-        } else if (timeout > 0 && stopWatch.getTime() >= timeout) {
-            globalWarnings.add(TIMEOUT_REACHED_WARNING);
-            report.warn(TIMEOUT_REACHED_WARNING);
-            timeoutReached.set(true);
-            return true;
-        } else {
-            return false;
-        }
+    /**
+     * @return whether the caller of the scan asked it to stop. The scan itself records why, once it has stopped.
+     */
+    public boolean stopRequested() {
+        return control.stopReason() != null;
     }
 
 }

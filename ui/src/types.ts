@@ -66,7 +66,6 @@ export interface ScanParams {
   revision: string | null;
   sort: string | null;
   limit: number;
-  timeout: number;
   repairers: string[];
   hideValid: boolean;
   configs: RepairerConfigValues;

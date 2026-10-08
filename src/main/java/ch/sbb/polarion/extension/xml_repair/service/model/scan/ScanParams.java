@@ -15,7 +15,6 @@ import java.util.List;
 public class ScanParams {
 
     public static final int DEFAULT_LIMIT = 100;
-    public static final long DEFAULT_TIMEOUT = 60000L;
     // Upper bound of an explicit selection. Every reference becomes one clause of the query and raises the
     // batch size, so an unbounded list would let a single request build an arbitrarily large query. It is
     // also the size of the list the selection is picked from, so no reachable selection can exceed it.
@@ -45,9 +44,6 @@ public class ScanParams {
 
     @Schema(description = "Maximum number of entities to scan", nullable = true, defaultValue = "" + DEFAULT_LIMIT)
     private int limit = DEFAULT_LIMIT;
-
-    @Schema(description = "Operation timeout, milliseconds", defaultValue = "" + DEFAULT_TIMEOUT)
-    private long timeout = DEFAULT_TIMEOUT;
 
     @Schema(description = "List of repairers to use (if no data provided the default repairers will be applied)", nullable = true)
     private List<String> repairers;

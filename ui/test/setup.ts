@@ -12,6 +12,10 @@ import '@sbb-polarion/react-sbb-polarion/style.css';
 import '@testing-library/jest-dom/vitest';
 import '../src/App.css';
 import '../src/generic/tables.css';
+import { jobTiming } from '../src/services/jobs';
+
+// A test scan job is over within a few polls; a second between them would outlast every `findBy` timeout.
+jobTiming.pollIntervalMs = 10;
 
 // The visual suites gate themselves on `__PIXEL_REFERENCES__` (see vitest.config.ts), and the gate reads
 // `!__PIXEL_REFERENCES__`. A `define` that substitutes the string "false" rather than the boolean makes

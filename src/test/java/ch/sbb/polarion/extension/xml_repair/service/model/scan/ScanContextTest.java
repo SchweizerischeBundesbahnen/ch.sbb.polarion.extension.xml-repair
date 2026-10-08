@@ -15,7 +15,6 @@ import org.mockito.quality.Strictness;
 import ch.sbb.polarion.extension.generic.test_extensions.PlatformContextMockExtension;
 
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
@@ -40,77 +39,25 @@ class ScanContextTest {
         assertSame(configs, context.configs());
         assertSame(report, context.report());
         assertNotNull(context.entityRenderer());
-        assertNotNull(context.globalWarnings());
-        assertTrue(context.globalWarnings().isEmpty());
     }
 
     @Test
-    void testTimeoutSetterReturnsSelf() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
+    void testStopNotRequestedWithoutControl() {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
 
-        ScanContext result = context.timeout(5000);
-
-        assertSame(context, result);
+        assertFalse(context.stopRequested());
     }
 
     @Test
-    void testTimeoutNotReachedWhenTimeoutIsZero() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
+    void testStopRequestedByControl() {
+        ScanContext context = createScanContext(mock(XmlRepairPolarionService.class), List.of(), new UserConfigs(), new Report());
+        ScanControl control = mock(ScanControl.class);
 
-        // Default timeout is 0, so timeoutReached should return false
-        assertFalse(context.timeoutReached());
-    }
+        assertSame(context, context.control(control));
+        assertFalse(context.stopRequested());
 
-    @Test
-    void testTimeoutNotReachedWhenTimeIsWithinLimit() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-
-        // Set a very large timeout so it won't be reached
-        context.timeout(Long.MAX_VALUE);
-
-        assertFalse(context.timeoutReached());
-    }
-
-    @Test
-    @SuppressWarnings("java:S2925") // allow Thread.sleep here
-    void testTimeoutReachedWhenTimeExceedsLimit() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        Report report = new Report();
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), report);
-
-        // Set timeout to 1ms - by the time we check, it will be exceeded
-        context.timeout(1);
-
-        // Wait a tiny bit to ensure stopwatch exceeds 1ms
-        try { Thread.sleep(5); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-
-        assertTrue(context.timeoutReached());
-        // Verify warning was added
-        assertFalse(context.globalWarnings().isEmpty());
-        assertTrue(context.globalWarnings().stream().anyMatch(w -> w.contains("timeout")));
-        assertTrue(report.toString().contains("timeout"));
-    }
-
-    @Test
-    @SuppressWarnings("java:S2925") // allow Thread.sleep here
-    void testTimeoutReachedReturnsTrueOnSubsequentCalls() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        Report report = new Report();
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), report);
-
-        context.timeout(1);
-        try { Thread.sleep(5); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
-
-        // First call triggers the timeout
-        assertTrue(context.timeoutReached());
-        // Second call should still return true (via AtomicBoolean shortcut)
-        assertTrue(context.timeoutReached());
-
-        // Warning should only appear once (Set deduplicates)
-        assertEquals(1, context.globalWarnings().size());
+        when(control.stopReason()).thenReturn("Stopped");
+        assertTrue(context.stopRequested());
     }
 
     @Test
@@ -209,18 +156,5 @@ class ScanContextTest {
 
         assertEquals("alpha", a);
         assertEquals("beta", b);
-    }
-
-    @Test
-    void testGlobalWarningsIsLinkedHashSet() {
-        XmlRepairPolarionService polarionService = mock(XmlRepairPolarionService.class);
-        ScanContext context = createScanContext(polarionService, List.of(), new UserConfigs(), new Report());
-
-        Set<String> warnings = context.globalWarnings();
-        warnings.addAll(List.of("warning1", "warning2", "warning1"));
-
-        assertEquals(2, warnings.size());
-        // LinkedHashSet preserves insertion order
-        assertEquals(List.of("warning1", "warning2"), List.copyOf(warnings));
     }
 }

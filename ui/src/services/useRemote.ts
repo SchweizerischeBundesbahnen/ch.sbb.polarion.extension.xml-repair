@@ -8,10 +8,13 @@ interface RequestParams {
   // BodyInit (not just string) so this hook satisfies react-sbb-polarion's SendRequest type structurally.
   body?: BodyInit;
   contentType?: string;
+  // 'manual' surfaces a job's 303 instead of following it: Jersey makes its Location absolute, and a followed
+  // redirect to another origin (the dev server proxy) would drop the Authorization header.
+  redirect?: RequestRedirect;
 }
 
 export default function useRemote() {
-  const sendRequest = useCallback(({ method, url, body, contentType }: RequestParams): Promise<Response> => {
+  const sendRequest = useCallback(({ method, url, body, contentType, redirect }: RequestParams): Promise<Response> => {
     const headers: Record<string, string> = {};
     if (contentType) {
       headers['Content-Type'] = contentType;
@@ -28,6 +31,7 @@ export default function useRemote() {
       cache: 'no-cache',
       headers,
       body,
+      redirect,
     }).catch(() => {
       return new Response(
         JSON.stringify({ message: 'Network error occurred. Be sure Polarion is started and accessible.' }),
