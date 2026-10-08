@@ -75,7 +75,7 @@ const FINDINGS_ONLY = {
 };
 
 async function mount(scanResult = STRUCTURE_LINK_SCAN_RESULT, extraRoutes: Route[] = []) {
-  installFetchMock([...routes(), { method: 'POST', match: /\/scan$/, json: scanResult }, ...extraRoutes]);
+  installFetchMock([...routes(), { method: 'POST', match: /\/scan\/jobs$/, json: scanResult }, ...extraRoutes]);
   // embedded=true mirrors how the navigation node opens the page in Polarion.
   window.history.replaceState({}, '', '?feature=structural-link&projectId=elibrary&embedded=true');
   render(<App />);
@@ -149,7 +149,7 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Structural link page visual', () => {
    */
   async function captureInterruptedChange(links: string[], name: string) {
     await mount(structureLinkCollisionScan(links), [
-      { method: 'POST', match: /\/repair$/, json: structureLinkCollisionRepair(links) },
+      { method: 'POST', match: /\/repair\/jobs$/, json: structureLinkCollisionRepair(links) },
     ]);
     await runScan();
 
@@ -182,7 +182,7 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Structural link page visual', () => {
     await mount(structureLinkCollisionScan(links), [
       {
         method: 'POST',
-        match: /\/repair$/,
+        match: /\/repair\/jobs$/,
         json: structureLinkPartialRepair([links[0]], [links[1], links[2]]),
       },
     ]);

@@ -5,7 +5,7 @@ import { page } from 'vitest/browser';
 import App from '../src/App';
 import type { ScanParams } from '../src/types';
 import { DOCUMENTS, DOCUMENT_TYPES, LINK_ROLES, STRUCTURE_LINK_SCAN_RESULT, WORK_ITEM_TYPES } from './fixtures';
-import { type FetchMock, type Route, installFetchMock } from './mockFetch';
+import { type FetchMock, type Route, installFetchMock, jsonResponse } from './mockFetch';
 
 // The Structural link page. What is worth asserting here is what the other pages do not do: it offers
 // documents alone, it sends the picked role as the repairer's `targetRole` config, and the repair request
@@ -13,20 +13,22 @@ import { type FetchMock, type Route, installFetchMock } from './mockFetch';
 
 const origUrl = window.location.pathname + window.location.search;
 
-const routes = (): Route[] => [
+const DEFAULT_CHANGE: Route = {
+  method: 'POST',
+  match: /\/repair\/jobs$/,
+  json: [
+    { issueMetaInfo: 'sl-1', success: true, warnings: [] },
+    { issueMetaInfo: 'sl-2', success: true, warnings: [] },
+  ],
+};
+
+const routes = (change: Route = DEFAULT_CHANGE, scan?: Route): Route[] => [
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/link-roles/, json: LINK_ROLES },
   { method: 'GET', match: /\/entities\?/, json: DOCUMENTS },
-  { method: 'POST', match: /\/scan$/, json: STRUCTURE_LINK_SCAN_RESULT },
-  {
-    method: 'POST',
-    match: /\/repair$/,
-    json: [
-      { issueMetaInfo: 'sl-1', success: true, warnings: [] },
-      { issueMetaInfo: 'sl-2', success: true, warnings: [] },
-    ],
-  },
+  scan ?? { method: 'POST', match: /\/scan\/jobs$/, json: STRUCTURE_LINK_SCAN_RESULT },
+  change,
 ];
 
 afterEach(() => {
@@ -57,8 +59,8 @@ const bodyOf = (fetchMock: FetchMock, method: string, fragment: string): ScanPar
   return JSON.parse(String(call[1]?.body));
 };
 
-async function mount(): Promise<FetchMock> {
-  const fetchMock = installFetchMock(routes());
+async function mount(change?: Route, scan?: Route): Promise<FetchMock> {
+  const fetchMock = installFetchMock(routes(change, scan));
   window.history.replaceState({}, '', '?feature=structural-link&projectId=elibrary&embedded=true');
   render(<App />);
   await vi.waitFor(() => expect(document.querySelector('.form-section')).not.toBeNull());
@@ -67,7 +69,8 @@ async function mount(): Promise<FetchMock> {
 
 async function runScan() {
   button('Scan').click();
-  await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull());
+  // the scan job takes a few polls; a slow CI runner needs longer than the default second
+  await vi.waitFor(() => expect(document.querySelector('.issues-table')).not.toBeNull(), { timeout: 5000 });
 }
 
 describe('Structural link page', () => {
@@ -82,7 +85,7 @@ describe('Structural link page', () => {
     const fetchMock = await mount();
     await runScan();
 
-    const body = bodyOf(fetchMock, 'POST', '/scan');
+    const body = bodyOf(fetchMock, 'POST', '/scan/jobs');
     expect(body.entityType).toBe('DOCUMENT');
     expect(body.repairers).toEqual(['ModuleStructureLinkRoleRepairer']);
     // 'relates_to' is the first role LINK_ROLES offers once the selected one is excluded.
@@ -194,7 +197,7 @@ describe('Structural link page', () => {
     radio('DELETE').click();
     await runScan();
 
-    expect(bodyOf(fetchMock, 'POST', '/scan').configs).toEqual({
+    expect(bodyOf(fetchMock, 'POST', '/scan/jobs').configs).toEqual({
       ModuleStructureLinkRoleRepairer: {
         targetRole: 'parent',
         existingLinks: 'DELETE',
@@ -220,6 +223,87 @@ function bodyOfRaw(fetchMock: FetchMock): string {
   if (!call) throw new Error('no POST request to /repair');
   return String(call[1]?.body);
 }
+
+describe('Structural link page, role change outcomes', () => {
+  async function changeFirstDocument() {
+    await runScan();
+    document.querySelector<HTMLInputElement>('.issues-table input[type="checkbox"]')!.click();
+    await vi.waitFor(() => expect(button('Change role').disabled).toBe(false));
+    button('Change role').click();
+  }
+
+  const changeOutcome = (...succeeded: boolean[]): Route => ({
+    ...DEFAULT_CHANGE,
+    json: succeeded.map((success, index) => ({ issueMetaInfo: `sl-${index + 1}`, success, warnings: [] })),
+  });
+
+  it('reports the documents switched to the target role', async () => {
+    await mount();
+    await changeFirstDocument();
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain("2 document(s) switched to 'parent'"), {
+      timeout: 5000,
+    });
+  });
+
+  it('reports the documents which could not be switched', async () => {
+    await mount(changeOutcome(true, false));
+    await changeFirstDocument();
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('1 document(s) switched, 1 failed'), {
+      timeout: 5000,
+    });
+  });
+
+  it('reports that nothing was switched', async () => {
+    await mount(changeOutcome(false, false));
+    await changeFirstDocument();
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Structure link role was not changed'), {
+      timeout: 5000,
+    });
+  });
+
+  it('shows the progress of the change job and locks the left panel until it is over', async () => {
+    let releaseChange: (() => void) | undefined;
+    await mount({
+      ...DEFAULT_CHANGE,
+      progress: '1 of 2',
+      respond: async () => {
+        await new Promise<void>((resolve) => {
+          releaseChange = resolve;
+        });
+        return jsonResponse(DEFAULT_CHANGE.json);
+      },
+    });
+    await changeFirstDocument();
+
+    await vi.waitFor(() => expect(document.querySelector('.actions .action-progress')?.textContent).toBe('1 of 2'));
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(true);
+
+    releaseChange!();
+    await vi.waitFor(() => expect(document.querySelector('.action-progress')).toBeNull());
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(false);
+  });
+
+  it('stops the scan job when the page goes away while it runs', async () => {
+    const fetchMock = await mount(undefined, {
+      method: 'POST',
+      match: /\/scan\/jobs$/,
+      respond: () => new Promise<Response>(() => {}),
+    });
+    button('Scan').click();
+    await vi.waitFor(() => expect(button('Stop').disabled).toBe(false));
+
+    cleanup();
+
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/stop') && init?.method === 'POST')).toBe(
+        true,
+      ),
+    );
+  });
+});
 
 describe('Structural link page, accessibility', () => {
   it('names both link role controls', async () => {

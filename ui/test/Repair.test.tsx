@@ -27,10 +27,10 @@ const defaultRoutes = (): Route[] => [
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/entities\?/, respond: (url) => jsonResponse(entitiesFor(url)) },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
-  { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
+  { method: 'POST', match: /\/scan\/jobs$/, json: SCAN_RESULT },
   {
     method: 'POST',
-    match: /\/repair$/,
+    match: /\/repair\/jobs$/,
     respond: (_url, init) => {
       const body = JSON.parse(String(init?.body));
       return jsonResponse(
@@ -103,7 +103,7 @@ describe('Scan & Repair page', () => {
     // Three top-level items in the fixture.
     expect(document.body.textContent).toContain('Results');
     // The scan POST carried the project + selected repairers.
-    const scanCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/scan'));
+    const scanCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/scan/jobs'));
     const scanBody = JSON.parse(String(scanCall![1]!.body));
     expect(scanBody.projectId).toBe('elibrary');
     expect(scanBody.repairers).toContain('FieldsInvalidEnumerationValueRepairer');
@@ -131,7 +131,7 @@ describe('Scan & Repair page', () => {
 
     // After repair the fixed badge (checkmark) appears on repaired rows.
     await vi.waitFor(() => expect(document.querySelector('.fixed-badge')).not.toBeNull());
-    const repairCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/repair'));
+    const repairCall = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/repair/jobs'));
     expect(repairCall).toBeTruthy();
     const repairBody = JSON.parse(String(repairCall![1]!.body));
     expect(repairBody.issueMetaInfos.length).toBeGreaterThan(0);
@@ -164,7 +164,7 @@ describe('Scan & Repair page', () => {
 
   it('shows an error when the scan endpoint fails', async () => {
     const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('scan')));
-    routes.push({ method: 'POST', match: /\/scan$/, respond: () => jsonResponse({ message: 'scan boom' }, 500) });
+    routes.push({ method: 'POST', match: /\/scan\/jobs$/, respond: () => jsonResponse({ message: 'scan boom' }, 500) });
     await mountRepair(routes);
     textButton('Scan').click();
     await vi.waitFor(() => expect(document.querySelector('.error-message')).not.toBeNull());
@@ -173,7 +173,11 @@ describe('Scan & Repair page', () => {
 
   it('surfaces an error when the repair endpoint fails', async () => {
     const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('repair')));
-    routes.push({ method: 'POST', match: /\/repair$/, respond: () => jsonResponse({ message: 'repair boom' }, 500) });
+    routes.push({
+      method: 'POST',
+      match: /\/repair\/jobs$/,
+      respond: () => jsonResponse({ message: 'repair boom' }, 500),
+    });
     await mountRepair(routes);
     await runScan();
     document.querySelector<HTMLInputElement>('.issues-table thead .col-checkbox input')!.click();
@@ -229,14 +233,14 @@ describe('Scan & Repair page', () => {
     await vi.waitFor(() => expect(settingCheckbox!.checked).toBe(!before));
   });
 
-  it('edits the advanced scan parameters (limit, timeout, sort, revision, hide-valid)', async () => {
+  it('edits the advanced scan parameters (limit, sort, revision, hide-valid)', async () => {
     await mountRepair();
     (document.querySelector('.advanced-section summary') as HTMLElement).click();
     await vi.waitFor(() => expect(document.querySelector('#hide-valid')).not.toBeNull());
 
     const numberInputs = () =>
       Array.from(document.querySelectorAll<HTMLInputElement>('.advanced-fields input[inputmode="numeric"]'));
-    // Two NumericInputs (Show Top Rows = 100, Scan time limit = 60) plus the revision SearchableInput.
+    // One NumericInput (Show Top Rows = 100) plus the revision SearchableInput.
     const limitInput = numberInputs().find((i) => i.value === '100')!;
     expect(limitInput).toBeTruthy();
     await userEvent.fill(limitInput, '5');
@@ -246,10 +250,6 @@ describe('Scan & Repair page', () => {
     await userEvent.keyboard('{Enter}');
     limitInput.blur();
     await vi.waitFor(() => expect(limitInput.value).toBe('100'));
-
-    const timeoutInput = numberInputs().find((i) => i.value === '60')!;
-    await userEvent.fill(timeoutInput, '30');
-    expect(timeoutInput.value).toBe('30');
 
     const sortInput = Array.from(
       document.querySelectorAll<HTMLInputElement>('.advanced-fields input[type="text"]'),
@@ -289,7 +289,7 @@ describe('Scan & Repair page', () => {
     // Enter commits the value and starts the scan by itself.
     await userEvent.keyboard('{Enter}');
     const scanCall = await vi.waitFor(() => {
-      const found = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/scan'));
+      const found = fetchMock.mock.calls.find((c) => String(c[0]).endsWith('/scan/jobs'));
       expect(found).toBeTruthy();
       return found!;
     });
@@ -309,7 +309,7 @@ describe('Scan & Repair page', () => {
 
   it('shows "No issues found" for an empty scan result', async () => {
     const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('scan')));
-    routes.push({ method: 'POST', match: /\/scan$/, json: { items: [], report: '' } });
+    routes.push({ method: 'POST', match: /\/scan\/jobs$/, json: { items: [], report: '' } });
     await mountRepair(routes);
     await runScan();
     await vi.waitFor(() => expect(document.querySelector('.no-issues')).not.toBeNull());
@@ -319,7 +319,7 @@ describe('Scan & Repair page', () => {
     const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('repair')));
     routes.push({
       method: 'POST',
-      match: /\/repair$/,
+      match: /\/repair\/jobs$/,
       respond: (_url, init) => {
         const body = JSON.parse(String(init?.body));
         return jsonResponse(
@@ -416,7 +416,7 @@ describe('Scan & Repair page', () => {
   }
 
   const lastScanBody = () => {
-    const call = fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/scan')).at(-1)!;
+    const call = fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/scan/jobs')).at(-1)!;
     return JSON.parse(String((call[1] as RequestInit).body));
   };
 
@@ -637,7 +637,6 @@ describe('Scan & Repair page', () => {
       expect(page.getByRole('combobox', { name: /^Revision\/Baseline/ }).element()).toBeVisible();
       expect(page.getByRole('textbox', { name: 'Sort By' }).element()).toBeVisible();
       expect(page.getByRole('textbox', { name: 'Show Top Rows' }).element()).toBeVisible();
-      expect(page.getByRole('textbox', { name: 'Scan time limit, seconds' }).element()).toBeVisible();
 
       await selectEntityType('DOCUMENT');
       expect(page.getByRole('combobox', { name: 'Documents' }).element()).toBeVisible();
@@ -681,7 +680,7 @@ describe('Scan & Repair page', () => {
       const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('repair')));
       routes.push({
         method: 'POST',
-        match: /\/repair$/,
+        match: /\/repair\/jobs$/,
         respond: (_url, init) => {
           const body = JSON.parse(String(init?.body));
           return jsonResponse(
@@ -711,7 +710,11 @@ describe('Scan & Repair page', () => {
 
     it('has no WCAG A/AA violations with a scan error', async () => {
       const routes = defaultRoutes().filter((r) => !(r.method === 'POST' && String(r.match).includes('scan')));
-      routes.push({ method: 'POST', match: /\/scan$/, respond: () => jsonResponse({ message: 'scan boom' }, 500) });
+      routes.push({
+        method: 'POST',
+        match: /\/scan\/jobs$/,
+        respond: () => jsonResponse({ message: 'scan boom' }, 500),
+      });
       await mountRepair(routes);
       textButton('Scan').click();
       await vi.waitFor(() => expect(document.querySelector('.error-message')).not.toBeNull());
@@ -729,7 +732,7 @@ describe('Scan & Repair page, stale scan responses', () => {
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: async () => {
           await new Promise<void>((resolve) => {
             releaseScan = resolve;
@@ -753,6 +756,64 @@ describe('Scan & Repair page, stale scan responses', () => {
 
     await vi.waitFor(() => expect(document.querySelector('.scanning-indicator')).toBeNull());
     expect(document.querySelector('.results-section')).toBeNull();
+    // the server job behind the dropped result is stopped, not left running
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/stop') && init?.method === 'POST')).toBe(
+      true,
+    );
+  });
+
+  it('stops a running scan and shows what it found so far', async () => {
+    let releaseScan: (() => void) | undefined;
+    await mountRepair([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      {
+        method: 'POST',
+        match: /\/scan\/jobs$/,
+        progress: '3 items scanned, 1 with issues',
+        respond: async () => {
+          await new Promise<void>((resolve) => {
+            releaseScan = resolve;
+          });
+          return jsonResponse(SCAN_RESULT);
+        },
+      },
+    ]);
+
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(textButton('Stop').disabled).toBe(false));
+    await vi.waitFor(() =>
+      expect(document.querySelector('.scanning-progress')?.textContent).toBe('3 items scanned, 1 with issues'),
+    );
+    textButton('Stop').click();
+
+    await vi.waitFor(() => expect(document.querySelector('.scanning-indicator')?.textContent).toContain('Stopping...'));
+    expect(textButton('Stop').disabled).toBe(true);
+    expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/stop') && init?.method === 'POST')).toBe(
+      true,
+    );
+
+    // the stopped job still finishes with the items it scanned
+    releaseScan!();
+    await vi.waitFor(() => expect(document.querySelector('.results-section')).not.toBeNull());
+    expect(document.querySelector('.scanning-indicator')).toBeNull();
+  });
+
+  it('stops the scan job when the page goes away while it runs', async () => {
+    // Otherwise its loop polls on for nobody and reports its failure on whatever page comes next.
+    await mountRepair([
+      ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
+      { method: 'POST', match: /\/scan\/jobs$/, respond: () => new Promise<Response>(() => {}) },
+    ]);
+
+    textButton('Scan').click();
+    await vi.waitFor(() => expect(textButton('Stop').disabled).toBe(false));
+    cleanup();
+
+    await vi.waitFor(() =>
+      expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith('/stop') && init?.method === 'POST')).toBe(
+        true,
+      ),
+    );
   });
 
   it('keeps a completed scan when a remembered entity selection is pruned in query mode', async () => {
@@ -779,7 +840,7 @@ describe('Scan & Repair page, stale scan responses', () => {
       },
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: async () => {
           await new Promise<void>((resolve) => {
             releaseScan = resolve;
@@ -806,7 +867,7 @@ describe('Scan & Repair page, stale scan responses', () => {
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: () => {
           scans += 1;
           return jsonResponse(SCAN_RESULT);

@@ -4,7 +4,9 @@ import { toast } from 'sonner';
 import type { ResultsTerms } from '../components/ResultsTable';
 import ResultsTable from '../components/ResultsTable';
 import ScanParamsPanel from '../components/ScanParamsPanel';
+import ScanningIndicator from '../components/ScanningIndicator';
 import { getCookie, setCookie } from '../services/cookies';
+import { runRepairJob, runScanJob, useScanJobState } from '../services/jobs';
 import { applyWriteResults, collectSelectedIssues } from '../services/scanEntities';
 import useRemote from '../services/useRemote';
 import useScanParams from '../services/useScanParams';
@@ -14,7 +16,6 @@ import type {
   Issue,
   LinkRole,
   RepairParams,
-  RepairResult,
   Repairer,
   RepairerConfigValues,
   ScanResult,
@@ -88,6 +89,11 @@ function usedRoles(issues: Issue[], fallback: string): string {
  */
 export default function StructuralLink() {
   const { sendRequest } = useRemote();
+  const scanJob = useScanJobState();
+  // "N of M" while a write job runs, then "Saving..." until its single commit is done
+  const [writeProgress, setWriteProgress] = useState<string | null>(null);
+  // A write job outlives the page; only its result is dropped once the page is gone.
+  const unmountedRef = useRef(false);
 
   // A document already on the selected role is not a finding, so it is hidden unless asked otherwise.
   const params = useScanParams(COOKIE_PREFIX, sendRequest, {
@@ -128,8 +134,12 @@ export default function StructuralLink() {
   const selection = useScanSelection({ result, hiddenGroups, busy: changing });
 
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
+      // A scan still running belongs to nobody now: its loop stops the server job and drops the result.
+      scanRunRef.current += 1;
     };
   }, []);
 
@@ -270,25 +280,16 @@ export default function StructuralLink() {
     timerRef.current = setInterval(() => setElapsed(Date.now() - startTime), 100);
 
     try {
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/scan',
-        body: JSON.stringify(params.buildScanParams([STRUCTURE_LINK_REPAIRER_ID], configs)),
-        contentType: 'application/json',
-      });
-
-      if (response.ok) {
-        const scanResult: ScanResult = await response.json();
-        if (superseded()) return;
-        setResultHideValid(params.hideValid);
-        setResult(scanResult);
-      } else {
-        const errData = await response.json().catch(() => null);
-        if (superseded()) return;
-        const msg = errData?.message || `Request failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+      const scanResult = await runScanJob(
+        sendRequest,
+        JSON.stringify(params.buildScanParams([STRUCTURE_LINK_REPAIRER_ID], configs)),
+        scanJob.callbacks(superseded),
+      );
+      if (scanResult === null) {
+        return;
       }
+      setResultHideValid(params.hideValid);
+      setResult(scanResult);
     } catch (e) {
       if (superseded()) return;
       const msg = (e as Error).message;
@@ -298,6 +299,7 @@ export default function StructuralLink() {
       scanInFlightRef.current = false;
       clearInterval(timerRef.current);
       setScanning(false);
+      scanJob.reset();
     }
   };
 
@@ -315,31 +317,27 @@ export default function StructuralLink() {
 
     try {
       // The repairer write path, so this obeys the Repair Authorization setting.
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/repair',
-        body: JSON.stringify({ issueMetaInfos, configs } satisfies RepairParams),
-        contentType: 'application/json',
-      });
+      const changeResults = await runRepairJob(
+        sendRequest,
+        JSON.stringify({ issueMetaInfos, configs } satisfies RepairParams),
+        {
+          isSuperseded: () => unmountedRef.current,
+          onProgress: setWriteProgress,
+        },
+      );
+      if (changeResults === null) {
+        return;
+      }
+      setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, changeResults) : prev));
 
-      if (response.ok) {
-        const changeResults: RepairResult[] = await response.json();
-        setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, changeResults) : prev));
-
-        const successCount = changeResults.filter((r) => r.success).length;
-        const failCount = changeResults.length - successCount;
-        if (successCount === 0) {
-          toast.error('Structure link role was not changed');
-        } else if (failCount === 0) {
-          toast.success(`${successCount} document(s) switched to '${targetRole}'`);
-        } else {
-          toast.warning(`${successCount} document(s) switched, ${failCount} failed`);
-        }
+      const successCount = changeResults.filter((r) => r.success).length;
+      const failCount = changeResults.length - successCount;
+      if (successCount === 0) {
+        toast.error('Structure link role was not changed');
+      } else if (failCount === 0) {
+        toast.success(`${successCount} document(s) switched to '${targetRole}'`);
       } else {
-        const errData = await response.json().catch(() => null);
-        const msg = errData?.message || `Change failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+        toast.warning(`${successCount} document(s) switched, ${failCount} failed`);
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -349,6 +347,7 @@ export default function StructuralLink() {
 
     setChangingEntity(null);
     setChanging(false);
+    setWriteProgress(null);
     selection.clearSelection();
   };
 
@@ -358,7 +357,8 @@ export default function StructuralLink() {
     <PageLayout>
       <div className="xml-repair-app">
         <div className="layout-columns">
-          <div className="panel-left">
+          {/* Nothing on the left may change while a write job runs on what the results show. */}
+          <div className="panel-left" inert={changing}>
             <div className="form-section">
               <div className="form-row">
                 <label htmlFor="structure-link-role">
@@ -415,6 +415,7 @@ export default function StructuralLink() {
                       : 'Change role'}
                 </button>
               )}
+              {changing && writeProgress && <span className="action-progress">{writeProgress}</span>}
             </div>
 
             <div className="form-section existing-links-section">
@@ -465,10 +466,13 @@ export default function StructuralLink() {
             )}
 
             {scanning && (
-              <div className="scanning-indicator">
-                <span className="spinner" />
-                <span>Scanning... {(elapsed / 1000).toFixed(1)}s</span>
-              </div>
+              <ScanningIndicator
+                elapsed={elapsed}
+                progress={scanJob.progress}
+                stopping={scanJob.stopping}
+                canStop={scanJob.canStop}
+                onStop={scanJob.stop}
+              />
             )}
 
             {error && <div className="error-message">{error}</div>}

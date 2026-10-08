@@ -4,12 +4,14 @@ import { toast } from 'sonner';
 import RepairersPanel from '../components/RepairersPanel';
 import ResultsTable from '../components/ResultsTable';
 import ScanParamsPanel from '../components/ScanParamsPanel';
+import ScanningIndicator from '../components/ScanningIndicator';
 import { getCookie as getRawCookie, setCookie as setRawCookie } from '../services/cookies';
+import { runRepairJob, runScanJob, useScanJobState } from '../services/jobs';
 import { applyWriteResults, collectSelectedIssues } from '../services/scanEntities';
 import useRemote from '../services/useRemote';
 import useScanParams from '../services/useScanParams';
 import useScanSelection from '../services/useScanSelection';
-import type { RepairParams, RepairResult, Repairer, ScanResult } from '../types';
+import type { RepairParams, Repairer, ScanResult } from '../types';
 
 const COOKIE_PREFIX = 'xmlRepair_';
 
@@ -29,6 +31,11 @@ function setCookie(key: string, value: string): void {
 
 export default function Repair() {
   const { sendRequest } = useRemote();
+  const scanJob = useScanJobState();
+  // "N of M" while a write job runs, then "Saving..." until its single commit is done
+  const [writeProgress, setWriteProgress] = useState<string | null>(null);
+  // A write job outlives the page; only its result is dropped once the page is gone.
+  const unmountedRef = useRef(false);
 
   // What to scan, how to filter it and the advanced limits, shared with the Purge page under its own cookies.
   const params = useScanParams(COOKIE_PREFIX, sendRequest);
@@ -62,8 +69,12 @@ export default function Repair() {
   const selection = useScanSelection({ result, hiddenGroups: hiddenRepairers, busy: batchRepairing });
 
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
+      // A scan still running belongs to nobody now: its loop stops the server job and drops the result.
+      scanRunRef.current += 1;
     };
   }, []);
 
@@ -227,30 +238,13 @@ export default function Repair() {
     const body = JSON.stringify(params.buildScanParams(selectedRepairers, activeConfigs));
 
     try {
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/scan',
-        body,
-        contentType: 'application/json',
-      });
-
-      if (response.ok) {
-        const scanResult: ScanResult = await response.json();
-        if (superseded()) {
-          return;
-        }
-        setResultHideValid(params.hideValid);
-        setHiddenRepairers(new Set());
-        setResult(scanResult);
-      } else {
-        const errData = await response.json().catch(() => null);
-        if (superseded()) {
-          return;
-        }
-        const msg = errData?.message || `Request failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+      const scanResult = await runScanJob(sendRequest, body, scanJob.callbacks(superseded));
+      if (scanResult === null) {
+        return;
       }
+      setResultHideValid(params.hideValid);
+      setHiddenRepairers(new Set());
+      setResult(scanResult);
     } catch (e) {
       if (superseded()) {
         return;
@@ -264,6 +258,7 @@ export default function Repair() {
       scanInFlightRef.current = false;
       clearInterval(timerRef.current);
       setScanning(false);
+      scanJob.reset();
     }
   };
 
@@ -288,38 +283,34 @@ export default function Repair() {
     }
 
     try {
-      const response = await sendRequest({
-        method: 'POST',
-        url: '/repair',
-        body: JSON.stringify({
+      const repairResults = await runRepairJob(
+        sendRequest,
+        JSON.stringify({
           issueMetaInfos,
           configs: activeConfigs,
         } satisfies RepairParams),
-        contentType: 'application/json',
-      });
+        {
+          isSuperseded: () => unmountedRef.current,
+          onProgress: setWriteProgress,
+        },
+      );
+      if (repairResults === null) {
+        return;
+      }
+      setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, repairResults) : prev));
 
-      if (response.ok) {
-        const repairResults: RepairResult[] = await response.json();
-        setResult((prev) => (prev ? applyWriteResults(prev, affectedKeys, repairResults) : prev));
+      const successCount = repairResults.filter((r) => r.success).length;
+      const failCount = repairResults.length - successCount;
+      const hasWarnings = repairResults.some((r) => r.success && r.warnings?.length > 0);
 
-        const successCount = repairResults.filter((r) => r.success).length;
-        const failCount = repairResults.length - successCount;
-        const hasWarnings = repairResults.some((r) => r.success && r.warnings?.length > 0);
-
-        if (successCount === 0) {
-          toast.error('Repair failed');
-        } else if (failCount === 0 && !hasWarnings) {
-          toast.success(`${successCount} issue(s) repaired successfully`);
-        } else if (failCount === 0 && hasWarnings) {
-          toast.warning(`${successCount} issue(s) repaired with warnings`);
-        } else {
-          toast.warning(`${successCount} issue(s) repaired, ${failCount} failed`);
-        }
+      if (successCount === 0) {
+        toast.error('Repair failed');
+      } else if (failCount === 0 && !hasWarnings) {
+        toast.success(`${successCount} issue(s) repaired successfully`);
+      } else if (failCount === 0 && hasWarnings) {
+        toast.warning(`${successCount} issue(s) repaired with warnings`);
       } else {
-        const errData = await response.json().catch(() => null);
-        const msg = errData?.message || `Repair failed with status ${response.status}`;
-        setError(msg);
-        toast.error(msg);
+        toast.warning(`${successCount} issue(s) repaired, ${failCount} failed`);
       }
     } catch (e) {
       const msg = (e as Error).message;
@@ -329,6 +320,7 @@ export default function Repair() {
 
     setRepairingEntity(null);
     setBatchRepairing(false);
+    setWriteProgress(null);
     selection.clearSelection();
   };
 
@@ -340,7 +332,8 @@ export default function Repair() {
     <PageLayout>
       <div className="xml-repair-app">
         <div className="layout-columns">
-          <div className="panel-left">
+          {/* Nothing on the left may change while a write job runs on what the results show. */}
+          <div className="panel-left" inert={batchRepairing}>
             <ScanParamsPanel
               {...params.panelProps}
               onEntityChange={handleEntityChange}
@@ -382,6 +375,7 @@ export default function Repair() {
                       : 'Repair'}
                 </button>
               )}
+              {batchRepairing && writeProgress && <span className="action-progress">{writeProgress}</span>}
             </div>
 
             <RepairersPanel
@@ -401,10 +395,13 @@ export default function Repair() {
             )}
 
             {scanning && (
-              <div className="scanning-indicator">
-                <span className="spinner" />
-                <span>Scanning... {(elapsed / 1000).toFixed(1)}s</span>
-              </div>
+              <ScanningIndicator
+                elapsed={elapsed}
+                progress={scanJob.progress}
+                stopping={scanJob.stopping}
+                canStop={scanJob.canStop}
+                onStop={scanJob.stop}
+              />
             )}
 
             {error && <div className="error-message">{error}</div>}

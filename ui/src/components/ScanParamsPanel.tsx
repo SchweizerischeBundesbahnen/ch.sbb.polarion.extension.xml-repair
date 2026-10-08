@@ -62,8 +62,6 @@ interface ScanParamsPanelProps {
   onSortChange: (val: string) => void;
   limit: number;
   onLimitChange: (val: number) => void;
-  timeout: number;
-  onTimeoutChange: (val: number) => void;
   hideValid: boolean;
   onHideValidChange: (val: boolean) => void;
   /** What "valid" means on this page: issues on Scan & Repair, outdated attributes on Purge. */
@@ -93,8 +91,6 @@ export default function ScanParamsPanel({
   onSortChange,
   limit,
   onLimitChange,
-  timeout,
-  onTimeoutChange,
   hideValid,
   onHideValidChange,
   hideValidLabel = 'Show items with issues only',
@@ -210,10 +206,6 @@ export default function ScanParamsPanel({
           <div className="form-row">
             <label htmlFor={`${id}-limit`}>Show Top Rows</label>
             <NumericInput id={`${id}-limit`} value={limit} defaultValue={100} onChange={onLimitChange} />
-          </div>
-          <div className="form-row">
-            <label htmlFor={`${id}-timeout`}>Scan time limit, seconds</label>
-            <NumericInput id={`${id}-timeout`} value={timeout} defaultValue={60} onChange={onTimeoutChange} />
           </div>
           <div className="form-row">
             <label htmlFor="hide-valid">{hideValidLabel}</label>

@@ -15,10 +15,10 @@ const defaultRoutes = (): Route[] => [
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/entities\?/, json: DOCUMENTS },
-  { method: 'POST', match: /\/scan$/, json: PURGE_SCAN_RESULT },
+  { method: 'POST', match: /\/scan\/jobs$/, json: PURGE_SCAN_RESULT },
   {
     method: 'POST',
-    match: /\/repair$/,
+    match: /\/repair\/jobs$/,
     respond: (_url, init) => {
       const body = JSON.parse(String(init?.body));
       return jsonResponse(
@@ -67,6 +67,34 @@ async function mountPurge(routes = defaultRoutes(), query = '?feature=purge-outd
   setUrl(query);
   render(<App />);
   await vi.waitFor(() => expect(document.querySelector('.attributes-section')).not.toBeNull());
+}
+
+/** The purge route of the default routes, replaced. */
+const withPurgeRoute = (route: Route): Route[] => [
+  ...defaultRoutes().filter((r) => !/repair/.test(r.match.source)),
+  route,
+];
+
+/** Answers every purged issue, telling by its position whether it succeeded. */
+const purgeOutcome = (succeeded: (index: number) => boolean): Route => ({
+  method: 'POST',
+  match: /\/repair\/jobs$/,
+  respond: (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    return jsonResponse(
+      (body.issueMetaInfos as string[]).map((m, index) => ({
+        issueMetaInfo: m,
+        success: succeeded(index),
+        warnings: [],
+      })),
+    );
+  },
+});
+
+async function purgeFirstRow() {
+  document.querySelector<HTMLInputElement>('.issues-table tbody input[type="checkbox"]')!.click();
+  await vi.waitFor(() => expect(startsWithButton('Purge (attributes:').disabled).toBe(false));
+  startsWithButton('Purge (attributes:').click();
 }
 
 async function runScan() {
@@ -187,12 +215,79 @@ describe('Purge outdated data page', () => {
     startsWithButton('Purge (attributes:').click();
 
     await vi.waitFor(() => expect(document.querySelector('.fixed-badge')).not.toBeNull());
-    const purgeCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/repair'));
+    const purgeCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/repair/jobs'));
     expect(purgeCall).toBeDefined();
     const body = JSON.parse(String((purgeCall?.[1] as RequestInit)?.body));
     // EL-100 is the first row and holds both of its attributes' issues.
     expect(body.issueMetaInfos).toEqual(['purge-1', 'purge-2']);
     expect(body.configs).toEqual({});
+  });
+
+  it('reports a total failure when no attribute could be purged', async () => {
+    await mountPurge(withPurgeRoute(purgeOutcome(() => false)));
+    await runScan();
+    await purgeFirstRow();
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Purge failed'));
+  });
+
+  it('reports a partial failure when some attributes could not be purged', async () => {
+    await mountPurge(withPurgeRoute(purgeOutcome((index) => index === 0)));
+    await runScan();
+    await purgeFirstRow();
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('1 attribute(s) purged, 1 failed'));
+  });
+
+  it('shows the progress of the purge job and locks the left panel until it is over', async () => {
+    let releasePurge: (() => void) | undefined;
+    await mountPurge(
+      withPurgeRoute({
+        ...purgeOutcome(() => true),
+        progress: '1 of 2',
+        respond: async (url, init) => {
+          await new Promise<void>((resolve) => {
+            releasePurge = resolve;
+          });
+          return purgeOutcome(() => true).respond!(url, init);
+        },
+      }),
+    );
+    await runScan();
+    await purgeFirstRow();
+
+    await vi.waitFor(() => expect(document.querySelector('.actions .action-progress')?.textContent).toBe('1 of 2'));
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(true);
+
+    releasePurge!();
+    await vi.waitFor(() => expect(document.body.textContent).toContain('purged successfully'));
+    // the toast comes first, the busy state is reset right after it
+    await vi.waitFor(() => expect(document.querySelector('.action-progress')).toBeNull());
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(false);
+  });
+
+  it('drops the result of a purge which finishes after the page is gone', async () => {
+    let releasePurge: (() => void) | undefined;
+    await mountPurge(
+      withPurgeRoute({
+        ...purgeOutcome(() => true),
+        respond: async (url, init) => {
+          await new Promise<void>((resolve) => {
+            releasePurge = resolve;
+          });
+          return purgeOutcome(() => true).respond!(url, init);
+        },
+      }),
+    );
+    await runScan();
+    await purgeFirstRow();
+    await vi.waitFor(() => expect(releasePurge).toBeDefined());
+
+    cleanup();
+    releasePurge!();
+
+    // the purge still finishes on the server; the page only fetches its result and lets it go
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/result'))).toBe(true));
   });
 
   it('keeps the Purge button disabled until something is selected', async () => {
@@ -212,7 +307,7 @@ describe('Purge outdated data page', () => {
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: async () => {
           await new Promise<void>((resolve) => {
             releaseScan = resolve;
@@ -245,7 +340,7 @@ describe('Purge outdated data page', () => {
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: () => {
           releases += 1;
           return jsonResponse(PURGE_SCAN_RESULT);
@@ -265,7 +360,7 @@ describe('Purge outdated data page', () => {
   it('surfaces a failed scan and shows no results', async () => {
     await mountPurge([
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
-      { method: 'POST', match: /\/scan$/, json: { message: 'Lucene query is broken' }, status: 400 },
+      { method: 'POST', match: /\/scan\/jobs$/, json: { message: 'Lucene query is broken' }, status: 400 },
     ]);
 
     textButton('Scan').click();
@@ -283,7 +378,7 @@ describe('Purge outdated data page', () => {
       ...defaultRoutes().filter((r) => !/scan/.test(r.match.source)),
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: () => {
           scans += 1;
           return scans === 1
@@ -329,7 +424,7 @@ describe('Purge outdated data page', () => {
       },
       {
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: async () => {
           await new Promise<void>((resolve) => {
             releaseScan = resolve;

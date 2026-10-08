@@ -17,7 +17,7 @@ const baseRoutes = (repair: Route): Route[] => [
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
-  { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
+  { method: 'POST', match: /\/scan\/jobs$/, json: SCAN_RESULT },
 ];
 
 const textButton = (label: string): HTMLButtonElement => {
@@ -57,7 +57,7 @@ async function scanAndSelectAll() {
 /** All issues of the scan result, answered with the given per-issue outcome. */
 const repairRoute = (outcome: (meta: string) => Record<string, unknown>): Route => ({
   method: 'POST',
-  match: /\/repair$/,
+  match: /\/repair\/jobs$/,
   respond: (_url, init) => {
     const body = JSON.parse(String(init?.body));
     return jsonResponse((body.issueMetaInfos as string[]).map(outcome));
@@ -95,13 +95,86 @@ describe('Repair outcomes', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/repair$/,
+        match: /\/repair\/jobs$/,
         respond: () => jsonResponse({ message: 'repair service unavailable' }, 503) as Response & { status: number },
       }),
     );
     await scanAndSelectAll();
     repairButton().click();
     await vi.waitFor(() => expect(document.body.textContent).toContain('repair service unavailable'), {
+      timeout: 5000,
+    });
+  });
+});
+
+describe('Repair progress', () => {
+  it('shows the progress of the repair job and locks the left panel until it is over', async () => {
+    let releaseRepair: (() => void) | undefined;
+    await mountRepair(
+      baseRoutes({
+        method: 'POST',
+        match: /\/repair\/jobs$/,
+        progress: '3 of 7',
+        respond: async (_url, init) => {
+          await new Promise<void>((resolve) => {
+            releaseRepair = resolve;
+          });
+          const body = JSON.parse(String(init?.body));
+          return jsonResponse(
+            (body.issueMetaInfos as string[]).map((m) => ({ issueMetaInfo: m, success: true, warnings: [] })),
+          );
+        },
+      }),
+    );
+    await scanAndSelectAll();
+    repairButton().click();
+
+    await vi.waitFor(() => expect(document.querySelector('.actions .action-progress')?.textContent).toBe('3 of 7'), {
+      timeout: 5000,
+    });
+    expect(repairButton().textContent).toBe('Repairing...');
+    // the scan parameters and the repairers cannot change under the running repair
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(true);
+
+    releaseRepair!();
+    await vi.waitFor(() => expect(document.body.textContent).toContain('repaired successfully'), { timeout: 5000 });
+    // the toast comes first, the busy state is reset right after it
+    await vi.waitFor(() => expect(document.querySelector('.action-progress')).toBeNull());
+    expect(document.querySelector<HTMLElement>('.panel-left')!.inert).toBe(false);
+  });
+});
+
+describe('Repair after the page is gone', () => {
+  it('drops the result of a repair which finishes after the page is gone', async () => {
+    let releaseRepair: (() => void) | undefined;
+    const fetchMock = installFetchMock(
+      baseRoutes({
+        ...repairRoute((m) => ({ issueMetaInfo: m, success: true, warnings: [] })),
+        respond: async (_url, init) => {
+          await new Promise<void>((resolve) => {
+            releaseRepair = resolve;
+          });
+          const body = JSON.parse(String(init?.body));
+          return jsonResponse(
+            (body.issueMetaInfos as string[]).map((m) => ({ issueMetaInfo: m, success: true, warnings: [] })),
+          );
+        },
+      }),
+    );
+    setUrl('?feature=repair&projectId=elibrary');
+    render(<App />);
+    await vi.waitFor(() => expect(document.body.textContent).toContain('Enumeration fields: Invalid value'), {
+      timeout: 5000,
+    });
+    await scanAndSelectAll();
+    repairButton().click();
+    await vi.waitFor(() => expect(releaseRepair).toBeDefined(), { timeout: 5000 });
+
+    cleanup();
+    releaseRepair!();
+
+    // the repair still commits on the server; the page only fetches its result and lets it go
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/result'))).toBe(true), {
       timeout: 5000,
     });
   });
@@ -139,7 +212,7 @@ describe('Repair inside a collection', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/repair$/,
+        match: /\/repair\/jobs$/,
         respond: (_url, init) => {
           meta = JSON.parse(String(init?.body)).issueMetaInfos as string[];
           return jsonResponse(meta.map((m) => ({ issueMetaInfo: m, success: true, warnings: [] })));
@@ -211,7 +284,7 @@ describe('Repair scan parameters', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: (_url, init) => {
           body = JSON.parse(String(init?.body));
           return jsonResponse(SCAN_RESULT);
@@ -239,7 +312,7 @@ describe('Repair scan parameters', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: (_url, init) => {
           body = JSON.parse(String(init?.body));
           return jsonResponse(SCAN_RESULT);
@@ -260,7 +333,7 @@ describe('Repair scan parameters', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         json: { ...SCAN_RESULT, items: [withoutSubitems] },
       }),
     );
@@ -296,21 +369,6 @@ describe('Repair scan parameters', () => {
     await vi.waitFor(() => expect(document.querySelector('.expand-row')).toBeNull(), { timeout: 5000 });
     expect(repairButton().disabled).toBe(true);
   });
-
-  it('falls back to the status when a failed repair response has no message', async () => {
-    await mountRepair(
-      baseRoutes({
-        method: 'POST',
-        match: /\/repair$/,
-        respond: () => jsonResponse({}, 500),
-      }),
-    );
-    await scanAndSelectAll();
-    repairButton().click();
-    await vi.waitFor(() => expect(document.body.textContent).toContain('Repair failed with status 500'), {
-      timeout: 5000,
-    });
-  });
 });
 
 describe('Repair collection scans', () => {
@@ -319,7 +377,7 @@ describe('Repair collection scans', () => {
     await mountRepair(
       baseRoutes({
         method: 'POST',
-        match: /\/scan$/,
+        match: /\/scan\/jobs$/,
         respond: (_url, init) => {
           body = JSON.parse(String(init?.body));
           return jsonResponse(SCAN_RESULT);

@@ -28,19 +28,28 @@ import { settleBeforeCapture, settleLayout } from './visualHelpers';
 
 const origUrl = window.location.pathname + window.location.search;
 
-// `holdRepair` leaves POST /repair unsettled, so the page stays in its batch-repair state for as long
-// as a capture needs. Nothing resolves it; the test file's cleanup drops the page.
-const routes = (holdRepair = false): Route[] => [
+// `holdRepair` leaves the repair job unsettled, so the page stays in its batch-repair state for as long
+// as a capture needs. `holdScan` does the same for the scan job. Both jobs keep reporting their progress.
+// Nothing resolves either; the test file's cleanup drops the page.
+const routes = (holdRepair = false, holdScan = false): Route[] => [
   // Answers per entityType exactly like the backend, so switching the dropdown reloads a different list.
   { method: 'GET', match: /\/repairers/, respond: (url) => jsonResponse(repairersFor(url)) },
   { method: 'GET', match: /\/work-item-types/, json: WORK_ITEM_TYPES },
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/entities\?/, respond: (url) => jsonResponse(entitiesFor(url)) },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
-  { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
+  holdScan
+    ? {
+        method: 'POST',
+        match: /\/scan\/jobs$/,
+        respond: () => new Promise<Response>(() => {}),
+        progress: '28 items scanned, 0 with issues',
+      }
+    : { method: 'POST', match: /\/scan\/jobs$/, json: SCAN_RESULT },
   {
     method: 'POST',
-    match: /\/repair$/,
+    match: /\/repair\/jobs$/,
+    progress: '7 of 36',
     respond: (_url, init) => {
       if (holdRepair) {
         return new Promise<Response>(() => {});
@@ -56,6 +65,7 @@ const routes = (holdRepair = false): Route[] => [
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   window.history.replaceState({}, '', origUrl);
   document.cookie.split('; ').forEach((c) => {
     const name = c.split('=')[0];
@@ -88,8 +98,8 @@ async function stubEntityIcons() {
   );
 }
 
-async function mount(holdRepair = false) {
-  installFetchMock(routes(holdRepair));
+async function mount(holdRepair = false, holdScan = false) {
+  installFetchMock(routes(holdRepair, holdScan));
   // embedded=true mirrors how the navigation extender opens the page in Polarion: the PageLayout title
   // shows but the dev-only "Overview" back link is hidden, so the snapshot captures the production look.
   window.history.replaceState({}, '', '?feature=repair&projectId=elibrary&embedded=true');
@@ -216,6 +226,21 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
     await captureApp('repair-repairers');
   });
 
+  it('scanning (elapsed time, job progress and the Stop button)', async () => {
+    // The scan job never finishes, so the indicator stays up with the progress its last poll reported.
+    // The elapsed time is read from Date.now, frozen here so the shot always reads 0.0s.
+    vi.spyOn(Date, 'now').mockReturnValue(0);
+    await mount(false, true);
+    Array.from(document.querySelectorAll<HTMLButtonElement>('button'))
+      .find((b) => (b.textContent ?? '').trim() === 'Scan')!
+      .click();
+    await vi.waitFor(() =>
+      expect(document.querySelector('.scanning-progress')?.textContent).toBe('28 items scanned, 0 with issues'),
+    );
+    await vi.waitFor(() => expect(document.querySelector<HTMLButtonElement>('.btn-stop')?.disabled).toBe(false));
+    await captureApp('repair-scanning');
+  });
+
   it('results (issues table + breakdown)', async () => {
     // Every row collapsed: the arrow of a row with issues (a button) beside the arrow of one without
     // (a span, out of the tab order), the warning marker on EL-100, and Collapse all already spent.
@@ -248,7 +273,8 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
   it('results frozen by a batch repair (the disabled look the mouse-only guard never had)', async () => {
     // `pointer-events: none` dimmed nothing, so while the controls were spans this state had no look of
     // its own. They are buttons now and take the disabled look from aria-disabled, which is what this
-    // shot holds: both expand-all controls greyed, every checkbox disabled, the table behind them.
+    // shot holds: both expand-all controls greyed, every checkbox disabled, the table behind them. The
+    // repair job's progress stands next to the busy button.
     await mount(true);
     await scan();
     document.querySelector<HTMLInputElement>('.issues-table thead .col-checkbox input')!.click();
@@ -260,6 +286,7 @@ describe.skipIf(!__PIXEL_REFERENCES__)('Scan & Repair page visual', () => {
     await vi.waitFor(() => expect(document.querySelector('.issues-table.disabled')).not.toBeNull());
     expect(expandAllControl('Expand all').getAttribute('aria-disabled')).toBe('true');
     expect(expandAllControl('Collapse all').getAttribute('aria-disabled')).toBe('true');
+    await vi.waitFor(() => expect(document.querySelector('.action-progress')?.textContent).toBe('7 of 36'));
     await captureApp('repair-results-repairing');
   });
 

@@ -20,7 +20,6 @@ const COOKIES = [
   'revision',
   'sort',
   'limit',
-  'timeout',
   'hideValid',
   'entitySubtype',
   'repairers_WORKITEM',
@@ -39,7 +38,7 @@ const defaultRoutes = (): Route[] => [
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/entities\?/, json: DOCUMENTS },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
-  { method: 'POST', match: /\/scan$/, json: SCAN_RESULT },
+  { method: 'POST', match: /\/scan\/jobs$/, json: SCAN_RESULT },
 ];
 
 async function mountRepair(routes = defaultRoutes(), query = '?feature=repair&projectId=elibrary') {
@@ -74,13 +73,11 @@ describe('Repair form restored from cookies', () => {
     setCookie('revision', '4321');
     setCookie('sort', 'id');
     setCookie('limit', '25');
-    setCookie('timeout', '120');
     setCookie('hideValid', 'true');
     await mountRepair();
 
     const values = numericInputs().map((i) => i.value);
     expect(values).toContain('25'); // limit
-    expect(values).toContain('120'); // timeout
     expect(values).toContain('4321'); // revision
     const query = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="text"]')).find(
       (i) => i.value === 'type:requirement',
@@ -97,12 +94,10 @@ describe('Repair form restored from cookies', () => {
     setCookie('entityType', 'NOT_A_TYPE'); // not in the option list -> WORKITEM
     setCookie('revision', 'abc');
     setCookie('limit', '0');
-    setCookie('timeout', '-5');
     await mountRepair();
 
     const values = numericInputs().map((i) => i.value);
     expect(values).toContain('100'); // default limit
-    expect(values).toContain('60'); // default timeout
     // A revision of 0 renders as an empty field rather than a literal zero.
     expect(values).not.toContain('0');
   });

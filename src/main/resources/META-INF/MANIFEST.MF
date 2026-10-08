@@ -1,1 +1,2 @@
+Bundle-Activator: ch.sbb.polarion.extension.xml_repair.ExtensionBundleActivator
 Bundle-Name: XML Repair extension for Polarion ALM

@@ -247,6 +247,18 @@
   margin-bottom: 16px;
 }
 
+/* inert blocks input but looks unchanged; the action row keeps the busy button and its progress readable */
+.panel-left[inert] > :not(.actions) {
+  opacity: 0.55;
+}
+
+.action-progress {
+  align-self: center;
+  color: #555;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
 /* Plain weight: the boxed role below carries the emphasis. */
 .existing-links-title {
   margin-bottom: 8px;
@@ -327,12 +339,23 @@
 
 .scanning-indicator {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 20px;
   min-height: 200px;
   color: var(--sbb-accent);
   font-size: 13px;
+}
+
+.scanning-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.scanning-progress {
+  color: #555;
 }
 
 .spinner {

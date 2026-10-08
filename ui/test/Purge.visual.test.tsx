@@ -19,7 +19,7 @@ const routes = (): Route[] => [
   { method: 'GET', match: /\/document-types/, json: DOCUMENT_TYPES },
   { method: 'GET', match: /\/entities\?/, json: DOCUMENTS },
   { method: 'GET', match: /\/baselines/, json: BASELINES },
-  { method: 'POST', match: /\/scan$/, json: PURGE_SCAN_RESULT },
+  { method: 'POST', match: /\/scan\/jobs$/, json: PURGE_SCAN_RESULT },
 ];
 
 afterEach(() => {

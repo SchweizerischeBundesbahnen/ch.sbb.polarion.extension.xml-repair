@@ -24,6 +24,7 @@ import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairResult;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.EntityRef;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanContext;
+import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanControl;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanEntity;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanParams;
 import ch.sbb.polarion.extension.xml_repair.service.model.scan.ScanResult;
@@ -133,10 +134,12 @@ class XmlRepairPolarionServiceTest {
         RepairResult expectedResult = new RepairResult(resultMetaInfo, true);
         doReturn(expectedResult).when(polarionService).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<String> progress = new ArrayList<>();
+        List<RepairResult> results = polarionService.repair(params, progress::add);
 
         assertEquals(1, results.size());
         assertTrue(results.getFirst().isSuccess());
+        assertEquals(List.of("1 of 1"), progress);
         verify(polarionService).getWorkItem("proj", "WI-1", null);
     }
 
@@ -161,7 +164,7 @@ class XmlRepairPolarionServiceTest {
         RepairResult expectedResult = new RepairResult(resultMetaInfo, true);
         doReturn(expectedResult).when(polarionService).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<RepairResult> results = polarionService.repair(params, message -> {});
 
         assertEquals(1, results.size());
         verify(polarionService).getProject("proj");
@@ -188,7 +191,7 @@ class XmlRepairPolarionServiceTest {
         when(resultMetaInfo.serialize()).thenReturn("serialized");
         doReturn(new RepairResult(resultMetaInfo, true)).when(polarionService).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<RepairResult> results = polarionService.repair(params, message -> {});
 
         assertEquals(2, results.size());
     }
@@ -223,7 +226,7 @@ class XmlRepairPolarionServiceTest {
         when(resultMetaInfo.serialize()).thenReturn("serialized");
         doReturn(new RepairResult(resultMetaInfo, true)).when(polarionService).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<RepairResult> results = polarionService.repair(params, message -> {});
 
         assertEquals(3, results.size());
         assertTrue(results.get(0).isSuccess());
@@ -243,7 +246,7 @@ class XmlRepairPolarionServiceTest {
         RepairParams params = new RepairParams();
         params.setIssueMetaInfos(List.of(metaInfo.serialize()));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<RepairResult> results = polarionService.repair(params, message -> {});
 
         assertEquals(1, results.size());
         assertFalse(results.getFirst().isSuccess());
@@ -265,7 +268,7 @@ class XmlRepairPolarionServiceTest {
         RepairParams params = new RepairParams();
         params.setIssueMetaInfos(List.of(metaInfo.serialize()));
 
-        List<RepairResult> results = polarionService.repair(params);
+        List<RepairResult> results = polarionService.repair(params, message -> {});
 
         assertEquals(1, results.size());
         assertFalse(results.getFirst().isSuccess());
@@ -296,7 +299,7 @@ class XmlRepairPolarionServiceTest {
         when(resultMetaInfo.serialize()).thenReturn("serialized");
         doReturn(new RepairResult(resultMetaInfo, true)).when(polarionService).repairEntity(any(IUniqueObject.class), any(RepairContext.class));
 
-        polarionService.repair(params);
+        polarionService.repair(params, message -> {});
 
         verify(polarionService).repairEntity(any(IUniqueObject.class), argThat(ctx -> ctx.configs().containsKey("key")));
     }
@@ -824,12 +827,11 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.WORKITEM);
         params.setLimit(10);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
 
         doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
 
-        ScanResult result = polarionService.scan(params);
+        ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
         assertTrue(result.getItems().isEmpty());
         assertNotNull(result.getReport());
@@ -849,17 +851,142 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject)).doReturn(List.of())
                     .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertEquals(1, result.getItems().size());
             assertNotNull(result.getReport());
+        }
+    }
+
+    @Test
+    void testScanStopsAtNextEntityAndKeepsWhatItFound() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.WORKITEM);
+            params.setLimit(10);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(createMockModelObject("WI-1"), createMockModelObject("WI-2")))
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
+
+            List<String> progress = new ArrayList<>();
+            ScanControl control = new ScanControl() {
+                @Override
+                public String stopReason() {
+                    // asked before each entity: the second one is never scanned
+                    return progress.isEmpty() ? null : "Stopped by test";
+                }
+
+                @Override
+                public void reportProgress(String message) {
+                    progress.add(message);
+                }
+            };
+
+            ScanResult result = polarionService.scan(params, control);
+
+            assertEquals(1, result.getItems().size());
+            assertEquals(List.of("1 item scanned, 0 with issues"), progress);
+            assertTrue(result.getReport().contains("WARN: Stopped by test"));
+        }
+    }
+
+    @Test
+    void testScanReportsAStopWhichCameDuringTheLastEntity() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.WORKITEM);
+            params.setLimit(10);
+            params.setRepairers(List.of("TestRepairer"));
+
+            doReturn(List.of(createMockModelObject("WI-1")))
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
+            ScanControl control = mock(ScanControl.class);
+            // asked before the only entity, then once more after it
+            when(control.stopReason()).thenReturn(null, "Stopped by test");
+
+            ScanResult result = polarionService.scan(params, control);
+
+            assertEquals(1, result.getItems().size());
+            assertTrue(result.getReport().contains("WARN: Stopped by test"));
+        }
+    }
+
+    @Test
+    void testScanWithHideValidDoesNotQueryFurtherBatchesOnceStopped() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class, (mock, ctx) ->
+                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            ScanParams params = new ScanParams();
+            params.setProjectId("proj");
+            params.setEntityType(EntityType.WORKITEM);
+            params.setLimit(10);
+            params.setHideValid(true);
+            params.setRepairers(List.of("TestRepairer"));
+
+            // every batch is clean, so without the stop the scan would query batch after batch
+            doReturn(List.of(createMockModelObject("WI-1"), createMockModelObject("WI-2")))
+                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
+            ScanControl control = mock(ScanControl.class);
+            when(control.stopReason()).thenReturn(null, "Stopped by test");
+
+            ScanResult result = polarionService.scan(params, control);
+
+            assertTrue(result.getItems().isEmpty());
+            verify(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
+        }
+    }
+
+    @Test
+    void testScanEntityStopsBeforeTheNextCollectionDocument() {
+        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
+        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
+             MockedConstruction<EntityRenderer> ignored = mockConstruction(EntityRenderer.class)) {
+            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
+
+            var collection = mock(UniqueObject.class, withSettings()
+                    .extraInterfaces(IBaselineCollection.class)
+                    .defaultAnswer(RETURNS_DEEP_STUBS));
+            when(collection.getPrototype().getName()).thenReturn(IBaselineCollection.PROTO);
+            IBaselineCollectionElement element = mock(IBaselineCollectionElement.class);
+            when(((IBaselineCollection) collection).getElements()).thenReturn(List.of(element));
+            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
+
+            ScanEntity scanEntity = ScanEntity.from(collection);
+            ScanControl control = mock(ScanControl.class);
+            when(control.stopReason()).thenReturn("Stopped by test");
+            ScanContext context = new ScanContext(polarionService, List.of("TestRepairer"), new UserConfigs(), new Report(), new Cache())
+                    .control(control);
+
+            polarionService.scanEntity(scanEntity, context);
+
+            assertTrue(scanEntity.getSubitems().isEmpty());
+            assertEquals(Set.of("Stopped by test"), scanEntity.getWarnings());
+            verify(element, never()).getObjectWithRevision();
         }
     }
 
@@ -879,7 +1006,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -887,40 +1013,10 @@ class XmlRepairPolarionServiceTest {
                     .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
             doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             // Both items are clean, hideValid=true, so they should be filtered out
             assertTrue(result.getItems().isEmpty());
-        }
-    }
-
-    @Test
-    void testScanTimeLimitReachedAddsWarning() {
-        InternalReadOnlyTransaction transaction = mock(InternalReadOnlyTransaction.class, RETURNS_DEEP_STUBS);
-        try (MockedStatic<TransactionalExecutorImpl> txMock = mockStatic(TransactionalExecutorImpl.class);
-             MockedConstruction<EntityRenderer> ignored2 = mockConstruction(EntityRenderer.class, (mock, ctx) ->
-                     when(mock.renderEntity(any())).thenReturn(new LinkedHashMap<>()))) {
-            txMock.when(TransactionalExecutorImpl::currentTransaction).thenReturn(transaction);
-
-            ModelObject modelObject1 = createMockModelObject("WI-1");
-            ModelObject modelObject2 = createMockModelObject("WI-2");
-
-            ScanParams params = new ScanParams();
-            params.setProjectId("proj");
-            params.setEntityType(EntityType.WORKITEM);
-            params.setLimit(10);
-            params.setTimeout(-1L); // Negative timeout - always exceeded
-            params.setRepairers(List.of("TestRepairer"));
-
-            doReturn(List.of(modelObject1, modelObject2))
-                    .when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), isNull(), isNull(), isNull(), anyInt(), anyInt());
-            doReturn(List.of(new TestRepairer(null))).when(polarionService).getRepairersForEntity(any());
-
-            ScanResult result = polarionService.scan(params);
-
-            // At least 2 items shown, and the report should contain the time limit warning
-            assertEquals(2, result.getItems().size());
-            assertTrue(result.getReport().contains(XmlRepairPolarionService.SCAN_TIME_LIMIT_REACHED_WARNING));
         }
     }
 
@@ -938,7 +1034,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setRepairers(List.of("TestRepairer"));
 
             doReturn(List.of(modelObject))
@@ -947,7 +1042,7 @@ class XmlRepairPolarionServiceTest {
             // Make scanEntity throw
             doThrow(new RuntimeException("scan failed")).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertEquals(1, result.getItems().size());
             assertTrue(result.getItems().getFirst().getWarnings().stream().anyMatch(w -> w.contains("scan failed")));
@@ -970,7 +1065,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(1); // Only allow 1 item
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -980,7 +1074,7 @@ class XmlRepairPolarionServiceTest {
             // Make scanEntity throw so items are not considered "valid" (error != null means they're shown)
             doThrow(new RuntimeException("scan error")).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             // With limit=1 and hideValid=true, should stop after collecting 1 item with error
             assertEquals(1, result.getItems().size());
@@ -1002,7 +1096,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.COLLECTION);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -1018,7 +1111,7 @@ class XmlRepairPolarionServiceTest {
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertEquals(1, result.getItems().size(), "Collection with subitem issues must remain visible");
             assertEquals(1, result.getItems().getFirst().getSubitems().size());
@@ -1040,7 +1133,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.COLLECTION);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -1055,7 +1147,7 @@ class XmlRepairPolarionServiceTest {
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertTrue(result.getItems().isEmpty(), "Collection with no subitem issues must be hidden when hideValid=true");
         }
@@ -1075,7 +1167,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.COLLECTION);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -1093,7 +1184,7 @@ class XmlRepairPolarionServiceTest {
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertEquals(1, result.getItems().size(), "Collection with at least one issue-bearing subitem must remain visible");
             assertEquals(2, result.getItems().getFirst().getSubitems().size());
@@ -1114,7 +1205,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.WORKITEM);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(true);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -1129,10 +1219,12 @@ class XmlRepairPolarionServiceTest {
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanControl control = mock(ScanControl.class);
+            ScanResult result = polarionService.scan(params, control);
 
             assertEquals(1, result.getItems().size(), "Item with its own issues must remain visible when hideValid=true");
             assertEquals(1, result.getItems().getFirst().getIssues().size());
+            verify(control).reportProgress("1 item scanned, 1 with issues");
         }
     }
 
@@ -1150,7 +1242,6 @@ class XmlRepairPolarionServiceTest {
             params.setProjectId("proj");
             params.setEntityType(EntityType.COLLECTION);
             params.setLimit(10);
-            params.setTimeout(60000L);
             params.setHideValid(false);
             params.setRepairers(List.of("TestRepairer"));
 
@@ -1163,7 +1254,7 @@ class XmlRepairPolarionServiceTest {
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
-            ScanResult result = polarionService.scan(params);
+            ScanResult result = polarionService.scan(params, ScanControl.NONE);
 
             assertEquals(1, result.getItems().size(), "hideValid=false must short-circuit the hide check");
         }
@@ -1581,13 +1672,12 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.DOCUMENT);
         params.setLimit(10);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
         params.setEntities(List.of(new EntityRef("_default", "spec")));
 
         doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
 
-        polarionService.scan(params);
+        polarionService.scan(params, ScanControl.NONE);
 
         verify(polarionService).queryEntities("proj", PrototypeEnum.Document, null,
                 "(space.id:_default AND moduleName:spec)", null, null, 0, 10);
@@ -1601,13 +1691,12 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.COLLECTION);
         params.setLimit(2);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
         params.setEntities(List.of(new EntityRef(null, "1"), new EntityRef(null, "2"), new EntityRef(null, "3")));
 
         doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
 
-        polarionService.scan(params);
+        polarionService.scan(params, ScanControl.NONE);
 
         verify(polarionService).queryEntities("proj", PrototypeEnum.BaselineCollection, null,
                 "id:1 OR id:2 OR id:3", null, null, 0, 3);
@@ -1621,11 +1710,10 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.DOCUMENT);
         params.setLimit(10);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
         params.setEntities(Arrays.asList(null, new EntityRef("_default", ""), new EntityRef(null, null)));
 
-        assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params));
+        assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params, ScanControl.NONE));
 
         verify(polarionService, never()).queryEntities(anyString(), any(PrototypeEnum.class), any(), any(), any(), any(), anyInt(), anyInt());
     }
@@ -1638,12 +1726,11 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.DOCUMENT);
         params.setLimit(10);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
         params.setEntities(IntStream.rangeClosed(0, ScanParams.MAX_ENTITIES)
                 .mapToObj(i -> new EntityRef("_default", "doc-" + i)).toList());
 
-        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params));
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.scan(params, ScanControl.NONE));
 
         assertTrue(thrown.getMessage().contains(String.valueOf(ScanParams.MAX_ENTITIES)));
         verify(polarionService, never()).queryEntities(anyString(), any(PrototypeEnum.class), any(), any(), any(), any(), anyInt(), anyInt());
@@ -1655,13 +1742,12 @@ class XmlRepairPolarionServiceTest {
         params.setProjectId("proj");
         params.setEntityType(EntityType.COLLECTION);
         params.setLimit(10);
-        params.setTimeout(60000L);
         params.setRepairers(List.of("TestRepairer"));
         params.setEntities(IntStream.range(0, ScanParams.MAX_ENTITIES).mapToObj(i -> new EntityRef(null, String.valueOf(i))).toList());
 
         doReturn(List.of()).when(polarionService).queryEntities(anyString(), any(PrototypeEnum.class), isNull(), anyString(), isNull(), isNull(), anyInt(), anyInt());
 
-        assertNotNull(polarionService.scan(params));
+        assertNotNull(polarionService.scan(params, ScanControl.NONE));
     }
 
     @Test
