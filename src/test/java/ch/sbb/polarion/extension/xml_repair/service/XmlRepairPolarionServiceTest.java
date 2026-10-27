@@ -304,6 +304,67 @@ class XmlRepairPolarionServiceTest {
         verify(polarionService).repairEntity(any(IUniqueObject.class), argThat(ctx -> ctx.configs().containsKey("key")));
     }
 
+    // ---- validateRepairParams tests ----
+
+    @Test
+    void testValidateRepairParamsAcceptsSerializedMetaInfos() {
+        IWorkItem wi = mock(IWorkItem.class);
+        when(wi.getProjectId()).thenReturn("proj");
+        when(wi.getId()).thenReturn("WI-1");
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(IssueMetaInfo.create(wi).serialize()));
+
+        assertDoesNotThrow(() -> polarionService.validateRepairParams(params));
+    }
+
+    @Test
+    void testValidateRepairParamsAcceptsNoIssues() {
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of());
+
+        assertDoesNotThrow(() -> polarionService.validateRepairParams(params));
+    }
+
+    @Test
+    void testValidateRepairParamsRefusesMissingList() {
+        RepairParams params = new RepairParams();
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.validateRepairParams(params));
+        assertEquals("Issue meta infos are missing", thrown.getMessage());
+    }
+
+    @ParameterizedTest
+    @MethodSource("emptyIssueMetaInfos")
+    void testValidateRepairParamsRefusesEmptyEntry(String issueMetaInfo) {
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(Arrays.asList(Base64.getEncoder().encodeToString("{}".getBytes()), issueMetaInfo));
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.validateRepairParams(params));
+        assertEquals("Issue meta info at index 1 is empty", thrown.getMessage());
+    }
+
+    static Stream<String> emptyIssueMetaInfos() {
+        return Stream.of(null, "", "  ");
+    }
+
+    @Test
+    void testValidateRepairParamsRefusesInvalidBase64() {
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of("eyJpZCI6 IldJLTEifQ=="));
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.validateRepairParams(params));
+        assertEquals("Invalid issue meta info at index 0: Illegal base64 character 20", thrown.getMessage());
+    }
+
+    @Test
+    void testValidateRepairParamsRefusesBase64WhichIsNotJson() {
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(Base64.getEncoder().encodeToString("not json".getBytes())));
+
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> polarionService.validateRepairParams(params));
+        assertTrue(thrown.getMessage().startsWith("Invalid issue meta info at index 0: "), thrown.getMessage());
+    }
+
     // ---- repair(IUniqueObject, RepairContext) tests ----
 
     @Test
