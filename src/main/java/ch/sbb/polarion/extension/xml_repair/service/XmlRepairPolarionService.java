@@ -243,6 +243,28 @@ public class XmlRepairPolarionService extends PolarionService {
         }
     }
 
+    /**
+     * Refuses repair parameters with an issue meta info that no repair can read. Callers that start a repair job call
+     * it first, for the same reason as {@link #validateScanParams}: one unreadable entry would otherwise fail the job.
+     */
+    public void validateRepairParams(@NotNull RepairParams params) {
+        List<String> issueMetaInfos = params.getIssueMetaInfos();
+        if (issueMetaInfos == null) {
+            throw new IllegalArgumentException("Issue meta infos are missing");
+        }
+        for (int i = 0; i < issueMetaInfos.size(); i++) {
+            String issueMetaInfo = issueMetaInfos.get(i);
+            if (issueMetaInfo == null || issueMetaInfo.isBlank()) {
+                throw new IllegalArgumentException("Issue meta info at index %d is empty".formatted(i));
+            }
+            try {
+                IssueMetaInfo.fromString(issueMetaInfo);
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Invalid issue meta info at index %d: %s".formatted(i, e.getMessage()), e);
+            }
+        }
+    }
+
     @SuppressWarnings({"java:S3776", "java:S6541"}) // Ignore cognitive complexity/"brain"-method warning, refactoring would make the code less readable
     public ScanResult scan(@NotNull ScanParams params, @NotNull ScanControl control) {
         StopWatch stopWatch = StopWatch.createStarted();

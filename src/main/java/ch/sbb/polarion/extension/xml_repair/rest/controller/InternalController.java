@@ -199,9 +199,13 @@ public class InternalController {
                     @ApiResponse(responseCode = "200",
                             description = "Processing completed successfully",
                             content = @Content(array = @ArraySchema(schema = @Schema(implementation = RepairResult.class)))
+                    ),
+                    @ApiResponse(responseCode = "400",
+                            description = "An issue meta info is missing or cannot be read"
                     )
             })
     public Response repair(RepairParams repairParams) {
+        polarionService.validateRepairParams(repairParams);
         String jobId = repairJobsService.startJob(repairParams);
         // Runs as the job the UI starts, so both ways to repair share one implementation.
         try {
@@ -227,9 +231,13 @@ public class InternalController {
             responses = {
                     @ApiResponse(responseCode = "202",
                             description = "Repair job is started, job URI is returned in Location header"
+                    ),
+                    @ApiResponse(responseCode = "400",
+                            description = "An issue meta info is missing or cannot be read"
                     )
             })
     public Response startRepairJob(RepairParams repairParams) {
+        polarionService.validateRepairParams(repairParams);
         String jobId = repairJobsService.startJob(repairParams);
         URI jobUri = UriBuilder.fromUri(uriInfo.getRequestUri().getPath()).path(jobId).build();
         return Response.accepted().location(jobUri).build();

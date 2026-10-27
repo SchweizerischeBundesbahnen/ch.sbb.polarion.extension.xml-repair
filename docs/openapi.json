@@ -315,6 +315,9 @@
               }
             },
             "description": "Processing completed successfully"
+          },
+          "400": {
+            "description": "An issue meta info is missing or cannot be read"
           }
         },
         "summary": "Repair XML issues in the specified entity and wait for the result. A long repair can outlast a gateway timeout, the repair jobs endpoints avoid that",
@@ -340,6 +343,9 @@
         "responses": {
           "202": {
             "description": "Repair job is started, job URI is returned in Location header"
+          },
+          "400": {
+            "description": "An issue meta info is missing or cannot be read"
           }
         },
         "summary": "Starts an asynchronous repair of XML issues. All issues are repaired in one transaction",

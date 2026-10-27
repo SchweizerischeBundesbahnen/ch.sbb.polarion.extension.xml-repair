@@ -191,6 +191,17 @@ class InternalControllerTest {
             assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
             assertSame(results, response.getEntity());
         }
+        verify(polarionService).validateRepairParams(repairParams);
+    }
+
+    @Test
+    void testRepairRefusesInvalidParamsBeforeStartingAJob() {
+        RepairParams repairParams = new RepairParams();
+        doThrow(new IllegalArgumentException("Invalid issue meta info")).when(polarionService).validateRepairParams(repairParams);
+
+        assertThrows(IllegalArgumentException.class, () -> controller.repair(repairParams));
+        assertThrows(IllegalArgumentException.class, () -> controller.startRepairJob(repairParams));
+        verify(repairJobsService, never()).startJob(any());
     }
 
     @Test
