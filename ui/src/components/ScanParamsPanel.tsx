@@ -105,7 +105,7 @@ export default function ScanParamsPanel({
   return (
     // Catches the Enter that bubbles up from the text inputs inside; the inputs are the interactive
     // elements, so no role fits the wrapper. jsx-a11y's documented answer for event delegation.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    // eslint-disable-next-line jsx-a11y-x/no-static-element-interactions
     <div
       className="form-section"
       onKeyDown={(e: KeyboardEvent) => {
