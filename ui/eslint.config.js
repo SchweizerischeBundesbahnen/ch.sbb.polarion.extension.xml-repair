@@ -11,7 +11,7 @@ export default polarionEslintConfig({
     // (label > .repairer-info > .repairer-name); the default depth of 2 misses that text.
     {
       files: ['src/**/*.{ts,tsx}'],
-      rules: { 'jsx-a11y/label-has-associated-control': ['error', { depth: 3 }] },
+      rules: { 'jsx-a11y-x/label-has-associated-control': ['error', { depth: 3 }] },
     },
     // Plain JS/ESM (this config, vite.config.js, the docker-test wrapper).
     {
