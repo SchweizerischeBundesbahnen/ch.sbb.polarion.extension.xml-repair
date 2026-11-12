@@ -9,10 +9,11 @@ const QUERY_PLACEHOLDERS: Record<EntityType, string> = {
   WORKITEM: 'e.g. id:PRJID-123',
   DOCUMENT: 'e.g. moduleName:specification',
   COLLECTION: 'e.g. name:specification',
+  TESTRUN: 'e.g. id:TR-123',
 };
 
-// Label and "nothing picked" placeholder of the selection row. Work items have no selection mode - a
-// project holds far too many of them for a dropdown - so they are absent here.
+// Label and "nothing picked" placeholder of the selection row. Work items and test runs have no selection
+// mode - a project holds far too many of them for a dropdown - so they are absent here.
 const SELECTION_LABELS: Partial<Record<EntityType, { label: string; placeholder: string }>> = {
   DOCUMENT: { label: 'Documents', placeholder: 'All documents' },
   COLLECTION: { label: 'Collections', placeholder: 'All collections' },

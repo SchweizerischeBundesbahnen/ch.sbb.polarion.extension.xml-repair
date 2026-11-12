@@ -4,6 +4,7 @@ import com.polarion.alm.shared.api.model.ModelObject;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
@@ -23,6 +24,7 @@ public class EntityRenderer {
         List<String> fieldIds = switch (object.getOldApi()) {
             case IWorkItem ignored -> List.of(FieldRenderer.KEY_SELF_LINK, IWorkflowObject.KEY_TYPE);
             case IModule ignored -> List.of(FieldRenderer.KEY_SELF_LINK, IWorkflowObject.KEY_TYPE);
+            case ITestRun ignored -> List.of(FieldRenderer.KEY_SELF_LINK, IWorkflowObject.KEY_TYPE);
             case IBaselineCollection ignored -> List.of(FieldRenderer.KEY_SELF_LINK);
             default ->
                     throw new IllegalArgumentException("Unsupported object type: " + object.getOldApi().getClass().getName());

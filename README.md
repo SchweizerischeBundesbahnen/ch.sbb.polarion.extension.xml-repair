@@ -9,7 +9,7 @@
 [![Maintainability Rating](https://sonarcloud.io/api/project_badges/measure?project=SchweizerischeBundesbahnen_ch.sbb.polarion.extension.xml-repair&metric=sqale_rating)](https://sonarcloud.io/summary/new_code?id=SchweizerischeBundesbahnen_ch.sbb.polarion.extension.xml-repair)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=SchweizerischeBundesbahnen_ch.sbb.polarion.extension.xml-repair&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=SchweizerischeBundesbahnen_ch.sbb.polarion.extension.xml-repair)
 
-# Polarion ALM extension to validate and repair XML structure of different Polarion objects, at the moment - WorkItems, Documents and Collections.
+# Polarion ALM extension to validate and repair XML structure of different Polarion objects, at the moment - WorkItems, Documents, Collections and TestRuns.
 
 > [!IMPORTANT]
 > Starting from version 1.0.0 only latest version of Polarion is supported.
@@ -59,7 +59,7 @@ After Polarion restart, the "XML-Repair" item will appear in the project's left 
 
 | Page | What it does |
 |---|---|
-| General checks | Scans WorkItems, Documents and Collections for XML issues and repairs the selected ones. |
+| General checks | Scans WorkItems, Documents, Collections and TestRuns for XML issues and repairs the selected ones. |
 | Structural link | Finds documents whose structure link role differs from the selected one, and changes it. |
 | Purge outdated data | Finds attributes which are filled on the scanned entities but no longer defined in their custom fields configuration, and clears the selected ones. |
 

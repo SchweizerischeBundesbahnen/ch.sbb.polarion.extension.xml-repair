@@ -212,6 +212,18 @@ describe('Scan & Repair page', () => {
     expect(document.body.textContent).toContain('Standard structure link role');
   });
 
+  it('offers test runs with their own repairer and the query filter only', async () => {
+    await mountRepair();
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    select.value = 'TESTRUN';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+
+    await vi.waitFor(() => expect(document.body.textContent).toContain('(1/1 selected)'));
+    expect(document.body.textContent).toContain('Broken Test Run Links');
+    expect(page.getByRole('textbox', { name: 'Query' }).element()).toBeVisible();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/entities'))).toBe(false);
+  });
+
   it('toggles all repairers off and on from the Select All checkbox', async () => {
     await mountRepair();
     const selectAll = Array.from(document.querySelectorAll<HTMLInputElement>('.repairer-item.select-all input'))[0];

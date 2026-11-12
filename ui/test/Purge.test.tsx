@@ -138,6 +138,16 @@ describe('Purge outdated data page', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/baselines'))).toBe(false);
   });
 
+  it('offers no test runs, which have no purge repairer', async () => {
+    await mountPurge();
+
+    // SearchableSelect is backed by a native select; the Entity Type row is the first one.
+    const select = document.querySelector<HTMLSelectElement>('.form-row select')!;
+    const values = Array.from(select.options, (option) => option.value);
+    expect(values).toContain('WORKITEM');
+    expect(values.some((value) => value.startsWith('TESTRUN'))).toBe(false);
+  });
+
   it('pins the scan to HEAD even when a revision was remembered under its own cookies', async () => {
     document.cookie = 'xmlRepair_purge_revision=4321; path=/';
     await mountPurge();

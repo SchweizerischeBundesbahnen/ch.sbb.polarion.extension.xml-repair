@@ -53,6 +53,22 @@ const BROKEN_LINKED_WORK_ITEMS: Repairer = {
   ],
 };
 
+const TEST_RUN_BROKEN_LINKS: Repairer = {
+  id: 'TestRunBrokenLinksRepairer',
+  name: 'Broken Test Run Links',
+  description:
+    'Finds test case and defect references of test runs which do not exist or cannot be read. Repairer attempts to find and rewrite work items by ID.',
+  configs: [
+    {
+      key: 'deleteUnresolvable',
+      description: 'Delete broken items',
+      hint: 'Delete test records and defects whose work item cannot be found in any available project. Items the current user cannot read are never deleted',
+      type: 'BOOLEAN',
+      defaultValue: false,
+    },
+  ],
+};
+
 const FIELDS_FORMATTING_SYMBOLS: Repairer = {
   id: 'FieldsFormattingSymbolsRepairer',
   name: 'String fields: Formatting Symbols',
@@ -192,6 +208,7 @@ const MODULE_REPAIRERS: Repairer[] = [
 export const REPAIRERS_BY_ENTITY_TYPE: Record<EntityType, Repairer[]> = {
   COLLECTION: MODULE_REPAIRERS,
   DOCUMENT: MODULE_REPAIRERS,
+  TESTRUN: [TEST_RUN_BROKEN_LINKS],
   WORKITEM: [
     BROKEN_LINKED_WORK_ITEMS,
     FIELDS_FORMATTING_SYMBOLS,

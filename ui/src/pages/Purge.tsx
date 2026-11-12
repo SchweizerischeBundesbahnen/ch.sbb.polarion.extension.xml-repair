@@ -49,7 +49,12 @@ export default function Purge() {
 
   // An entity without an outdated attribute is noise on this page, so it hides them unless asked otherwise.
   // No revision either: purging writes, and the backend refuses to write anything resolved at a revision.
-  const params = useScanParams(COOKIE_PREFIX, sendRequest, { defaultHideValid: true, supportsRevision: false });
+  // Test runs have no purge repairer, so the page does not offer them.
+  const params = useScanParams(COOKIE_PREFIX, sendRequest, {
+    defaultHideValid: true,
+    supportsRevision: false,
+    entityTypes: ['WORKITEM', 'DOCUMENT', 'COLLECTION'],
+  });
   const { entityType, setEntitySubtype, subtypeSetExplicitly } = params;
 
   const [scanning, setScanning] = useState(false);

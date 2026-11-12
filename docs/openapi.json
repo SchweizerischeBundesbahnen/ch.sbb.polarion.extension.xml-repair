@@ -194,6 +194,7 @@
               "enum": [
                 "COLLECTION",
                 "DOCUMENT",
+                "TESTRUN",
                 "WORKITEM"
               ],
               "type": "string"
@@ -451,6 +452,7 @@
               "enum": [
                 "COLLECTION",
                 "DOCUMENT",
+                "TESTRUN",
                 "WORKITEM"
               ],
               "type": "string"
@@ -1439,6 +1441,7 @@
             "enum": [
               "COLLECTION",
               "DOCUMENT",
+              "TESTRUN",
               "WORKITEM"
             ],
             "example": "DOCUMENT",
@@ -1533,10 +1536,11 @@
             "type": "string"
           },
           "entityType": {
-            "description": "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT and COLLECTION",
+            "description": "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT, COLLECTION and TESTRUN",
             "enum": [
               "COLLECTION",
               "DOCUMENT",
+              "TESTRUN",
               "WORKITEM"
             ],
             "example": "WORKITEM",

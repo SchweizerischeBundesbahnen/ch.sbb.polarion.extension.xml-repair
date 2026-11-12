@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.core.util.UUID;
 import lombok.SneakyThrows;
@@ -20,6 +21,8 @@ public final class IssueMetaInfo {
     public static final String ID = "id";
     public static final String REPAIRER = "repairer";
     public static final String REVISION = "revision";
+    // Set for test runs only: work items share the PROJECT_ID + ID pair, so the id alone cannot tell them apart.
+    public static final String TEST_RUN = "testRun";
 
     // Sorting keys keeps serialize() → fromString() → serialize() byte-identical; the UI matches repair results to scan issues by exact string equality of this value.
     private static final ObjectMapper MAPPER = new ObjectMapper().configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
@@ -47,6 +50,7 @@ public final class IssueMetaInfo {
         return switch (uniqueObject) {
             case IModule module -> create(module);
             case IWorkItem workItem -> create(workItem);
+            case ITestRun testRun -> create(testRun);
             default -> throw new IllegalArgumentException(String.format("Unrecognized object type: %s", uniqueObject.getClass().getName()));
         };
     }
@@ -56,6 +60,15 @@ public final class IssueMetaInfo {
         metaInfo.data.put(PROJECT_ID, module.getProjectId());
         metaInfo.data.put(MODULE_PATH, module.getRelativePath());
         metaInfo.data.put(REVISION, module.getRevision());
+        return metaInfo;
+    }
+
+    public static IssueMetaInfo create(ITestRun testRun) {
+        IssueMetaInfo metaInfo = new IssueMetaInfo();
+        metaInfo.data.put(PROJECT_ID, testRun.getProjectId());
+        metaInfo.data.put(ID, testRun.getId());
+        metaInfo.data.put(REVISION, testRun.getRevision());
+        metaInfo.data.put(TEST_RUN, true);
         return metaInfo;
     }
 
