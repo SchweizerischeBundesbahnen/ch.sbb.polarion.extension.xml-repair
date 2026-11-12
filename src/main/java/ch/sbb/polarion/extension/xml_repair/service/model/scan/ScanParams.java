@@ -23,7 +23,7 @@ public class ScanParams {
     @Schema(description = "The unique identifier for the project", example = "elibrary")
     private String projectId;
 
-    @Schema(description = "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT and COLLECTION", example = "WORKITEM")
+    @Schema(description = "Entity prototype to scan. Currently supported values are: WORKITEM, DOCUMENT, COLLECTION and TESTRUN", example = "WORKITEM")
     private EntityType entityType;
 
     @Schema(description = "Entity subtype to scan, e.g. 'requirement' for work items or 'specification' for documents (if not provided, all subtypes will be scanned)", nullable = true)

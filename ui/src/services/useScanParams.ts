@@ -19,10 +19,11 @@ export const ENTITY_TYPE_OPTIONS: IconSelectOption[] = [
   { id: 'WORKITEM', name: 'Work Items', iconURL: '/polarion/ria/images/topicIconsSmallDark/workItems.svg' },
   { id: 'DOCUMENT', name: 'Documents', iconURL: '/polarion/ria/images/topicIconsSmallDark/document-line.svg' },
   { id: 'COLLECTION', name: 'Collections', iconURL: '/polarion/ria/images/topicIconsSmallDark/collectionsTopic.svg' },
+  { id: 'TESTRUN', name: 'Test Runs', iconURL: '/polarion/ria/images/topicIconsSmallDark/testruns.svg' },
 ];
 
-// Entity types whose entities can be picked from a dropdown. Work items are excluded on purpose: a
-// project holds far too many of them, so they stay query-only.
+// Entity types whose entities can be picked from a dropdown. Work items and test runs are excluded on purpose:
+// a project holds far too many of them, so they stay query-only.
 export const SELECTABLE_ENTITY_TYPES: EntityType[] = ['DOCUMENT', 'COLLECTION'];
 
 const TYPE_ENDPOINTS: Record<string, string> = {
@@ -288,7 +289,7 @@ export default function useScanParams(
 
   const entityValue = entitySubtype ? `${entityType}::${entitySubtype}` : entityType;
 
-  // Selection is offered for documents and collections only; work items ignore the mode and stay on the
+  // Selection is offered for documents and collections only; work items and test runs ignore the mode and stay on the
   // query field.
   const selectionActive = SELECTABLE_ENTITY_TYPES.includes(entityType) && filterMode === 'SELECTION';
 

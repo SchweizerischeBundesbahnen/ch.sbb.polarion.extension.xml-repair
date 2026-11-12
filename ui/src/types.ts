@@ -1,7 +1,7 @@
 import type { SelectOption } from '@sbb-polarion/react-sbb-polarion';
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.EntityType
-export type EntityType = 'COLLECTION' | 'DOCUMENT' | 'WORKITEM';
+export type EntityType = 'COLLECTION' | 'DOCUMENT' | 'TESTRUN' | 'WORKITEM';
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.service.model.Issue
 export interface Issue {
@@ -49,7 +49,7 @@ export interface EntityRef {
 }
 
 // Which of the two mutually exclusive filters the user drives the scan with: a selection of concrete
-// entities (documents, collections) or a raw Lucene query. Work items only support the query.
+// entities (documents, collections) or a raw Lucene query. Work items and test runs only support the query.
 export type FilterMode = 'SELECTION' | 'QUERY';
 
 // Mirrors: ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs. Booleans are what the General

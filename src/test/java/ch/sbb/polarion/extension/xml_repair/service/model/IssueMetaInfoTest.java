@@ -2,6 +2,7 @@ package ch.sbb.polarion.extension.xml_repair.service.model;
 
 import com.polarion.alm.projects.model.IUniqueObject;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkItem;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -87,6 +88,29 @@ class IssueMetaInfoTest {
 
         assertEquals("proj", metaInfo.getString(IssueMetaInfo.PROJECT_ID));
         assertEquals("path/doc", metaInfo.getString(IssueMetaInfo.MODULE_PATH));
+    }
+
+    @Test
+    void testCreateFromTestRun() {
+        ITestRun testRun = mock(ITestRun.class);
+        when(testRun.getProjectId()).thenReturn("elibrary");
+        when(testRun.getId()).thenReturn("TR-1");
+        when(testRun.getRevision()).thenReturn("7");
+
+        IssueMetaInfo metaInfo = IssueMetaInfo.create((IUniqueObject) testRun);
+
+        assertEquals("elibrary", metaInfo.getString(IssueMetaInfo.PROJECT_ID));
+        assertEquals("TR-1", metaInfo.getString(IssueMetaInfo.ID));
+        assertEquals("7", metaInfo.getString(IssueMetaInfo.REVISION));
+        assertNull(metaInfo.getString(IssueMetaInfo.MODULE_PATH));
+        assertEquals(Boolean.TRUE, metaInfo.getBoolean(IssueMetaInfo.TEST_RUN));
+    }
+
+    @Test
+    void testCreateFromWorkItemHasNoTestRunMarker() {
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(mock(IWorkItem.class));
+
+        assertNull(metaInfo.getBoolean(IssueMetaInfo.TEST_RUN));
     }
 
     @Test

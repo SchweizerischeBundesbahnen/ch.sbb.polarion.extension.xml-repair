@@ -18,6 +18,7 @@ import ch.sbb.polarion.extension.xml_repair.repairers.BrokenLinkedWorkItemsRepai
 import ch.sbb.polarion.extension.xml_repair.repairers.IRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.ModuleStructureLinkRoleRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.OutdatedCustomFieldsRepairer;
+import ch.sbb.polarion.extension.xml_repair.repairers.TestRunBrokenLinksRepairer;
 import ch.sbb.polarion.extension.xml_repair.repairers.config.UserConfigs;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairContext;
 import ch.sbb.polarion.extension.xml_repair.service.model.repair.RepairParams;
@@ -55,6 +56,7 @@ import com.polarion.platform.persistence.IDataService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
 import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.ITrackerProject;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.ITypeOpt;
@@ -67,6 +69,7 @@ import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
+import com.polarion.subterra.base.data.identification.IObjectId;
 import com.polarion.subterra.base.data.model.IType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -168,6 +171,63 @@ class XmlRepairPolarionServiceTest {
 
         assertEquals(1, results.size());
         verify(polarionService).getProject("proj");
+    }
+
+    @Test
+    void testRepairParamsWithTestRun() {
+        ITestRun testRun = mock(ITestRun.class);
+        when(testRun.getProjectId()).thenReturn("proj");
+        when(testRun.getId()).thenReturn("TR-1");
+        IssueMetaInfo metaInfo = IssueMetaInfo.create(testRun);
+        metaInfo.set(IssueMetaInfo.REPAIRER, "SomeRepairer");
+
+        RepairParams params = new RepairParams();
+        params.setIssueMetaInfos(List.of(metaInfo.serialize()));
+
+        ITestRun resolvedTestRun = mock(ITestRun.class);
+        doReturn(resolvedTestRun).when(polarionService).getTestRun("proj", "TR-1");
+        IssueMetaInfo resultMetaInfo = mock(IssueMetaInfo.class);
+        when(resultMetaInfo.serialize()).thenReturn("serialized");
+        doReturn(new RepairResult(resultMetaInfo, true)).when(polarionService).repairEntity(eq(resolvedTestRun), any(RepairContext.class));
+
+        List<RepairResult> results = polarionService.repair(params, message -> {});
+
+        assertEquals(1, results.size());
+        assertTrue(results.getFirst().isSuccess());
+        verify(polarionService, never()).getWorkItem(anyString(), anyString(), any());
+    }
+
+    @Test
+    void testGetTestRunResolvesByObjectId() {
+        IProject project = mock(IProject.class);
+        IContextId contextId = mock(IContextId.class);
+        when(project.getContextId()).thenReturn(contextId);
+        doReturn(project).when(polarionService).getProject("proj");
+        IDataService dataService = mock(IDataService.class);
+        when(trackerService.getDataService()).thenReturn(dataService);
+        ITestRun testRun = mock(ITestRun.class);
+        IObjectId objectId = mock(IObjectId.class);
+        // the real ObjectId needs Guava at class init, which is not on the test classpath
+        doReturn(objectId).when(polarionService).testRunObjectId(contextId, "TR-1");
+        when(dataService.getInstance(objectId)).thenReturn(testRun);
+
+        assertSame(testRun, polarionService.getTestRun("proj", "TR-1"));
+    }
+
+    @Test
+    void testGetTestRunThrowsWhenUnresolvable() {
+        IProject project = mock(IProject.class);
+        doReturn(project).when(polarionService).getProject("proj");
+        IDataService dataService = mock(IDataService.class);
+        when(trackerService.getDataService()).thenReturn(dataService);
+        ITestRun testRun = mock(ITestRun.class);
+        when(testRun.isUnresolvable()).thenReturn(true);
+        when(dataService.getInstance(any(IObjectId.class))).thenReturn(testRun);
+
+        doReturn(mock(IObjectId.class)).when(polarionService).testRunObjectId(any(), eq("TR-1"));
+
+        ObjectNotFoundException exception = assertThrows(ObjectNotFoundException.class, () -> polarionService.getTestRun("proj", "TR-1"));
+        assertEquals("TestRun 'TR-1' not found in project 'proj'", exception.getMessage());
     }
 
     @Test
@@ -564,6 +624,7 @@ class XmlRepairPolarionServiceTest {
         assertEquals(13, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
         assertEquals(13, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
         assertEquals(6, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
+        assertEquals(1, polarionService.getRepairerMetas(EntityType.TESTRUN).size());
     }
 
     /** The purge repairer backs its own page, so the "Repairers" block of General checks must not offer it. */
@@ -641,6 +702,17 @@ class XmlRepairPolarionServiceTest {
 
         assertEquals(7, repairers.size());
         assertTrue(containsPurgeRepairer(repairers));
+    }
+
+    @Test
+    void testGetRepairersForEntityTestRun() {
+        var entity = mock(IWorkflowObject.class, RETURNS_DEEP_STUBS);
+        when(entity.getPrototype().getName()).thenReturn(ITestRun.PROTO);
+
+        List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
+
+        assertEquals(1, repairers.size());
+        assertInstanceOf(TestRunBrokenLinksRepairer.class, repairers.getFirst());
     }
 
     /** /repair and /scan resolve a repairer through this list, so the purge one has to be reachable there. */

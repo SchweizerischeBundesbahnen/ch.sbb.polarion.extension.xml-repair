@@ -4,6 +4,7 @@ import com.polarion.alm.shared.api.model.ModelObject;
 import com.polarion.alm.shared.api.transaction.internal.InternalReadOnlyTransaction;
 import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
@@ -64,6 +65,25 @@ class EntityRendererTest {
             assertTrue(result.containsKey(FieldRenderer.KEY_SELF_LINK));
             assertTrue(result.containsKey(IWorkflowObject.KEY_TYPE));
 
+            FieldRenderer fieldRenderer = fieldRendererConstruction.constructed().getFirst();
+            verify(fieldRenderer).render(modelObject, FieldRenderer.KEY_SELF_LINK);
+            verify(fieldRenderer).render(modelObject, IWorkflowObject.KEY_TYPE);
+        }
+    }
+
+    @Test
+    void testRenderEntityTestRun() {
+        try (MockedConstruction<FieldRenderer> fieldRendererConstruction = mockConstruction(FieldRenderer.class,
+                (mock, ctx) -> when(mock.render(any(), any())).thenReturn(Map.of("label", "lbl", "renderedValue", "val")))) {
+
+            EntityRenderer entityRenderer = new EntityRenderer(mock(InternalReadOnlyTransaction.class), mock(ITrackerService.class));
+
+            ModelObject modelObject = mock(ModelObject.class);
+            when(modelObject.getOldApi()).thenReturn(mock(ITestRun.class));
+
+            Map<String, Map<String, String>> result = entityRenderer.renderEntity(modelObject);
+
+            assertEquals(2, result.size());
             FieldRenderer fieldRenderer = fieldRendererConstruction.constructed().getFirst();
             verify(fieldRenderer).render(modelObject, FieldRenderer.KEY_SELF_LINK);
             verify(fieldRenderer).render(modelObject, IWorkflowObject.KEY_TYPE);

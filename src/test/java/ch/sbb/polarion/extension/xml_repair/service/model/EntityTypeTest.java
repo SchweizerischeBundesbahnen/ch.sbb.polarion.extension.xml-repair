@@ -1,6 +1,8 @@
 package ch.sbb.polarion.extension.xml_repair.service.model;
 
+import com.polarion.alm.shared.api.model.PrototypeEnum;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.platform.persistence.model.IPrototype;
@@ -15,9 +17,10 @@ class EntityTypeTest {
     @Test
     void testEnumValues() {
         EntityType[] values = EntityType.values();
-        assertEquals(3, values.length);
+        assertEquals(4, values.length);
         assertEquals(EntityType.COLLECTION, EntityType.valueOf("COLLECTION"));
         assertEquals(EntityType.DOCUMENT, EntityType.valueOf("DOCUMENT"));
+        assertEquals(EntityType.TESTRUN, EntityType.valueOf("TESTRUN"));
         assertEquals(EntityType.WORKITEM, EntityType.valueOf("WORKITEM"));
     }
 
@@ -41,6 +44,19 @@ class EntityTypeTest {
 
         assertEquals(EntityType.DOCUMENT, result);
         verify(modulePrototype).getName();
+    }
+
+    @Test
+    void testFromPrototypeWithTestRunPrototype() {
+        IPrototype testRunPrototype = mock(IPrototype.class);
+        when(testRunPrototype.getName()).thenReturn(ITestRun.PROTO);
+
+        assertEquals(EntityType.TESTRUN, EntityType.fromPrototype(testRunPrototype));
+    }
+
+    @Test
+    void testTestRunProto() {
+        assertEquals(PrototypeEnum.TestRun, EntityType.TESTRUN.proto());
     }
 
     @Test

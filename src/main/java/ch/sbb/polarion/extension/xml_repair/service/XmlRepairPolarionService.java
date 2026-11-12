@@ -41,6 +41,7 @@ import com.polarion.alm.tracker.ITrackerService;
 import com.polarion.alm.tracker.internal.model.UniqueObject;
 import com.polarion.alm.tracker.model.IBaseline;
 import com.polarion.alm.tracker.model.IModule;
+import com.polarion.alm.tracker.model.ITestRun;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollection;
 import com.polarion.alm.tracker.model.baselinecollection.IBaselineCollectionElement;
@@ -48,10 +49,14 @@ import com.polarion.alm.tracker.model.ipi.IInternalBaselinesManager;
 import com.polarion.core.util.StringUtils;
 import com.polarion.core.util.logging.Logger;
 import com.polarion.platform.IPlatformService;
+import com.polarion.platform.persistence.model.IPObject;
 import com.polarion.platform.persistence.model.IPObjectList;
 import com.polarion.platform.security.ISecurityService;
 import com.polarion.platform.service.repository.IRepositoryService;
 import com.polarion.subterra.base.data.identification.IContextId;
+import com.polarion.subterra.base.data.identification.IObjectId;
+import com.polarion.subterra.base.data.identification.LocalId;
+import com.polarion.subterra.base.data.identification.ObjectId;
 import com.polarion.subterra.base.SubterraURI;
 import com.polarion.subterra.base.data.model.IType;
 import com.polarion.subterra.base.location.Location;
@@ -110,6 +115,9 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsRichTextLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             ),
+            EntityType.TESTRUN, List.of(
+                    new TestRunBrokenLinksRepairer()
+            ),
             EntityType.WORKITEM, List.of(
                     new BrokenLinkedWorkItemsRepairer(),
                     new FieldsFormattingSymbolsRepairer(),
@@ -128,18 +136,20 @@ public class XmlRepairPolarionService extends PolarionService {
     public static final Map<EntityType, List<IRepairer>> PURGE_REPAIRERS = Map.of(
             EntityType.COLLECTION, List.of(new OutdatedCustomFieldsRepairer()),
             EntityType.DOCUMENT, List.of(new OutdatedCustomFieldsRepairer()),
+            EntityType.TESTRUN, List.of(),
             EntityType.WORKITEM, List.of(new OutdatedCustomFieldsRepairer())
     );
 
     /**
      * The repairers behind the "Structural link" page, kept apart from {@link #REPAIRERS} for the same reason
      * the purge ones are: the page drives them alone, and changing a document's structure link role must stay
-     * out of the General checks run. Only documents carry a structure link role, so the other two entity types
+     * out of the General checks run. Only documents carry a structure link role, so the other entity types
      * offer nothing here.
      */
     public static final Map<EntityType, List<IRepairer>> STRUCTURE_LINK_REPAIRERS = Map.of(
             EntityType.COLLECTION, List.of(),
             EntityType.DOCUMENT, List.of(new ModuleStructureLinkRoleRepairer()),
+            EntityType.TESTRUN, List.of(),
             EntityType.WORKITEM, List.of()
     );
     private static final int DEFAULT_LIMIT = 100;
@@ -179,8 +189,14 @@ public class XmlRepairPolarionService extends PolarionService {
                     String projectId = metaInfo.getString(IssueMetaInfo.PROJECT_ID);
                     String modulePath = metaInfo.getString(IssueMetaInfo.MODULE_PATH);
                     String id = metaInfo.getString(IssueMetaInfo.ID);
-                    IUniqueObject entity = modulePath != null ?
-                            getModule(getProject(projectId), Location.getLocation(modulePath)) : getWorkItem(projectId, id, null);
+                    IUniqueObject entity;
+                    if (modulePath != null) {
+                        entity = getModule(getProject(projectId), Location.getLocation(modulePath));
+                    } else if (Boolean.TRUE.equals(metaInfo.getBoolean(IssueMetaInfo.TEST_RUN))) {
+                        entity = getTestRun(projectId, id);
+                    } else {
+                        entity = getWorkItem(projectId, id, null);
+                    }
                     result = repairEntity(entity, new RepairContext(metaInfo, this, params.getConfigs(), cache));
                 }
                 results.add(result);
@@ -410,6 +426,20 @@ public class XmlRepairPolarionService extends PolarionService {
         } catch (ObjectNotFoundException e) {
             return false;
         }
+    }
+
+    /**
+     * Resolves the test run the way Polarion's own test management service does. That service is reachable
+     * only through Guice, which this bundle does not depend on.
+     */
+    public @NotNull ITestRun getTestRun(@NotNull String projectId, @NotNull String testRunId) {
+        IPObject testRun = trackerService.getDataService().getInstance(testRunObjectId(getProject(projectId).getContextId(), testRunId));
+        return getResolvableObjectOrThrow(testRun, null, "TestRun '%s' not found in project '%s'".formatted(testRunId, projectId));
+    }
+
+    @VisibleForTesting
+    @NotNull IObjectId testRunObjectId(@NotNull IContextId contextId, @NotNull String testRunId) {
+        return ObjectId.getCrossContextObjectId(contextId, LocalId.getLocalId(ITestRun.PROTO, testRunId));
     }
 
     public boolean userAuthorizedForRepair(@NotNull String projectId) {
