@@ -79,7 +79,8 @@ class EntityRendererTest {
             EntityRenderer entityRenderer = new EntityRenderer(mock(InternalReadOnlyTransaction.class), mock(ITrackerService.class));
 
             ModelObject modelObject = mock(ModelObject.class);
-            when(modelObject.getOldApi()).thenReturn(mock(ITestRun.class));
+            ITestRun testRun = mock(ITestRun.class);
+            when(modelObject.getOldApi()).thenReturn(testRun);
 
             Map<String, Map<String, String>> result = entityRenderer.renderEntity(modelObject);
 

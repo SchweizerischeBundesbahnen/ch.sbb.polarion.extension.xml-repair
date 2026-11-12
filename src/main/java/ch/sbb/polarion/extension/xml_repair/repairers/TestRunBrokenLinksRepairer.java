@@ -22,6 +22,7 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Finds work item references of a test run which cannot be resolved: the test case and the defects of each test
@@ -40,6 +41,8 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
     private static final String TEST_CASE_ID = "testCaseId";
     private static final String TEST_CASE_REVISION = "testCaseRevision";
     private static final String CONTENT_CHANGED = "Issue not found, possibly it was already repaired or the content was changed since the scan.";
+    private static final String NOT_READABLE_WARNING = "Cannot repair automatically: the work item exists, but the current user cannot read it. Check the permissions or fix it manually.";
+    private static final String CACHE_UNCHANGED_KEY_PREFIX = "TEST_RUN_UNCHANGED_REFERENCES";
 
     @Override
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
@@ -48,28 +51,7 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
             return issues;
         }
         for (ITestRecord testRecord : testRun.getAllRecords()) {
-            IWorkItem testCase = testRecord.getTestCase();
-            if (testCase == null) {
-                continue;
-            }
-            String testCaseProjectId = StringUtils.getEmptyIfNull(testCase.getProjectId());
-            String testCaseRevision = getTestCaseRevision(testRecord);
-
-            Problem testCaseProblem = findProblem(testCase, testCaseRevision, context.polarionService());
-            if (testCaseProblem != null) {
-                String reference = testCaseProjectId + "/" + testCase.getId() + (StringUtils.isEmpty(testCaseRevision) ? "" : ":" + testCaseRevision);
-                issues.add(createIssue(recordMetaInfo(testRun, testCase, testCaseRevision), LinkKind.TEST_CASE, testCaseProblem, testCase,
-                        "Test case '%s' of a test record %s".formatted(reference, testCaseProblem.message)));
-            }
-
-            for (IWorkItem defect : testRecord.getDefects()) {
-                Problem defectProblem = findProblem(defect, null, context.polarionService());
-                if (defectProblem != null) {
-                    issues.add(createIssue(recordMetaInfo(testRun, testCase, testCaseRevision), LinkKind.DEFECT, defectProblem, defect,
-                            "Defect '%s/%s' of the test record for '%s/%s' %s".formatted(StringUtils.getEmptyIfNull(defect.getProjectId()), defect.getId(),
-                                    testCaseProjectId, testCase.getId(), defectProblem.message)));
-                }
-            }
+            scanRecord(testRun, testRecord, context, issues);
         }
 
         IWorkItem summaryDefect = testRun.getSummaryDefect();
@@ -81,6 +63,35 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
             }
         }
         return issues;
+    }
+
+    /**
+     * Defect issues come before the test case issue: their repair finds the record by its test case, which the test case
+     * repair changes.
+     */
+    private void scanRecord(@NotNull ITestRun testRun, @NotNull ITestRecord testRecord, @NotNull ScanContext context, @NotNull List<Issue> issues) {
+        IWorkItem testCase = testRecord.getTestCase();
+        if (testCase == null) {
+            return;
+        }
+        String testCaseProjectId = StringUtils.getEmptyIfNull(testCase.getProjectId());
+        String testCaseRevision = getTestCaseRevision(testRecord);
+
+        for (IWorkItem defect : testRecord.getDefects()) {
+            Problem defectProblem = findProblem(defect, null, context.polarionService());
+            if (defectProblem != null) {
+                issues.add(createIssue(recordMetaInfo(testRun, testCase, testCaseRevision), LinkKind.DEFECT, defectProblem, defect,
+                        "Defect '%s/%s' of the test record for '%s/%s' %s".formatted(StringUtils.getEmptyIfNull(defect.getProjectId()), defect.getId(),
+                                testCaseProjectId, testCase.getId(), defectProblem.message)));
+            }
+        }
+
+        Problem testCaseProblem = findProblem(testCase, testCaseRevision, context.polarionService());
+        if (testCaseProblem != null) {
+            String reference = testCaseProjectId + "/" + testCase.getId() + (StringUtils.isEmpty(testCaseRevision) ? "" : ":" + testCaseRevision);
+            issues.add(createIssue(recordMetaInfo(testRun, testCase, testCaseRevision), LinkKind.TEST_CASE, testCaseProblem, testCase,
+                    "Test case '%s' of a test record %s".formatted(reference, testCaseProblem.message)));
+        }
     }
 
     private @NotNull IssueMetaInfo recordMetaInfo(@NotNull ITestRun testRun, @NotNull IWorkItem testCase, @NotNull String testCaseRevision) {
@@ -124,32 +135,46 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         IssueMetaInfo metaInfo = context.issueMetaInfo();
         RepairResult result = new RepairResult(metaInfo, false);
         if (Problem.valueOf(metaInfo.getString(PROBLEM)) == Problem.NOT_READABLE) {
-            result.getWarnings().add("Cannot repair automatically: the work item exists, but the current user cannot read it. Check the permissions or fix it manually.");
+            result.getWarnings().add(NOT_READABLE_WARNING);
             return result;
         }
 
         ITestRun testRun = (ITestRun) entity;
+        // A reference left unchanged still matches its record, so the next issue with the same reference must pass it by.
+        AtomicInteger unchanged = context.getAndCache(unchangedCountKey(testRun, metaInfo), AtomicInteger::new);
         String warning = switch (LinkKind.valueOf(metaInfo.getString(LINK_KIND))) {
-            case TEST_CASE -> repairTestCase(testRun, context);
-            case DEFECT -> repairDefect(testRun, context);
+            case TEST_CASE -> repairTestCase(testRun, context, unchanged.get());
+            case DEFECT -> repairDefect(testRun, context, unchanged.get());
             case SUMMARY_DEFECT -> repairSummaryDefect(testRun, context);
         };
         if (StringUtils.isEmpty(warning)) {
             result.setSuccess(true);
         } else {
+            unchanged.incrementAndGet();
             result.getWarnings().add(warning);
         }
         return result;
     }
 
-    private @Nullable String repairTestCase(@NotNull ITestRun testRun, @NotNull RepairContext context) {
+    private @NotNull String unchangedCountKey(@NotNull ITestRun testRun, @NotNull IssueMetaInfo metaInfo) {
+        return String.join("|", CACHE_UNCHANGED_KEY_PREFIX, testRun.getProjectId(), testRun.getId(), metaInfo.getString(LINK_KIND),
+                metaInfo.getString(TEST_CASE_PROJECT_ID), metaInfo.getString(TEST_CASE_ID), metaInfo.getString(TEST_CASE_REVISION),
+                metaInfo.getString(LINK_PROJECT_ID), metaInfo.getString(LINK_ID));
+    }
+
+    private @Nullable String repairTestCase(@NotNull ITestRun testRun, @NotNull RepairContext context, int recordsToPass) {
         List<ITestRecord> records = testRun.getAllRecords();
-        int recordIndex = findRecordIndex(records, context.issueMetaInfo());
+        int recordIndex = findRecordIndex(records, context.issueMetaInfo(), recordsToPass);
         ITestRecord testRecord = records.get(recordIndex);
         IWorkItem testCase = Objects.requireNonNull(testRecord.getTestCase());
+        String revision = getTestCaseRevision(testRecord);
+        String liveWarning = checkStillBroken(testCase, revision, context);
+        if (liveWarning != null) {
+            return liveWarning;
+        }
 
         List<String> warnings = new ArrayList<>();
-        IWorkItem replacement = findReplacement(testRun, testCase.getProjectId(), testCase.getId(), getTestCaseRevision(testRecord), context, warnings);
+        IWorkItem replacement = findReplacement(testRun, testCase.getProjectId(), testCase.getId(), revision, context, warnings);
         if (replacement != null) {
             if (isSigned(testRecord)) {
                 return "The test record is signed, changing its test case needs an e-signature. Fix it in Polarion or use 'Delete broken items' feature to remove it.";
@@ -167,19 +192,18 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         return "Cannot find replacement for the test case. Use 'Delete broken items' feature to remove test records like this.";
     }
 
-    private @Nullable String repairDefect(@NotNull ITestRun testRun, @NotNull RepairContext context) {
+    private @Nullable String repairDefect(@NotNull ITestRun testRun, @NotNull RepairContext context, int defectsToPass) {
         IssueMetaInfo metaInfo = context.issueMetaInfo();
-        List<ITestRecord> records = testRun.getAllRecords();
         List<IWorkItem> defects = null;
         int defectIndex = -1;
-        // Several records can share one test case (iterations), so the first one still holding the defect is the one to repair.
-        for (ITestRecord testRecord : records) {
-            if (matchesTestCase(testRecord, metaInfo)) {
-                defectIndex = findLinkIndex(testRecord.getDefects(), metaInfo);
-                if (defectIndex >= 0) {
-                    defects = testRecord.getDefects();
-                    break;
-                }
+        int passed = 0;
+        // Several records can share one test case (iterations), each of them can hold the defect.
+        for (ITestRecord testRecord : testRun.getAllRecords()) {
+            int index = matchesTestCase(testRecord, metaInfo) ? findLinkIndex(testRecord.getDefects(), metaInfo) : -1;
+            if (index >= 0 && passed++ == defectsToPass) {
+                defects = testRecord.getDefects();
+                defectIndex = index;
+                break;
             }
         }
         if (defects == null) {
@@ -187,6 +211,10 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         }
 
         IWorkItem defect = defects.get(defectIndex);
+        String liveWarning = checkStillBroken(defect, null, context);
+        if (liveWarning != null) {
+            return liveWarning;
+        }
         List<String> warnings = new ArrayList<>();
         IWorkItem replacement = findReplacement(testRun, defect.getProjectId(), defect.getId(), null, context, warnings);
         if (replacement != null) {
@@ -208,6 +236,10 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         if (summaryDefect == null || findLinkIndex(List.of(summaryDefect), context.issueMetaInfo()) < 0) {
             throw new IllegalStateException(CONTENT_CHANGED);
         }
+        String liveWarning = checkStillBroken(summaryDefect, null, context);
+        if (liveWarning != null) {
+            return liveWarning;
+        }
 
         List<String> warnings = new ArrayList<>();
         IWorkItem replacement = findReplacement(testRun, summaryDefect.getProjectId(), summaryDefect.getId(), null, context, warnings);
@@ -226,15 +258,26 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
     }
 
     /**
+     * The work item can be restored, or its permissions changed, between the scan and the repair. Then it is not broken any
+     * more, or must not be deleted.
+     */
+    private @Nullable String checkStillBroken(@NotNull IWorkItem item, @Nullable String revision, @NotNull RepairContext context) {
+        Problem problem = findProblem(item, revision, context.polarionService());
+        if (problem == null) {
+            return "Work item '%s/%s' exists now, nothing to repair. Scan again.".formatted(item.getProjectId(), item.getId());
+        }
+        return problem == Problem.NOT_READABLE ? NOT_READABLE_WARNING : null;
+    }
+
+    /**
      * Same search order as {@link BrokenLinkedWorkItemsRepairer}: the current project, then without the revision,
      * then all projects by id.
      */
     @VisibleForTesting
-    @SuppressWarnings("unchecked")
     @Nullable IWorkItem findReplacement(@NotNull ITestRun testRun, @Nullable String projectId, @NotNull String workItemId,
                                         @Nullable String revision, @NotNull RepairContext context, @NotNull List<String> warnings) {
         XmlRepairPolarionService polarionService = context.polarionService();
-        String currentProjectId = testRun.getProjectId();
+        String currentProjectId = Objects.requireNonNull(testRun.getProjectId());
         String effectiveRevision = StringUtils.getNullIfEmpty(revision);
         if (!Objects.equals(projectId, currentProjectId) && polarionService.isWorkItemExists(currentProjectId, workItemId, effectiveRevision)) {
             return polarionService.getWorkItem(currentProjectId, workItemId, effectiveRevision);
@@ -243,21 +286,39 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
             return polarionService.getWorkItem(currentProjectId, workItemId, null);
         }
 
-        IPObjectList<IWorkItem> hits = testRun.getDataSvc().searchInstances(IWorkItem.PROTO, LuceneUtils.term("id", workItemId), null, 2);
-        // The index can still hold items which no longer resolve, and a hit the user cannot read is no usable replacement
-        List<IWorkItem> itemsFound = hits.stream().filter(item -> !item.isUnresolvable() && item.can().read()).toList();
+        List<IWorkItem> itemsFound = searchResolvable(testRun, workItemId);
         if (itemsFound.size() > 1) {
             warnings.add("Work item '%s' found at least in 2 projects: '%s' and '%s'".formatted(workItemId, itemsFound.get(0).getProjectId(), itemsFound.get(1).getProjectId()));
             return null;
         }
         if (itemsFound.size() == 1) {
             IWorkItem found = itemsFound.getFirst();
-            if (effectiveRevision != null && polarionService.isWorkItemExists(found.getProjectId(), found.getId(), effectiveRevision)) {
-                return polarionService.getWorkItem(found.getProjectId(), found.getId(), effectiveRevision);
+            String foundProjectId = Objects.requireNonNull(found.getProjectId());
+            if (effectiveRevision != null && polarionService.isWorkItemExists(foundProjectId, found.getId(), effectiveRevision)) {
+                return polarionService.getWorkItem(foundProjectId, found.getId(), effectiveRevision);
             }
             return found;
         }
         return null;
+    }
+
+    /**
+     * Up to two hits which resolve. The index can still return items deleted since, so a hit counts only once it resolves,
+     * and the search has no limit of its own.
+     */
+    private @NotNull List<IWorkItem> searchResolvable(@NotNull ITestRun testRun, @NotNull String workItemId) {
+        @SuppressWarnings("unchecked")
+        IPObjectList<IWorkItem> hits = testRun.getDataSvc().searchInstances(IWorkItem.PROTO, LuceneUtils.term("id", workItemId), null);
+        List<IWorkItem> resolvable = new ArrayList<>(2);
+        for (IWorkItem hit : hits) {
+            if (!hit.isUnresolvable()) {
+                resolvable.add(hit);
+                if (resolvable.size() == 2) {
+                    break;
+                }
+            }
+        }
+        return resolvable;
     }
 
     /**
@@ -275,12 +336,13 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
     }
 
     /**
-     * The first matching record, not one at a stored index: an earlier repair in the same run can delete records and shift
-     * the indexes. Records sharing a broken test case are broken alike, so each issue repairs the next one of them.
+     * The matching record after the ones to pass, not one at a stored index: an earlier repair in the same run can delete
+     * records and shift the indexes. Records sharing a broken test case are broken alike, so each issue takes the next one.
      */
-    private int findRecordIndex(@NotNull List<ITestRecord> records, @NotNull IssueMetaInfo metaInfo) {
+    private int findRecordIndex(@NotNull List<ITestRecord> records, @NotNull IssueMetaInfo metaInfo, int recordsToPass) {
+        int passed = 0;
         for (int i = 0; i < records.size(); i++) {
-            if (matchesTestCase(records.get(i), metaInfo)) {
+            if (matchesTestCase(records.get(i), metaInfo) && passed++ == recordsToPass) {
                 return i;
             }
         }
