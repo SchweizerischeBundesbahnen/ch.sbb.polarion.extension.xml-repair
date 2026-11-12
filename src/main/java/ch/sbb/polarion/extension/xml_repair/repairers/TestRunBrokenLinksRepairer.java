@@ -22,7 +22,6 @@ import org.jetbrains.annotations.VisibleForTesting;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Finds work item references of a test run which cannot be resolved: the test case and the defects of each test
@@ -42,7 +41,6 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
     private static final String TEST_CASE_REVISION = "testCaseRevision";
     private static final String CONTENT_CHANGED = "Issue not found, possibly it was already repaired or the content was changed since the scan.";
     private static final String NOT_READABLE_WARNING = "Cannot repair automatically: the work item exists, but the current user cannot read it. Check the permissions or fix it manually.";
-    private static final String CACHE_UNCHANGED_KEY_PREFIX = "TEST_RUN_UNCHANGED_REFERENCES";
 
     @Override
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
@@ -140,31 +138,22 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         }
 
         ITestRun testRun = (ITestRun) entity;
-        // A reference left unchanged still matches its record, so the next issue with the same reference must pass it by.
-        AtomicInteger unchanged = Objects.requireNonNull(context.getAndCache(unchangedCountKey(testRun, metaInfo), AtomicInteger::new));
         String warning = switch (LinkKind.valueOf(metaInfo.getString(LINK_KIND))) {
-            case TEST_CASE -> repairTestCase(testRun, context, unchanged.get());
-            case DEFECT -> repairDefect(testRun, context, unchanged.get());
+            case TEST_CASE -> repairTestCase(testRun, context);
+            case DEFECT -> repairDefect(testRun, context);
             case SUMMARY_DEFECT -> repairSummaryDefect(testRun, context);
         };
         if (StringUtils.isEmpty(warning)) {
             result.setSuccess(true);
         } else {
-            unchanged.incrementAndGet();
             result.getWarnings().add(warning);
         }
         return result;
     }
 
-    private @NotNull String unchangedCountKey(@NotNull ITestRun testRun, @NotNull IssueMetaInfo metaInfo) {
-        return String.join("|", CACHE_UNCHANGED_KEY_PREFIX, testRun.getProjectId(), testRun.getId(), metaInfo.getString(LINK_KIND),
-                metaInfo.getString(TEST_CASE_PROJECT_ID), metaInfo.getString(TEST_CASE_ID), metaInfo.getString(TEST_CASE_REVISION),
-                metaInfo.getString(LINK_PROJECT_ID), metaInfo.getString(LINK_ID));
-    }
-
-    private @Nullable String repairTestCase(@NotNull ITestRun testRun, @NotNull RepairContext context, int recordsToPass) {
+    private @Nullable String repairTestCase(@NotNull ITestRun testRun, @NotNull RepairContext context) {
         List<ITestRecord> records = testRun.getAllRecords();
-        int recordIndex = findRecordIndex(records, context.issueMetaInfo(), recordsToPass);
+        int recordIndex = findRecordIndex(records, context.issueMetaInfo());
         ITestRecord testRecord = records.get(recordIndex);
         IWorkItem testCase = Objects.requireNonNull(testRecord.getTestCase());
         String revision = getTestCaseRevision(testRecord);
@@ -192,15 +181,17 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         return "Cannot find replacement for the test case. Use 'Delete broken items' feature to remove test records like this.";
     }
 
-    private @Nullable String repairDefect(@NotNull ITestRun testRun, @NotNull RepairContext context, int defectsToPass) {
+    /**
+     * Several records can share one test case (iterations) and hold the same defect. They are repaired alike, so the first
+     * one still holding the defect is taken.
+     */
+    private @Nullable String repairDefect(@NotNull ITestRun testRun, @NotNull RepairContext context) {
         IssueMetaInfo metaInfo = context.issueMetaInfo();
         List<IWorkItem> defects = null;
         int defectIndex = -1;
-        int passed = 0;
-        // Several records can share one test case (iterations), each of them can hold the defect.
         for (ITestRecord testRecord : testRun.getAllRecords()) {
             int index = matchesTestCase(testRecord, metaInfo) ? findLinkIndex(testRecord.getDefects(), metaInfo) : -1;
-            if (index >= 0 && passed++ == defectsToPass) {
+            if (index >= 0) {
                 defects = testRecord.getDefects();
                 defectIndex = index;
                 break;
@@ -336,17 +327,27 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
     }
 
     /**
-     * The matching record after the ones to pass, not one at a stored index: an earlier repair in the same run can delete
-     * records and shift the indexes. Records sharing a broken test case are broken alike, so each issue takes the next one.
+     * A matching record, not one at a stored index: issues can be repaired in any order and in separate requests, and
+     * a repair can delete records and shift the indexes. Records sharing a broken test case are repaired alike, except
+     * that a signed one cannot get a new test case, so an unsigned one goes first.
      */
-    private int findRecordIndex(@NotNull List<ITestRecord> records, @NotNull IssueMetaInfo metaInfo, int recordsToPass) {
-        int passed = 0;
+    private int findRecordIndex(@NotNull List<ITestRecord> records, @NotNull IssueMetaInfo metaInfo) {
+        int firstSigned = -1;
         for (int i = 0; i < records.size(); i++) {
-            if (matchesTestCase(records.get(i), metaInfo) && passed++ == recordsToPass) {
-                return i;
+            ITestRecord testRecord = records.get(i);
+            if (matchesTestCase(testRecord, metaInfo)) {
+                if (!isSigned(testRecord)) {
+                    return i;
+                }
+                if (firstSigned < 0) {
+                    firstSigned = i;
+                }
             }
         }
-        throw new IllegalStateException(CONTENT_CHANGED);
+        if (firstSigned < 0) {
+            throw new IllegalStateException(CONTENT_CHANGED);
+        }
+        return firstSigned;
     }
 
     private boolean matchesTestCase(@NotNull ITestRecord testRecord, @NotNull IssueMetaInfo metaInfo) {

@@ -20,13 +20,17 @@ import com.polarion.platform.persistence.model.IPObjectList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static ch.sbb.polarion.extension.xml_repair.testsupport.RepairerTestFixtures.createScanContext;
 import static org.junit.jupiter.api.Assertions.*;
@@ -45,7 +49,6 @@ class TestRunBrokenLinksRepairerTest {
     private IDataService dataService;
     private ITestRun testRun;
     private List<ITestRecord> records;
-    private Cache cache;
 
     @BeforeEach
     void setUp() {
@@ -53,7 +56,6 @@ class TestRunBrokenLinksRepairerTest {
         dataService = mock(IDataService.class);
         testRun = mock(ITestRun.class);
         records = new ArrayList<>();
-        cache = new Cache();
         when(testRun.getProjectId()).thenReturn(PROJECT);
         when(testRun.getId()).thenReturn("TR-1");
         when(testRun.getAllRecords()).thenReturn(records);
@@ -353,25 +355,50 @@ class TestRunBrokenLinksRepairerTest {
         verify(testRecord).setTestCase(replacement);
     }
 
-    @Test
-    void testRepairSignedRecordIsPassedByForTheNextIteration() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void testRepairTestCaseTakesUnsignedRecordFirst(boolean reverseOrder) {
         IWorkItem testCase = item(PROJECT, "TC-1", true, true);
         ITestRecord signed = addRecord(testCase, null);
         when(signed.getValue(ITestRecord.KEY_SIGNED)).thenReturn(true);
         ITestRecord unsigned = addRecord(testCase, null);
         IWorkItem found = item("global", "TC-1", false, true);
         mockSearch("TC-1", found);
-        List<Issue> issues = scan();
+        List<Issue> issues = new ArrayList<>(scan());
+        if (reverseOrder) {
+            Collections.reverse(issues);
+        }
 
-        assertFalse(repair(issues.get(0), new UserConfigs()).isSuccess());
-        assertTrue(repair(issues.get(1), new UserConfigs()).isSuccess());
+        assertTrue(repair(issues.get(0), new UserConfigs()).isSuccess());
+        RepairResult second = repair(issues.get(1), new UserConfigs());
 
+        assertFalse(second.isSuccess());
+        assertTrue(second.getWarnings().iterator().next().startsWith("The test record is signed"));
         verify(signed, never()).setTestCase(any());
         verify(unsigned).setTestCase(found);
     }
 
     @Test
-    void testRepairDefectKeptInFirstIterationIsPassedBy() {
+    void testRepairDefectSharedByIterationsRepairsEachRecord() {
+        IWorkItem testCase = item(PROJECT, "TC-1", false, true);
+        IWorkItem defect = item(PROJECT, "BUG-1", true, true);
+        ITestRecord first = addRecord(testCase, null);
+        first.getDefects().add(defect);
+        ITestRecord second = addRecord(testCase, null);
+        second.getDefects().add(defect);
+        IWorkItem found = item("global", "BUG-1", false, true);
+        mockSearch("BUG-1", found);
+        List<Issue> issues = scan();
+
+        assertTrue(repair(issues.get(1), new UserConfigs()).isSuccess());
+        assertTrue(repair(issues.get(0), new UserConfigs()).isSuccess());
+
+        assertSame(found, first.getDefects().getFirst());
+        assertSame(found, second.getDefects().getFirst());
+    }
+
+    @Test
+    void testRepairDefectSharedByIterationsWithoutReplacementKeepsAll() {
         IWorkItem testCase = item(PROJECT, "TC-1", false, true);
         IWorkItem defect = item(PROJECT, "BUG-1", true, true);
         ITestRecord first = addRecord(testCase, null);
@@ -381,12 +408,10 @@ class TestRunBrokenLinksRepairerTest {
         List<Issue> issues = scan();
 
         assertFalse(repair(issues.get(0), new UserConfigs()).isSuccess());
-        IWorkItem found = item("global", "BUG-1", false, true);
-        mockSearch("BUG-1", found);
-        assertTrue(repair(issues.get(1), new UserConfigs()).isSuccess());
+        assertFalse(repair(issues.get(1), new UserConfigs()).isSuccess());
 
         assertSame(defect, first.getDefects().getFirst());
-        assertSame(found, second.getDefects().getFirst());
+        assertSame(defect, second.getDefects().getFirst());
     }
 
     @Test
@@ -561,12 +586,18 @@ class TestRunBrokenLinksRepairerTest {
 
     private RepairResult repair(Issue issue, UserConfigs configs) {
         IssueMetaInfo metaInfo = IssueMetaInfo.fromString(issue.getMetaInfo());
-        return repairer.repair(testRun, new RepairContext(metaInfo, polarionService, configs, cache));
+        // a new cache per call: each issue can come in its own request
+        return repairer.repair(testRun, new RepairContext(metaInfo, polarionService, configs, new Cache()));
     }
 
     private ITestRecord addRecord(IWorkItem testCase, String testCaseRevision) {
         ITestRecord testRecord = mock(ITestRecord.class);
-        when(testRecord.getTestCase()).thenReturn(testCase);
+        AtomicReference<IWorkItem> currentTestCase = new AtomicReference<>(testCase);
+        when(testRecord.getTestCase()).thenAnswer(invocation -> currentTestCase.get());
+        doAnswer(invocation -> {
+            currentTestCase.set(invocation.getArgument(0));
+            return null;
+        }).when(testRecord).setTestCase(any());
         when(testRecord.getValue(ITestRecord.KEY_TEST_CASE_REVISION)).thenReturn(testCaseRevision);
         when(testRecord.getDefects()).thenReturn(new ArrayList<>());
         records.add(testRecord);
