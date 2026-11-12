@@ -141,7 +141,7 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
 
         ITestRun testRun = (ITestRun) entity;
         // A reference left unchanged still matches its record, so the next issue with the same reference must pass it by.
-        AtomicInteger unchanged = context.getAndCache(unchangedCountKey(testRun, metaInfo), AtomicInteger::new);
+        AtomicInteger unchanged = Objects.requireNonNull(context.getAndCache(unchangedCountKey(testRun, metaInfo), AtomicInteger::new));
         String warning = switch (LinkKind.valueOf(metaInfo.getString(LINK_KIND))) {
             case TEST_CASE -> repairTestCase(testRun, context, unchanged.get());
             case DEFECT -> repairDefect(testRun, context, unchanged.get());
