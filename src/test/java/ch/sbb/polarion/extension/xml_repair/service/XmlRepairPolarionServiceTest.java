@@ -504,6 +504,40 @@ class XmlRepairPolarionServiceTest {
         assertTrue(polarionService.isWorkItemExists("elibrary", "EL-1", "42"));
     }
 
+    // ---- document lookup tests ----
+
+    @Test
+    void testIsDocumentExists() {
+        doReturn(mock(IModule.class)).when(polarionService).getModule("elibrary", "Design", "Spec", null);
+        doThrow(ObjectNotFoundException.class).when(polarionService).getModule("elibrary", "Archive", "Spec", "42");
+        assertTrue(polarionService.isDocumentExists("elibrary", "Design", "Spec", null));
+        assertFalse(polarionService.isDocumentExists("elibrary", "Archive", "Spec", "42"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void testFindDocumentSpaces() {
+        IModule drafts = mockModuleIn("Drafts", "Spec", false);
+        IModule archive = mockModuleIn("Archive", "Spec", false);
+        IModule deleted = mockModuleIn("Deleted", "Spec", true);
+        IModule looseMatch = mockModuleIn("Design", "Spec v2", false);
+        IPObjectList<IModule> found = mock(IPObjectList.class);
+        when(found.stream()).thenReturn(Stream.of(drafts, archive, deleted, looseMatch));
+        IDataService dataService = mock(IDataService.class);
+        when(trackerService.getDataService()).thenReturn(dataService);
+        when(dataService.searchInstances(eq(IModule.PROTO), eq("(project.id:elibrary) AND (moduleName:Spec)"), isNull())).thenReturn(found);
+
+        assertEquals(List.of("Archive", "Drafts"), polarionService.findDocumentSpaces("elibrary", "Spec"));
+    }
+
+    private static IModule mockModuleIn(String space, String name, boolean unresolvable) {
+        IModule module = mock(IModule.class);
+        when(module.getModuleFolder()).thenReturn(space);
+        when(module.getModuleName()).thenReturn(name);
+        when(module.isUnresolvable()).thenReturn(unresolvable);
+        return module;
+    }
+
     // ---- Authorization tests ----
 
     @Test
@@ -621,9 +655,9 @@ class XmlRepairPolarionServiceTest {
 
     @Test
     void testGetRepairerMetas() {
-        assertEquals(13, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
-        assertEquals(13, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
-        assertEquals(6, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
+        assertEquals(14, polarionService.getRepairerMetas(EntityType.COLLECTION).size());
+        assertEquals(14, polarionService.getRepairerMetas(EntityType.DOCUMENT).size());
+        assertEquals(7, polarionService.getRepairerMetas(EntityType.WORKITEM).size());
         assertEquals(1, polarionService.getRepairerMetas(EntityType.TESTRUN).size());
     }
 
@@ -643,7 +677,7 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(14, repairers.size());
+        assertEquals(15, repairers.size());
         assertTrue(containsPurgeRepairer(repairers));
     }
 
@@ -655,7 +689,7 @@ class XmlRepairPolarionServiceTest {
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
         // One more than a collection: only a document carries a structure link role.
-        assertEquals(15, repairers.size());
+        assertEquals(16, repairers.size());
         assertTrue(containsPurgeRepairer(repairers));
         assertTrue(repairers.stream().anyMatch(ModuleStructureLinkRoleRepairer.class::isInstance));
     }
@@ -700,7 +734,7 @@ class XmlRepairPolarionServiceTest {
 
         List<IRepairer> repairers = polarionService.getRepairersForEntity(entity);
 
-        assertEquals(7, repairers.size());
+        assertEquals(8, repairers.size());
         assertTrue(containsPurgeRepairer(repairers));
     }
 

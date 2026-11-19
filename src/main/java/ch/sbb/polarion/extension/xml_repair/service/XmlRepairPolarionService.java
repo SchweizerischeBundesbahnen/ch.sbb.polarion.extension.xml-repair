@@ -98,6 +98,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsInvalidEnumerationValueRepairer(),
                     new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
+                    new RichTextDocumentLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             ),
             EntityType.DOCUMENT, List.of(
@@ -113,6 +114,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsInvalidEnumerationValueRepairer(),
                     new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
+                    new RichTextDocumentLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             ),
             EntityType.TESTRUN, List.of(
@@ -124,6 +126,7 @@ public class XmlRepairPolarionService extends PolarionService {
                     new FieldsInvalidEnumerationValueRepairer(),
                     new FieldsInvalidUserValueRepairer(),
                     new FieldsRichTextLinksRepairer(),
+                    new RichTextDocumentLinksRepairer(),
                     new FieldsWrongTypeRepairer()
             )
     );
@@ -426,6 +429,32 @@ public class XmlRepairPolarionService extends PolarionService {
         } catch (ObjectNotFoundException e) {
             return false;
         }
+    }
+
+    @SuppressWarnings("java:S1166") // We do not log or rethrow exception by design.
+    public boolean isDocumentExists(@NotNull String projectId, @NotNull String spaceId, @NotNull String documentName, @Nullable String revision) {
+        try {
+            getModule(projectId, spaceId, documentName, revision);
+            return true;
+        } catch (ObjectNotFoundException e) {
+            return false;
+        }
+    }
+
+    /**
+     * The spaces of the project which hold a document of the given name, sorted. A name is unique within a
+     * space only, so a document moved elsewhere is found here under the same name.
+     */
+    public @NotNull List<String> findDocumentSpaces(@NotNull String projectId, @NotNull String documentName) {
+        String query = LuceneUtils.and(LuceneUtils.projectTerm(projectId), LuceneUtils.term("moduleName", documentName));
+        IPObjectList<IModule> modules = getTrackerService().getDataService().searchInstances(IModule.PROTO, query, null);
+        return modules.stream()
+                // the index may match the name loosely, and may still list a document deleted meanwhile
+                .filter(module -> !module.isUnresolvable() && documentName.equals(module.getModuleName()))
+                .map(IModule::getModuleFolder)
+                .distinct()
+                .sorted()
+                .toList();
     }
 
     /**
