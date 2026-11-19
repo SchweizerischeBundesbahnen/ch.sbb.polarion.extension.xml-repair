@@ -42,8 +42,11 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
     private static final String GROUP_REVISION = "revision";
     private static final String DATA_SPACE_NAME_TEMPLATE = "data-space-name=\"%s\"";
     private static final String DATA_ITEM_NAME_ANCHOR = "data-item-name=";
-    private static final String CACHE_EXISTS_KEY_TEMPLATE = "DOCUMENT_EXISTS_%s_%s_%s_%s";
-    private static final String CACHE_SPACES_KEY_TEMPLATE = "DOCUMENT_SPACES_%s_%s";
+    private static final String CACHE_EXISTS_KEY = "DOCUMENT_EXISTS";
+    private static final String CACHE_SPACES_KEY = "DOCUMENT_SPACES";
+    // A character no project, space or document name carries, so that the parts of a key cannot run into each other:
+    // joined by '_', the space 'Design_A' with the document 'Spec' would share a key with 'Design' and 'A_Spec'.
+    private static final String CACHE_KEY_SEPARATOR = "\u0000";
 
     // Only the opening tag is matched: every attribute lives there, and it is the only part a repair rewrites.
     private static final String LINK_REGEX = "<span\\s+" +
@@ -147,7 +150,7 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
     }
 
     private boolean documentExists(IContext context, DocumentLink link, String space) {
-        String key = CACHE_EXISTS_KEY_TEMPLATE.formatted(link.projectId(), space, link.name(), link.revision());
+        String key = String.join(CACHE_KEY_SEPARATOR, CACHE_EXISTS_KEY, link.projectId(), space, link.name(), String.valueOf(link.revision()));
         return Boolean.TRUE.equals(context.getAndCache(key, () -> context.polarionService().isDocumentExists(link.projectId(), space, link.name(), link.revision())));
     }
 
@@ -156,7 +159,7 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
      * be opened. For a link pinned to a revision, only those where it existed at that revision.
      */
     private List<String> findOtherSpaces(IContext context, DocumentLink link) {
-        List<String> spaces = context.getAndCache(CACHE_SPACES_KEY_TEMPLATE.formatted(link.projectId(), link.name()),
+        List<String> spaces = context.getAndCache(String.join(CACHE_KEY_SEPARATOR, CACHE_SPACES_KEY, link.projectId(), link.name()),
                 () -> context.polarionService().findDocumentSpaces(link.projectId(), link.name()));
         return spaces.stream()
                 .filter(space -> !space.equals(link.space()))

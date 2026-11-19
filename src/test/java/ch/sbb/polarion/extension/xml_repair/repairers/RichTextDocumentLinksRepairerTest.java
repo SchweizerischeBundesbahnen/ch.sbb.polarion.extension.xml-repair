@@ -89,6 +89,19 @@ class RichTextDocumentLinksRepairerTest {
     }
 
     @Test
+    void scanKeepsDocumentsWithSimilarNamesApart() {
+        // joined by '_', both links would make the same cache key, and the second would get the answer of the first
+        String broken = link("data-item-name=\"A_Spec\" data-space-name=\"Design\"");
+        content(link("data-item-name=\"Spec\" data-space-name=\"Design_A\"") + "</span>" + broken + "</span>");
+        exists(PROJECT, "Design_A", "Spec");
+
+        List<Issue> issues = scan();
+
+        assertEquals(1, issues.size());
+        assertTrue(issues.getFirst().getDescription().contains("document 'A_Spec' does not exist in the space 'Design'"));
+    }
+
+    @Test
     void scanIgnoresLinksOfOtherTypes() {
         content("<span class=\"polarion-rte-link\" data-type=\"workItem\" id=\"fake\" data-item-id=\"EL-1\" data-option-id=\"long\"></span>");
 
