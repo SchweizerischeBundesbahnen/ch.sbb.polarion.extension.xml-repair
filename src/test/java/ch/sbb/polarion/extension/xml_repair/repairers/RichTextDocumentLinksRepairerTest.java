@@ -48,7 +48,8 @@ class RichTextDocumentLinksRepairerTest {
         entity = mock(IWorkItem.class, RETURNS_DEEP_STUBS);
         when(entity.getPrototype().getName()).thenReturn(IWorkItem.PROTO);
         when(entity.getProjectId()).thenReturn(PROJECT);
-        when(entity.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextId = mock(IContextId.class);
+        when(entity.getContextId()).thenReturn(contextId);
         Set<FieldMetadata> fields = mockFields(FieldType.TEXT, FIELD);
         when(polarionService.getAllFields(eq(IWorkItem.PROTO), any(), any(), eq(false),
                 eq(FieldType.TEXT.getType()), eq(FieldType.RICH.getType()))).thenReturn(fields);
@@ -152,7 +153,8 @@ class RichTextDocumentLinksRepairerTest {
         IModule module = mock(IModule.class, RETURNS_DEEP_STUBS);
         when(module.getPrototype().getName()).thenReturn(IModule.PROTO);
         when(module.getProjectId()).thenReturn(PROJECT);
-        when(module.getContextId()).thenReturn(mock(IContextId.class));
+        IContextId contextId = mock(IContextId.class);
+        when(module.getContextId()).thenReturn(contextId);
         // the field listing does not return the body
         when(polarionService.getAllFields(eq(IModule.PROTO), any(), any(), eq(false),
                 eq(FieldType.TEXT.getType()), eq(FieldType.RICH.getType()))).thenReturn(Set.of());

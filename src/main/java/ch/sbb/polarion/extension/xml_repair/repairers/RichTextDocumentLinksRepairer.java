@@ -59,7 +59,7 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
     public List<Issue> scan(IWorkflowObject entity, ScanContext context) {
         List<Issue> issues = new ArrayList<>();
         for (String fieldId : getTextFieldIds(entity, context)) {
-            if (entity.getValue(fieldId) instanceof Text textValue && textValue.getContent() != null) {
+            if (entity.getValue(fieldId) instanceof Text textValue) {
                 RegexMatcher.get(LINK_REGEX).useJavaUtil().processEntry(textValue.getContent(), regexEngine -> {
                     DocumentLink link = DocumentLink.from(regexEngine.group(), regexEngine.group(GROUP_NAME), regexEngine.group(GROUP_SPACE),
                             regexEngine.group(GROUP_PROJECT), regexEngine.group(GROUP_REVISION), entity);
@@ -158,7 +158,7 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
     private List<String> findOtherSpaces(IContext context, DocumentLink link) {
         List<String> spaces = context.getAndCache(CACHE_SPACES_KEY_TEMPLATE.formatted(link.projectId(), link.name()),
                 () -> context.polarionService().findDocumentSpaces(link.projectId(), link.name()));
-        return (spaces == null ? List.<String>of() : spaces).stream()
+        return spaces.stream()
                 .filter(space -> !space.equals(link.space()))
                 .filter(space -> link.revision() == null || documentExists(context, link, space))
                 .toList();
@@ -194,7 +194,7 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
             return new DocumentLink(markup,
                     StringEscapeUtils.unescapeHtml4(rawName),
                     StringUtils.isEmptyTrimmed(space) ? DEFAULT_SPACE : space,
-                    StringUtils.isEmpty(rawProjectId) ? entity.getProjectId() : rawProjectId,
+                    StringUtils.isEmpty(rawProjectId) ? Objects.requireNonNull(entity.getProjectId()) : rawProjectId,
                     revision);
         }
     }
