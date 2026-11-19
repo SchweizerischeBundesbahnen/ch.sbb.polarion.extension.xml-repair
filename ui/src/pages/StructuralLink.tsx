@@ -366,9 +366,7 @@ export default function StructuralLink() {
                   <span
                     className="help-icon"
                     title="The role a document must use to structure its content. Documents using another role are reported, and can be switched over to this one."
-                  >
-                    ?
-                  </span>
+                  />
                 </label>
                 <SearchableSelect
                   id="structure-link-role"
@@ -421,9 +419,7 @@ export default function StructuralLink() {
             <div className="form-section existing-links-section">
               <div className="existing-links-title">
                 Existing <span className="existing-links-role">{targetRole}</span> links
-                <span className="help-icon" title={EXISTING_LINKS_HELP}>
-                  ?
-                </span>
+                <span className="help-icon" title={EXISTING_LINKS_HELP} />
               </div>
               {EXISTING_LINKS_OPTIONS.map((option) => (
                 <div className="existing-links-row" key={option.id}>
@@ -439,11 +435,7 @@ export default function StructuralLink() {
                     <span>{option.label}</span>
                   </label>
                   {/* Outside the label, so clicking the icon does not pick the answer it explains. */}
-                  {option.help && (
-                    <span className="help-icon" title={option.help}>
-                      ?
-                    </span>
-                  )}
+                  {option.help && <span className="help-icon" title={option.help} />}
                   {option.id === 'CHANGE' && (
                     <SearchableSelect
                       ariaLabel="Replacement link role"

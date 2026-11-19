@@ -179,9 +179,7 @@ export default function ScanParamsPanel({
                 <span
                   className="help-icon"
                   title="Selecting specific revision other than HEAD will block the ability to repair issues"
-                >
-                  ?
-                </span>
+                />
               </label>
               <SearchableInput
                 id={`${id}-revision`}

@@ -706,18 +706,15 @@
   color: #b8860b;
 }
 
+/* --sbb-info-icon comes from react-sbb-polarion, the same icon pdf-exporter shows. */
 .help-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
+  display: inline-block;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
   margin-left: 4px;
-  border: 1px solid #6c757d;
-  border-radius: 50%;
-  font-size: 10px;
-  font-weight: 600;
-  color: #6c757d;
+  vertical-align: middle;
+  background: var(--sbb-info-icon) no-repeat;
   cursor: help;
 }
 
