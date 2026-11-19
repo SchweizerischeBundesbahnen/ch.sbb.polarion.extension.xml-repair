@@ -20,6 +20,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -159,8 +160,9 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
      * be opened. For a link pinned to a revision, only those where it existed at that revision.
      */
     private List<String> findOtherSpaces(IContext context, DocumentLink link) {
-        List<String> spaces = context.getAndCache(String.join(CACHE_KEY_SEPARATOR, CACHE_SPACES_KEY, link.projectId(), link.name()),
-                () -> context.polarionService().findDocumentSpaces(link.projectId(), link.name()));
+        // the cache hands out null for a value it holds as absent, whatever the supplier promises
+        List<String> spaces = Optional.ofNullable(context.getAndCache(String.join(CACHE_KEY_SEPARATOR, CACHE_SPACES_KEY, link.projectId(), link.name()),
+                () -> context.polarionService().findDocumentSpaces(link.projectId(), link.name()))).orElseGet(List::of);
         return spaces.stream()
                 .filter(space -> !space.equals(link.space()))
                 .filter(space -> link.revision() == null || documentExists(context, link, space))
@@ -193,12 +195,9 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
 
         @SuppressWarnings("deprecation") // commons-text, which took this class over, is not among Polarion's bundles
         static DocumentLink from(String markup, String rawName, @Nullable String rawSpace, @Nullable String rawProjectId, @Nullable String revision, IWorkflowObject entity) {
-            String space = rawSpace == null ? null : StringEscapeUtils.unescapeHtml4(rawSpace);
-            return new DocumentLink(markup,
-                    StringEscapeUtils.unescapeHtml4(rawName),
-                    StringUtils.isEmptyTrimmed(space) ? DEFAULT_SPACE : space,
-                    StringUtils.isEmpty(rawProjectId) ? Objects.requireNonNull(entity.getProjectId()) : rawProjectId,
-                    revision);
+            String space = rawSpace == null || rawSpace.isBlank() ? DEFAULT_SPACE : StringEscapeUtils.unescapeHtml4(rawSpace);
+            String projectId = rawProjectId == null || rawProjectId.isEmpty() ? Objects.requireNonNull(entity.getProjectId()) : rawProjectId;
+            return new DocumentLink(markup, StringEscapeUtils.unescapeHtml4(rawName), space, projectId, revision);
         }
     }
 
