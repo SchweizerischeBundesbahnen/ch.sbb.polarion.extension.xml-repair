@@ -9,6 +9,7 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.core.util.types.Text;
 import com.polarion.platform.persistence.model.IPObjectList;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -63,22 +64,22 @@ class BaseLinksRepairerTest {
     static Stream<Arguments> testScanLinksInHtmlValidLink() {
         return Stream.of(
                 // workItem link without scope - validated against the entity's own project
-                Arguments.of("workItem link without scope",
-                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-custom-label=\"EL-1\" data-option-id=\"long\"></span>",
+                Arguments.of(Named.of("workItem link without scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-custom-label=\"EL-1\" data-option-id=\"long\"></span>"),
                         "elibrary", "EL-1"),
                 // workItem link whose scope matches the entity's own project
-                Arguments.of("workItem link with matching scope",
-                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"elibrary\" data-option-id=\"long\"></span>",
+                Arguments.of(Named.of("workItem link with matching scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"elibrary\" data-option-id=\"long\"></span>"),
                         "elibrary", "EL-1"),
                 // polarion (wiki/document) link with the id in data-url's 'selection' parameter
-                Arguments.of("polarion link with id in data-url",
-                        "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>",
+                Arguments.of(Named.of("polarion link with id in data-url",
+                        "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>"),
                         "docx_exporter_elibrary_st_st_103c721ee242", "EL-266"));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource
-    void testScanLinksInHtmlValidLink(String name, String html, String effectiveProjectId, String itemId) {
+    void testScanLinksInHtmlValidLink(String html, String effectiveProjectId, String itemId) {
         TestableLinksRepairer repairer = new TestableLinksRepairer();
         IWorkItem entity = mock(IWorkItem.class);
         when(entity.getProjectId()).thenReturn("elibrary");
@@ -93,21 +94,21 @@ class BaseLinksRepairerTest {
     static Stream<Arguments> testScanLinksInHtmlBrokenLink() {
         return Stream.of(
                 // workItem and crossReference links carry the id in data-item-id and the project in data-scope
-                Arguments.of("workItem link with scope",
-                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>",
+                Arguments.of(Named.of("workItem link with scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"workItem\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>"),
                         "EL-1", "otherProject"),
-                Arguments.of("crossReference link with scope",
-                        "<span class=\"polarion-rte-link\" data-type=\"crossReference\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>",
+                Arguments.of(Named.of("crossReference link with scope",
+                        "<span class=\"polarion-rte-link\" data-type=\"crossReference\" data-item-id=\"EL-1\" data-scope=\"otherProject\" data-option-id=\"long\"></span>"),
                         "EL-1", "otherProject"),
                 // polarion (wiki/document) links have no data-item-id - the id is the 'selection' parameter of data-url
-                Arguments.of("polarion link with id in data-url",
-                        "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>",
+                Arguments.of(Named.of("polarion link with id in data-url",
+                        "<span class=\"polarion-rte-link\" data-type=\"polarion\" id=\"fake\" data-custom-label=\"EL-266\" data-scope=\"docx_exporter_elibrary_st_st_103c721ee242\" data-url=\"/wiki/Testing/Link%20Role%20Direction%20Test?selection=EL-266\"></span>"),
                         "EL-266", "docx_exporter_elibrary_st_st_103c721ee242"));
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource
-    void testScanLinksInHtmlBrokenLink(String name, String html, String expectedItemId, String expectedProjectId) {
+    void testScanLinksInHtmlBrokenLink(String html, String expectedItemId, String expectedProjectId) {
         TestableLinksRepairer repairer = new TestableLinksRepairer();
         IWorkItem entity = mock(IWorkItem.class);
         when(entity.getProjectId()).thenReturn("elibrary");

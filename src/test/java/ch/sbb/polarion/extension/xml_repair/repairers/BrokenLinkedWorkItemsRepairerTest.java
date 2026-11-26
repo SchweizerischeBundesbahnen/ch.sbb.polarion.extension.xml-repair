@@ -20,6 +20,7 @@ import com.polarion.alm.tracker.model.IWorkItem;
 import com.polarion.alm.tracker.model.IWorkflowObject;
 import com.polarion.platform.persistence.IEnumeration;
 import com.polarion.platform.persistence.model.IPObjectList;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -948,18 +949,18 @@ class BrokenLinkedWorkItemsRepairerTest {
         // Each scenario varies exactly one input vs the bypass-triggering baseline.
         // Covers every AND-condition in the bypass check.
         return Stream.of(
-                Arguments.of("src module unresolvable", "srcUnresolvable"),
-                Arguments.of("target module unresolvable", "targetUnresolvable"),
-                Arguments.of("different projectId", "project"),
-                Arguments.of("different moduleFolder", "folder"),
-                Arguments.of("different moduleName", "name"),
-                Arguments.of("different revision (link vs src module)", "revision")
+                Arguments.of(Named.of("src module unresolvable", "srcUnresolvable")),
+                Arguments.of(Named.of("target module unresolvable", "targetUnresolvable")),
+                Arguments.of(Named.of("different projectId", "project")),
+                Arguments.of(Named.of("different moduleFolder", "folder")),
+                Arguments.of(Named.of("different moduleName", "name")),
+                Arguments.of(Named.of("different revision (link vs src module)", "revision"))
         );
     }
 
     @ParameterizedTest(name = "no bypass when {0}")
     @MethodSource("noBypassScenarios")
-    void testLinkViolatesRulesNoBypassScenarios(String scenario, String diff) {
+    void testLinkViolatesRulesNoBypassScenarios(String diff) {
         IModule srcModule = mockModule();
         IModule targetModule = mockModule();
         String linkRevision = null;
