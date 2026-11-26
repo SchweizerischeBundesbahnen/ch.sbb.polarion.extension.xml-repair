@@ -103,10 +103,12 @@ public class OutdatedCustomFieldsRepairer extends BaseRepairer {
         return context.getAndCache(key, () -> pObject.getDataSvc().getCustomFieldsService().getValidCustomFieldIds(pObject));
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Clears attributes which are filled on the entity but are not defined in its custom fields configuration.";
     }

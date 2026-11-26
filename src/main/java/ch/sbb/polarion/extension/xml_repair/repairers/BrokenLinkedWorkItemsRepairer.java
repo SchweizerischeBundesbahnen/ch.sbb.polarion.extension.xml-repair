@@ -143,10 +143,12 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
         return warning;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds broken work item links. Repairer attempts to find and rewrite work items by ID.";
     }

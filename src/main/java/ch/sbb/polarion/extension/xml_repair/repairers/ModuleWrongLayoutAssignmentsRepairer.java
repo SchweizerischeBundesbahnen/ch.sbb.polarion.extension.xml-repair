@@ -93,10 +93,12 @@ public class ModuleWrongLayoutAssignmentsRepairer extends BaseRepairer {
         return layoutIndex >= 0 && layoutIndex < layouts.size() ? layouts.get(layoutIndex).getType() : null;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Checks if the assigned layout ID for a work item matches the layout declaration for its specific work item type. If the document doesn't contain declaration for a work item type it will be added.";
     }

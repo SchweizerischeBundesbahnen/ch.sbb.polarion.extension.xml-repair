@@ -75,10 +75,12 @@ public class ModuleDuplicateLayoutDeclarationRepairer extends BaseRepairer {
         module.getRenderingLayouts().removeAll(allForThisType);
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Checks if the document has several declarations of the same layout type. After repair only the first declaration will be kept and used for all items of the given type.";
     }

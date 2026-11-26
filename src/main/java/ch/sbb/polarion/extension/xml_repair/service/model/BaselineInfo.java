@@ -17,6 +17,7 @@ public record BaselineInfo(@Schema(description = "The SVN revision", requiredMod
         Objects.requireNonNull(revision, "revision must not be null");
     }
 
+    @Override
     public int compareTo(@NotNull BaselineInfo that) {
         // Reverse sorting is used to show the most recent revision first.
         // Tie-break on name keeps compareTo consistent with the record-generated equals.

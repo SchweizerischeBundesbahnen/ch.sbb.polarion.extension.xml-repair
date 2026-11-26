@@ -119,10 +119,12 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
         return parameters;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds unresolvable/invalid work items in the document body.";
     }

@@ -272,10 +272,12 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
         }
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds fields with invalid enumeration values. " +
                 "Repair removes the invalid value if an empty value is allowed, or if it is just one of several values.";

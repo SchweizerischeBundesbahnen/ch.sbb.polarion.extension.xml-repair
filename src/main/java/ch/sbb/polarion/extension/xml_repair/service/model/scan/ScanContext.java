@@ -34,10 +34,12 @@ public final class ScanContext implements IContext {
         this.entityRenderer = new EntityRenderer(Objects.requireNonNull(TransactionalExecutorImpl.currentTransaction()), polarionService().getTrackerService());
     }
 
+    @Override
     public @NotNull XmlRepairPolarionService polarionService() {
         return polarionService;
     }
 
+    @Override
     public @NotNull Cache cache() {
         return cache;
     }
@@ -46,6 +48,7 @@ public final class ScanContext implements IContext {
         return repairers;
     }
 
+    @Override
     public @NotNull UserConfigs configs() {
         return configs;
     }
