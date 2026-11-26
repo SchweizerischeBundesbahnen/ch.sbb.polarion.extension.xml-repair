@@ -134,7 +134,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 // so user will need to run repair multiple times and it can be confusing. So even if one of N items may be fixed
                 // by deletion we require REMOVE_INVALID_VALUES option is turned on.
                 if (meta.isRequired() && invalidOptions.size() == list.size() && similarOptions.isEmpty()) {
-                    repairResult.getWarnings().add("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
+                    repairResult.addWarning("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
                 } else if (!context.configs().getBoolean(getClass(), REMOVE_INVALID_VALUES) && similarOptions.size() != invalidOptions.size()) {
                     warnRepairTurnedOff(repairResult, invalidOptions.size() > 1);
                 } else {
@@ -181,7 +181,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
                 } else {
                     if (listType != null && customValue instanceof List customList) {
                         if (meta.isRequired() && badItems.size() == customList.size()) {
-                            repairResult.getWarnings().add("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
+                            repairResult.addWarning("Can't remove all values of required enumeration field '%s'.".formatted(meta.getLabel()));
                         } else {
                             List newList = new CustomTypedList(entity, listType, false, new ArrayList<>());
                             customList.stream().filter(v -> !badItems.contains(v)).forEach(v -> {
@@ -206,7 +206,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
     }
 
     void warnRepairTurnedOff(RepairResult repairResult, boolean multipleEntries) {
-        repairResult.getWarnings().add("Cannot repair %s automatically. Enable option 'Remove invalid values' to remove invalid value".formatted(multipleEntries ? "all values" : "value"));
+        repairResult.addWarning("Cannot repair %s automatically. Enable option 'Remove invalid values' to remove invalid value".formatted(multipleEntries ? "all values" : "value"));
     }
 
     @VisibleForTesting
@@ -265,7 +265,7 @@ public class FieldsInvalidEnumerationValueRepairer extends BaseRepairer {
 
     private void clearFieldValue(IWorkflowObject entity, FieldMetadata meta, RepairResult repairResult) {
         if (meta.isRequired()) {
-            repairResult.getWarnings().add("Can't remove the only value of required enumeration field '%s'.".formatted(meta.getLabel()));
+            repairResult.addWarning("Can't remove the only value of required enumeration field '%s'.".formatted(meta.getLabel()));
         } else {
             entity.setValue(meta.getId(), null);
             repairResult.setSuccess(true);

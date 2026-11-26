@@ -70,7 +70,7 @@ public class ModuleWrongLayoutAssignmentsRepairer extends BaseRepairer {
                                         LayoutUtils.switchLayoutIndex(module, workItem, module.getRenderingLayouts().size() - 1);
                                         repairResult.setSuccess(true);
                                     } else {
-                                        repairResult.getWarnings().add("No such '%s' work item type declared in the project '%s'".formatted(typeId, module.getProjectId()));
+                                        repairResult.addWarning("No such '%s' work item type declared in the project '%s'".formatted(typeId, module.getProjectId()));
                                     }
                                 }
                             } else if (issues != null) {

@@ -94,7 +94,7 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
             module.setHomePageContent(Text.html(fixedHtml));
             result.setSuccess(true);
         } else {
-            result.getWarnings().add("Issue cannot be repaired automatically.");
+            result.addWarning("Issue cannot be repaired automatically.");
         }
         return result;
     }

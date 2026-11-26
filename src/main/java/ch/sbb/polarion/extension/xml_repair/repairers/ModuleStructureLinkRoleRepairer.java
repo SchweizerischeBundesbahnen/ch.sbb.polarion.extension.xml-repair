@@ -108,7 +108,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
                 null, Objects.requireNonNullElse(usedRole, "none"));
         List<CollidingLink> collisions = collidingLinks(module, targetRole);
         if (!collisions.isEmpty()) {
-            issue.getWarnings().add(collisionWarning(targetRole, collisions));
+            issue.addWarning(collisionWarning(targetRole, collisions));
         }
         return List.of(issue);
     }
@@ -123,14 +123,14 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
 
         String usedRole = usedRole(module);
         if (Objects.equals(usedRole, targetRole)) {
-            result.getWarnings().add("Document already uses structure link role '%s'.".formatted(targetRole));
+            result.addWarning("Document already uses structure link role '%s'.".formatted(targetRole));
             return result;
         }
 
         // Resolved before anything is written, so an unknown role cannot leave the links already changed.
         ILinkRoleOpt role = resolveRole(module, targetRole);
         if (role == null || role.isPhantom()) {
-            result.getWarnings().add("Link role '%s' does not exist in this project.".formatted(targetRole));
+            result.addWarning("Link role '%s' does not exist in this project.".formatted(targetRole));
             return result;
         }
 
@@ -138,7 +138,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         // per item and carries on, and the write transaction still commits - so a refusal there would leave the
         // link changes below persisted against a document whose role never moved.
         if (!module.can().modifyKey(IModule.KEY_STRUCTURELINKROLE)) {
-            result.getWarnings().add(XmlRepairPolarionService.MSG_NO_PERMISSIONS);
+            result.addWarning(XmlRepairPolarionService.MSG_NO_PERMISSIONS);
             return result;
         }
 
@@ -148,7 +148,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         }
 
         setStructureLinkRole(module, role);
-        result.getStaleCacheUris().addAll(staleCacheUris(module));
+        result.addStaleCacheUris(staleCacheUris(module));
         result.setSuccess(true);
         return result;
     }
@@ -186,13 +186,13 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
                               @NotNull RepairResult result) {
         String policy = existingLinksPolicy(configs);
         if (EXISTING_LINKS_INTERRUPT.equals(policy)) {
-            result.getWarnings().add(collisionWarning(targetRole, collisions));
+            result.addWarning(collisionWarning(targetRole, collisions));
             return false;
         }
 
         if (EXISTING_LINKS_IGNORE.equals(policy)) {
             // Still reported, because the switch is what seals their fate and this is the only record of it.
-            result.getWarnings().add("Left %d %s of role '%s' in place: %s. Polarion drops such a link when its work item is next saved."
+            result.addWarning("Left %d %s of role '%s' in place: %s. Polarion drops such a link when its work item is next saved."
                     .formatted(collisions.size(), links(collisions), targetRole, listed(collisions)));
             return true;
         }
@@ -209,7 +209,7 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
         // document with some links moved and its role unchanged.
         for (CollidingLink collision : collisions) {
             if (!collision.source().can().modify()) {
-                result.getWarnings().add("Cannot modify work item '%s', which holds one of those links."
+                result.addWarning("Cannot modify work item '%s', which holds one of those links."
                         .formatted(collision.source().getId()));
                 return false;
             }
@@ -235,18 +235,18 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
                 done.add(collision);
             } catch (RuntimeException e) {
                 failed.add(collision);
-                result.getWarnings().add("Could not %s %s: %s.".formatted(verb, collision.describe(), e.getMessage()));
+                result.addWarning("Could not %s %s: %s.".formatted(verb, collision.describe(), e.getMessage()));
             }
         }
 
         if (!done.isEmpty()) {
-            result.getWarnings().add(replacement == null
+            result.addWarning(replacement == null
                     ? "Deleted %d %s of role '%s': %s.".formatted(done.size(), links(done), targetRole, listed(done))
                     : "Moved %d %s from role '%s' to '%s': %s."
                             .formatted(done.size(), links(done), targetRole, replacement.getId(), listed(done)));
         }
         if (!failed.isEmpty()) {
-            result.getWarnings().add(failed.size() == 1
+            result.addWarning(failed.size() == 1
                     ? "That link keeps role '%s', so Polarion drops it when its work item is next saved."
                             .formatted(targetRole)
                     : "Those links keep role '%s', so Polarion drops them when their work items are next saved."
@@ -269,18 +269,18 @@ public class ModuleStructureLinkRoleRepairer extends BaseRepairer {
                                             @NotNull UserConfigs configs, @NotNull RepairResult result) {
         String replacementRole = configs.getString(getClass(), EXISTING_LINKS_ROLE);
         if (replacementRole == null || replacementRole.isBlank() || replacementRole.equals(targetRole)) {
-            result.getWarnings().add("No link role was chosen to move those links to.");
+            result.addWarning("No link role was chosen to move those links to.");
             return null;
         }
         if (replacementRole.equals(usedRole(module))) {
             // The links move before the switch, so a save now still strips the document's current role.
-            result.getWarnings().add(("Link role '%s' is the role this document structures its content with, "
+            result.addWarning(("Link role '%s' is the role this document structures its content with, "
                     + "so a link moved to it would be stripped as its work item is saved.").formatted(replacementRole));
             return null;
         }
         ILinkRoleOpt replacement = resolveRole(module, replacementRole);
         if (replacement == null || replacement.isPhantom()) {
-            result.getWarnings().add("Link role '%s' does not exist in this project.".formatted(replacementRole));
+            result.addWarning("Link role '%s' does not exist in this project.".formatted(replacementRole));
             return null;
         }
         return replacement;

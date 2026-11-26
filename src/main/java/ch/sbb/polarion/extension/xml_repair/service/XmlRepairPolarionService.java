@@ -327,12 +327,12 @@ public class XmlRepairPolarionService extends PolarionService {
                 try {
                     ScanContext context = new ScanContext(this, params.getRepairers(), params.getConfigs(), report, cache);
                     scanEntity(scanEntity, context.control(control));
-                    scanEntity.getFields().putAll(context.entityRenderer().renderEntity(object));
+                    scanEntity.putFields(context.entityRenderer().renderEntity(object));
                     processedItemsCount++;
                 } catch (Exception e) {
                     scanError = "Error during item scan: %s".formatted(e.getMessage());
                     report.warn(scanError);
-                    scanEntity.getWarnings().add(scanError);
+                    scanEntity.addWarning(scanError);
                     logger.error(scanError, e);
                 }
 
@@ -344,7 +344,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 if (params.isHideValid() && noIssues && scanError == null) {
                     report.info("Item '%s' will be hidden".formatted(entity.getId()));
                 } else {
-                    result.getItems().add(scanEntity);
+                    result.addItem(scanEntity);
                     report.info("Item '%s' added to list".formatted(entity.getId()));
                 }
 
@@ -377,7 +377,7 @@ public class XmlRepairPolarionService extends PolarionService {
         if (entity.getEntity() instanceof IWorkflowObject workflowObject && workflowObject.getType() == null) {
             String errorText = "Entity '%s' has no type.".formatted(((UniqueObject) entity.getEntity()).getReferencePath());
             context.report().warn(errorText);
-            entity.getWarnings().add(errorText);
+            entity.addWarning(errorText);
             return;
         }
 
@@ -394,7 +394,7 @@ public class XmlRepairPolarionService extends PolarionService {
                 String stopReason = context.stopReason();
                 if (stopReason != null) {
                     // the collection itself says that some of its documents were not scanned
-                    entity.getWarnings().add(stopReason);
+                    entity.addWarning(stopReason);
                     break;
                 }
                 if (element.getObjectWithRevision() instanceof IModule module) {
@@ -403,9 +403,9 @@ public class XmlRepairPolarionService extends PolarionService {
                             .documents().getBy().revision(module.getRevision()).projectSpaceAndName(module.getProjectId(), module.getModuleFolder(), module.getModuleName());
 
                     ScanEntity docScanEntity = ScanEntity.from(module);
-                    entity.getSubitems().add(docScanEntity);
+                    entity.addSubitem(docScanEntity);
                     scanEntity(docScanEntity, context);
-                    docScanEntity.getFields().putAll(context.entityRenderer().renderEntity(document));
+                    docScanEntity.putFields(context.entityRenderer().renderEntity(document));
                 }
             }
         } else {
@@ -413,7 +413,7 @@ public class XmlRepairPolarionService extends PolarionService {
             for (IRepairer selectedRepairer : selectedRepairers) {
                 List<Issue> issues = selectedRepairer.scan(entity.getEntity(), context);
                 reportEntryBuilder.append(selectedRepairer.getClass().getSimpleName()).append(":").append(stopWatch.formatTime()).append(" ");
-                entity.getIssues().addAll(issues);
+                entity.addIssues(issues);
             }
 
             String itemPath = ((UniqueObject) entity.getEntity()).getReferencePath();

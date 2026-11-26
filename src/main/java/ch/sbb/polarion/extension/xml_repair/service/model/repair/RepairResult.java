@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -34,6 +36,22 @@ public class RepairResult {
         this.issueMetaInfo = issueMetaInfo.serialize();
         this.success = success;
         this.warnings.addAll(Arrays.asList(warnings));
+    }
+
+    public Set<String> getWarnings() {
+        return Collections.unmodifiableSet(warnings);
+    }
+
+    public void addWarning(String warning) {
+        warnings.add(warning);
+    }
+
+    public Set<SubterraURI> getStaleCacheUris() {
+        return Collections.unmodifiableSet(staleCacheUris);
+    }
+
+    public void addStaleCacheUris(Collection<SubterraURI> uris) {
+        staleCacheUris.addAll(uris);
     }
 
 }

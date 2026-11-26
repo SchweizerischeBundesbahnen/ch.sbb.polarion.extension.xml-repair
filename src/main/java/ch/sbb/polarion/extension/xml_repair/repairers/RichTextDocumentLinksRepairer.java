@@ -104,12 +104,12 @@ public class RichTextDocumentLinksRepairer extends BaseRepairer {
             DocumentLink link = DocumentLink.from(markup, regexEngine.group(GROUP_NAME), rawSpace,
                     regexEngine.group(GROUP_PROJECT), regexEngine.group(GROUP_REVISION), entity);
             if (documentExists(context, link, link.space())) {
-                result.getWarnings().add("The link is not broken any more: document '%s' exists in the space '%s'.".formatted(link.name(), link.space()));
+                result.addWarning("The link is not broken any more: document '%s' exists in the space '%s'.".formatted(link.name(), link.space()));
                 return markup;
             }
             List<String> otherSpaces = findOtherSpaces(context, link);
             if (otherSpaces.size() != 1) {
-                result.getWarnings().add(describeRepairability(link, otherSpaces));
+                result.addWarning(describeRepairability(link, otherSpaces));
                 return markup;
             }
             result.setSuccess(true);

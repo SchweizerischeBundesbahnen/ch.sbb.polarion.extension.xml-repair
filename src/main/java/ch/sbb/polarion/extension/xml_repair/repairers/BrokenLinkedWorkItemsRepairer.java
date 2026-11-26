@@ -95,7 +95,7 @@ public class BrokenLinkedWorkItemsRepairer extends BaseLinksRepairer {
             links.remove(linkToRepair);
             result.setSuccess(true);
         } else {
-            result.getWarnings().add(warning);
+            result.addWarning(warning);
         }
 
         return result;

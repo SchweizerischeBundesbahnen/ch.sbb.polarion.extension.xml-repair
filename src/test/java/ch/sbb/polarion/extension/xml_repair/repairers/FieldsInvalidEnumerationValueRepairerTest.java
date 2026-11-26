@@ -554,7 +554,7 @@ class FieldsInvalidEnumerationValueRepairerTest {
         when(metaInfo.getString("issueDescription")).thenReturn("Invalid enumeration id(s) 'deleted' for the field 'Categories'.");
         RepairContext repairContext = new RepairContext(metaInfo, polarionService, removalEnabledConfigs, new Cache());
 
-        RepairResult result = repairer.repair(entity, repairContext);
+        repairer.repair(entity, repairContext);
 
         // invalidOptions.size() (1) < list.size() (2), so fix is allowed even though required
         verify(list).removeAll(List.of(invalidOption));
