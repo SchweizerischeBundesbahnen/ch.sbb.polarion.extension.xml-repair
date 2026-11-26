@@ -40,7 +40,7 @@ public class ModuleWrongTitleHeadingPositionRepairer extends BaseHeadingsRepaire
                 if (repairResult != null) {
                     moveHeadingToProperPosition(module);
                     repairResult.setSuccess(true);
-                } else {
+                } else if (issues != null) {
                     Issue issue = new Issue(IssueMetaInfo.create(module), this,
                             "Document '%s' has wrong title-heading position.".formatted(module.getModuleName()));
                     issues.add(issue);
