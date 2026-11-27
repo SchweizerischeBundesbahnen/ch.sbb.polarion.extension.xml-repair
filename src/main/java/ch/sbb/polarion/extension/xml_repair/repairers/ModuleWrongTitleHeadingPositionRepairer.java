@@ -40,7 +40,7 @@ public class ModuleWrongTitleHeadingPositionRepairer extends BaseHeadingsRepaire
                 if (repairResult != null) {
                     moveHeadingToProperPosition(module);
                     repairResult.setSuccess(true);
-                } else {
+                } else if (issues != null) {
                     Issue issue = new Issue(IssueMetaInfo.create(module), this,
                             "Document '%s' has wrong title-heading position.".formatted(module.getModuleName()));
                     issues.add(issue);
@@ -77,10 +77,12 @@ public class ModuleWrongTitleHeadingPositionRepairer extends BaseHeadingsRepaire
         return false;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Checks if the document has wrong title-heading position. Title-heading must be the first element in the document body, " +
                 "but if the first page contains macros and empty strings only - title-heading can be moved to the beginning of the second page.";

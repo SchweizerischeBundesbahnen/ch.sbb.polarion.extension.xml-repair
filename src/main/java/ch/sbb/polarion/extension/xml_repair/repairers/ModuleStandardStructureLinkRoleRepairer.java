@@ -35,10 +35,12 @@ public class ModuleStandardStructureLinkRoleRepairer extends BaseLinksRepairer {
         return new RepairResult(context.issueMetaInfo(), false, "Automatic repair is not possible.");
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Check whether standard ('parent') link role was chosen during document creation. No automatic repair possible - only manual actions are implied.";
     }

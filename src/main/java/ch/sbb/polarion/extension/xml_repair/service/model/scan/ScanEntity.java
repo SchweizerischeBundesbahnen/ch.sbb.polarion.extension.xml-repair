@@ -60,4 +60,36 @@ public final class ScanEntity {
                 entity instanceof IModule module ? module.getModuleFolder() : null, entity.getId(), entity.getRevision());
     }
 
+    public @NotNull List<Issue> getIssues() {
+        return Collections.unmodifiableList(issues);
+    }
+
+    public void addIssues(@NotNull Collection<Issue> newIssues) {
+        issues.addAll(newIssues);
+    }
+
+    public @NotNull Map<String, Map<String, String>> getFields() {
+        return Collections.unmodifiableMap(fields);
+    }
+
+    public void putFields(@NotNull Map<String, Map<String, String>> newFields) {
+        fields.putAll(newFields);
+    }
+
+    public List<ScanEntity> getSubitems() {
+        return Collections.unmodifiableList(subitems);
+    }
+
+    public void addSubitem(@NotNull ScanEntity subitem) {
+        subitems.add(subitem);
+    }
+
+    public Set<String> getWarnings() {
+        return Collections.unmodifiableSet(warnings);
+    }
+
+    public void addWarning(@NotNull String warning) {
+        warnings.add(warning);
+    }
+
 }

@@ -61,10 +61,12 @@ public class FieldsWrongTypeRepairer extends BaseRepairer {
         return value instanceof Text textValue ? textValue.convertToPlainText().getContent() : String.valueOf(value);
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Converts values to the fields specific format (e.g. plain string fields may contain 'Text' objects " +
                 "left by changing type of the field from multi-line).";

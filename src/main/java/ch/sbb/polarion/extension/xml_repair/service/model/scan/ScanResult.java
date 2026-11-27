@@ -17,4 +17,12 @@ public class ScanResult {
     @NotNull
     private String report = "";
 
+    public @NotNull List<ScanEntity> getItems() {
+        return Collections.unmodifiableList(items);
+    }
+
+    public void addItem(@NotNull ScanEntity item) {
+        items.add(item);
+    }
+
 }

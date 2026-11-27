@@ -132,10 +132,12 @@ public class ModuleTablesAndFiguresCaptionRepairer extends BaseRepairer {
         }).collect(Collectors.toSet());
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds captions of tables and figures in the document body which are misaligned with internal identifiers. " +
                 "Usually this happens when captions are modified manually. As a result Table of tables/figures contain " +

@@ -65,32 +65,30 @@ class IssueTest {
     }
 
     @Test
-    void testWarningsListIsMutable() {
+    void testAddWarningKeepsOrder() {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         BaseRepairer repairer = mock(BaseRepairer.class);
         when(repairer.getRepairerId()).thenReturn("TestRepairer");
 
         Issue issue = new Issue(metaInfo, repairer, "desc");
 
-        issue.getWarnings().add("warning1");
-        issue.getWarnings().add("warning2");
+        issue.addWarning("warning1");
+        issue.addWarning("warning2");
 
-        assertEquals(2, issue.getWarnings().size());
-        assertEquals("warning1", issue.getWarnings().get(0));
-        assertEquals("warning2", issue.getWarnings().get(1));
+        assertEquals(List.of("warning1", "warning2"), issue.getWarnings());
     }
 
     @Test
-    void testWarningsIsSameListInstance() {
+    void testWarningsViewIsUnmodifiable() {
         IssueMetaInfo metaInfo = mock(IssueMetaInfo.class);
         BaseRepairer repairer = mock(BaseRepairer.class);
         when(repairer.getRepairerId()).thenReturn("TestRepairer");
 
         Issue issue = new Issue(metaInfo, repairer, "desc");
         List<String> warnings = issue.getWarnings();
-        issue.getWarnings().add("test");
+        issue.addWarning("test");
 
-        assertSame(warnings, issue.getWarnings());
-        assertEquals(1, warnings.size());
+        assertThrows(UnsupportedOperationException.class, () -> warnings.add("other"));
+        assertEquals(List.of("test"), warnings);
     }
 }

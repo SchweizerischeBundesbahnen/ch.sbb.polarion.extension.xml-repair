@@ -29,14 +29,17 @@ public final class RepairContext implements IContext {
         return issueMetaInfo;
     }
 
+    @Override
     public @NotNull XmlRepairPolarionService polarionService() {
         return polarionService;
     }
 
+    @Override
     public @NotNull Cache cache() {
         return cache;
     }
 
+    @Override
     public @NotNull UserConfigs configs() {
         return configs;
     }

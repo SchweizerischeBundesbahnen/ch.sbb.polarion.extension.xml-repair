@@ -94,7 +94,7 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
             module.setHomePageContent(Text.html(fixedHtml));
             result.setSuccess(true);
         } else {
-            result.getWarnings().add("Issue cannot be repaired automatically.");
+            result.addWarning("Issue cannot be repaired automatically.");
         }
         return result;
     }
@@ -119,10 +119,12 @@ public class ModuleNonExistentWorkItemsRepairer extends BaseRepairer {
         return parameters;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds unresolvable/invalid work items in the document body.";
     }

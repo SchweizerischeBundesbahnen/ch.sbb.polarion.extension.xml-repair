@@ -70,7 +70,7 @@ public class ModuleWrongLayoutAssignmentsRepairer extends BaseRepairer {
                                         LayoutUtils.switchLayoutIndex(module, workItem, module.getRenderingLayouts().size() - 1);
                                         repairResult.setSuccess(true);
                                     } else {
-                                        repairResult.getWarnings().add("No such '%s' work item type declared in the project '%s'".formatted(typeId, module.getProjectId()));
+                                        repairResult.addWarning("No such '%s' work item type declared in the project '%s'".formatted(typeId, module.getProjectId()));
                                     }
                                 }
                             } else if (issues != null) {
@@ -93,10 +93,12 @@ public class ModuleWrongLayoutAssignmentsRepairer extends BaseRepairer {
         return layoutIndex >= 0 && layoutIndex < layouts.size() ? layouts.get(layoutIndex).getType() : null;
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Checks if the assigned layout ID for a work item matches the layout declaration for its specific work item type. If the document doesn't contain declaration for a work item type it will be added.";
     }

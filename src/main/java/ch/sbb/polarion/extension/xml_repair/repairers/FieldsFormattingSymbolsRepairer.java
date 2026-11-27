@@ -60,10 +60,12 @@ public class FieldsFormattingSymbolsRepairer extends BaseRepairer {
         return WHITESPACE_RUN.matcher(value).replaceAll(match -> containsFormattingSymbols(match.group()) ? " " : match.group());
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Removes formatting symbols (new lines, tabs, etc.) in plain string fields.";
     }

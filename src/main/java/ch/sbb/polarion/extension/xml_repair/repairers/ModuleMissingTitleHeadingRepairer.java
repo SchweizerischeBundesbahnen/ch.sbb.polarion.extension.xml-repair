@@ -33,10 +33,12 @@ public class ModuleMissingTitleHeadingRepairer extends BaseHeadingsRepairer {
         }
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Checks if the document has a title-heading defined and adds it if missing. A missing title-heading may cause severe issues, e.g. during import/export roundtrips.";
     }

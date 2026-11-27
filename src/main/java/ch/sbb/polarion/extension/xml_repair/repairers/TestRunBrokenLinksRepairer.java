@@ -133,7 +133,7 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         IssueMetaInfo metaInfo = context.issueMetaInfo();
         RepairResult result = new RepairResult(metaInfo, false);
         if (Problem.valueOf(metaInfo.getString(PROBLEM)) == Problem.NOT_READABLE) {
-            result.getWarnings().add(NOT_READABLE_WARNING);
+            result.addWarning(NOT_READABLE_WARNING);
             return result;
         }
 
@@ -146,7 +146,7 @@ public class TestRunBrokenLinksRepairer extends BaseRepairer {
         if (StringUtils.isEmpty(warning)) {
             result.setSuccess(true);
         } else {
-            result.getWarnings().add(warning);
+            result.addWarning(warning);
         }
         return result;
     }

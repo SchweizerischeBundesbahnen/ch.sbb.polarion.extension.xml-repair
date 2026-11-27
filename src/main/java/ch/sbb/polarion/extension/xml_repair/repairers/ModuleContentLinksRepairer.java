@@ -27,10 +27,12 @@ public class ModuleContentLinksRepairer extends BaseLinksRepairer {
         return repairLinksInHtml(module.getHomePageContent(), module, context.polarionService(), context.issueMetaInfo(), context.configs());
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds links to work items in the document body and checks if the referenced work item exists. " +
                 "If the link points to a work item in another project and that work item does not exist, " +

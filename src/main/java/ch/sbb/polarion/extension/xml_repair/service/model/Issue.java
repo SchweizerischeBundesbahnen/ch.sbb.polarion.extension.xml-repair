@@ -8,6 +8,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @Getter
@@ -57,5 +58,13 @@ public class Issue {
     @JsonIgnore
     public IssueMetaInfo getRawMetaInfo() {
         return metaInfo;
+    }
+
+    public List<String> getWarnings() {
+        return Collections.unmodifiableList(warnings);
+    }
+
+    public void addWarning(String warning) {
+        warnings.add(warning);
     }
 }

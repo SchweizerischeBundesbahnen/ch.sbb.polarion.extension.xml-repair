@@ -714,7 +714,7 @@ class XmlRepairPolarionServiceTest {
 
         // Whatever a failed repair collected before it gave up must not be acted on.
         RepairResult failed = repairResult(false);
-        failed.getStaleCacheUris().add(null);
+        failed.addStaleCacheUris(Collections.singleton(null));
 
         polarionService.clearStaleCaches(List.of(failed));
 
@@ -1273,8 +1273,8 @@ class XmlRepairPolarionServiceTest {
             doAnswer(inv -> {
                 ScanEntity entity = inv.getArgument(0);
                 ScanEntity sub = createScanEntity("DOC-1");
-                sub.getIssues().add(createIssueForRepairer("RepairerA"));
-                entity.getSubitems().add(sub);
+                sub.addIssues(List.of(createIssueForRepairer("RepairerA")));
+                entity.addSubitem(sub);
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
@@ -1309,8 +1309,8 @@ class XmlRepairPolarionServiceTest {
             // Collection populated with subitems that have no issues
             doAnswer(inv -> {
                 ScanEntity entity = inv.getArgument(0);
-                entity.getSubitems().add(createScanEntity("DOC-1"));
-                entity.getSubitems().add(createScanEntity("DOC-2"));
+                entity.addSubitem(createScanEntity("DOC-1"));
+                entity.addSubitem(createScanEntity("DOC-2"));
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
@@ -1344,10 +1344,10 @@ class XmlRepairPolarionServiceTest {
             doAnswer(inv -> {
                 ScanEntity entity = inv.getArgument(0);
                 ScanEntity sub1 = createScanEntity("DOC-1");
-                sub1.getIssues().add(createIssueForRepairer("RepairerA"));
+                sub1.addIssues(List.of(createIssueForRepairer("RepairerA")));
                 ScanEntity sub2 = createScanEntity("DOC-2");
-                entity.getSubitems().add(sub1);
-                entity.getSubitems().add(sub2);
+                entity.addSubitem(sub1);
+                entity.addSubitem(sub2);
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
@@ -1382,7 +1382,7 @@ class XmlRepairPolarionServiceTest {
             // and short-circuits the allMatch on subitems.
             doAnswer(inv -> {
                 ScanEntity entity = inv.getArgument(0);
-                entity.getIssues().add(createIssueForRepairer("RepairerA"));
+                entity.addIssues(List.of(createIssueForRepairer("RepairerA")));
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
@@ -1417,7 +1417,7 @@ class XmlRepairPolarionServiceTest {
 
             doAnswer(inv -> {
                 ScanEntity entity = inv.getArgument(0);
-                entity.getSubitems().add(createScanEntity("DOC-1"));
+                entity.addSubitem(createScanEntity("DOC-1"));
                 return null;
             }).when(polarionService).scanEntity(any(ScanEntity.class), any(ScanContext.class));
 
@@ -1454,8 +1454,8 @@ class XmlRepairPolarionServiceTest {
     @Test
     void testAppendRepairerBreakdownItemsWithoutIssuesAppendNothing() {
         ScanResult result = new ScanResult();
-        result.getItems().add(createScanEntity("WI-1"));
-        result.getItems().add(createScanEntity("WI-2"));
+        result.addItem(createScanEntity("WI-1"));
+        result.addItem(createScanEntity("WI-2"));
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1467,10 +1467,10 @@ class XmlRepairPolarionServiceTest {
     void testAppendRepairerBreakdownSingleRepairerCountsAllIssues() {
         ScanResult result = new ScanResult();
         ScanEntity entity = createScanEntity("WI-1");
-        entity.getIssues().add(createIssueForRepairer("RepairerA"));
-        entity.getIssues().add(createIssueForRepairer("RepairerA"));
-        entity.getIssues().add(createIssueForRepairer("RepairerA"));
-        result.getItems().add(entity);
+        entity.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        result.addItem(entity);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1484,13 +1484,13 @@ class XmlRepairPolarionServiceTest {
     void testAppendRepairerBreakdownSortsRepairersByCountDescending() {
         ScanResult result = new ScanResult();
         ScanEntity entity = createScanEntity("WI-1");
-        entity.getIssues().add(createIssueForRepairer("RepairerLow"));
-        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
-        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
-        entity.getIssues().add(createIssueForRepairer("RepairerHigh"));
-        entity.getIssues().add(createIssueForRepairer("RepairerMid"));
-        entity.getIssues().add(createIssueForRepairer("RepairerMid"));
-        result.getItems().add(entity);
+        entity.addIssues(List.of(createIssueForRepairer("RepairerLow")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerHigh")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerHigh")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerHigh")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerMid")));
+        entity.addIssues(List.of(createIssueForRepairer("RepairerMid")));
+        result.addItem(entity);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1508,8 +1508,8 @@ class XmlRepairPolarionServiceTest {
     void testAppendRepairerBreakdownUsesDisplayNameWhenRepairerIsKnown() {
         ScanResult result = new ScanResult();
         ScanEntity entity = createScanEntity("WI-1");
-        entity.getIssues().add(createIssueWithRealRepairer(new BrokenLinkedWorkItemsRepairer()));
-        result.getItems().add(entity);
+        entity.addIssues(List.of(createIssueWithRealRepairer(new BrokenLinkedWorkItemsRepairer())));
+        result.addItem(entity);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1523,8 +1523,8 @@ class XmlRepairPolarionServiceTest {
     void testAppendRepairerBreakdownFallsBackToIdWhenRepairerIsUnknown() {
         ScanResult result = new ScanResult();
         ScanEntity entity = createScanEntity("WI-1");
-        entity.getIssues().add(createIssueForRepairer("NotInRepairersMap"));
-        result.getItems().add(entity);
+        entity.addIssues(List.of(createIssueForRepairer("NotInRepairersMap")));
+        result.addItem(entity);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1537,13 +1537,13 @@ class XmlRepairPolarionServiceTest {
         ScanResult result = new ScanResult();
         ScanEntity collection = createScanEntity("COL-1");
         ScanEntity sub1 = createScanEntity("WI-1");
-        sub1.getIssues().add(createIssueForRepairer("RepairerA"));
-        sub1.getIssues().add(createIssueForRepairer("RepairerB"));
+        sub1.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        sub1.addIssues(List.of(createIssueForRepairer("RepairerB")));
         ScanEntity sub2 = createScanEntity("WI-2");
-        sub2.getIssues().add(createIssueForRepairer("RepairerA"));
-        collection.getSubitems().add(sub1);
-        collection.getSubitems().add(sub2);
-        result.getItems().add(collection);
+        sub2.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        collection.addSubitem(sub1);
+        collection.addSubitem(sub2);
+        result.addItem(collection);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);
@@ -1557,11 +1557,11 @@ class XmlRepairPolarionServiceTest {
     void testAppendRepairerBreakdownMergesItemAndSubitemIssuesUnderSameRepairer() {
         ScanResult result = new ScanResult();
         ScanEntity item = createScanEntity("DOC-1");
-        item.getIssues().add(createIssueForRepairer("RepairerA"));
+        item.addIssues(List.of(createIssueForRepairer("RepairerA")));
         ScanEntity sub = createScanEntity("WI-1");
-        sub.getIssues().add(createIssueForRepairer("RepairerA"));
-        item.getSubitems().add(sub);
-        result.getItems().add(item);
+        sub.addIssues(List.of(createIssueForRepairer("RepairerA")));
+        item.addSubitem(sub);
+        result.addItem(item);
         Report report = new Report();
 
         polarionService.appendRepairerBreakdown(report, result);

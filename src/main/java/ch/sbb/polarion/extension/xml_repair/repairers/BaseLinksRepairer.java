@@ -129,7 +129,7 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             IPObjectList<IWorkItem> itemsFound = entity.getDataSvc().searchInstances(
                     IWorkItem.PROTO, LuceneUtils.term("id", workItemId), null, 2);
             if (itemsFound.size() > 1) {
-                result.getWarnings().add("Work item '%s' found at least in 2 projects: '%s' and '%s'".formatted(workItemId, itemsFound.get(0).getProjectId(), itemsFound.get(1).getProjectId()));
+                result.addWarning("Work item '%s' found at least in 2 projects: '%s' and '%s'".formatted(workItemId, itemsFound.get(0).getProjectId(), itemsFound.get(1).getProjectId()));
                 return link;
             } else if (itemsFound.size() == 1) {
                 result.setSuccess(true);
@@ -155,7 +155,7 @@ public abstract class BaseLinksRepairer extends BaseRepairer {
             result.setSuccess(true);
             return "<span class=\"xml-repair-replaced-link\">%s</span>".formatted(StringUtils.isEmpty(customLabel) ? workItemId : customLabel);
         } else {
-            result.getWarnings().add("Work item '%s' does not exist in the project '%s'".formatted(workItemId, entity.getProjectId()));
+            result.addWarning("Work item '%s' does not exist in the project '%s'".formatted(workItemId, entity.getProjectId()));
             return link;
         }
     }

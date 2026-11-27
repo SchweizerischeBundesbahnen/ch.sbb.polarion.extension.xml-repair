@@ -50,10 +50,12 @@ public class FieldsRichTextLinksRepairer extends BaseLinksRepairer {
         }
     }
 
+    @Override
     public String getDisplayName() {
         return NAME;
     }
 
+    @Override
     public String getDescription() {
         return "Finds links to work items in rich text fields and checks if the referenced work item exists. " +
                 "If the link points to a work item in another project and that work item does not exist, " +
